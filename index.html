@@ -575,7 +575,7 @@ function groundInGap(tx) {
   return LEVELS[currentLevel].gaps.some(g => tx >= g.x && tx < g.x + g.w);
 }
 
-const FLAG_X = 1190;
+const FLAG_X = 580; // end of level 1 — leads to boss
 
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
@@ -1886,9 +1886,10 @@ function damageWarden(dmg) {
   player.frenzyKills = Math.min(player.frenzyKills + 2.4, 12);
   if (warden.hp <= 0) {
     warden.hp = 0;
-    warden.dead = true; warden.deadTimer = 200;
+    warden.dead = true; warden.deadTimer = 300; // 5s: 3s shake + 2s slow explosion
     warden.state = 'dead';
-    spawnExplosion(warden.x + warden.w / 2, warden.y + warden.h / 2, true);
+    warden.deathPhase = 'shake'; // shake → explode
+    warden.deathExpTimer = 0;
     comboCount += 8; comboTimer = 200;
     score += 8000; updateHUD();
     return true;
@@ -1906,6 +1907,26 @@ function updateWarden() {
   if (!warden.active) return;
   if (warden.dead) {
     warden.deadTimer--;
+    if (warden.deathPhase === 'shake') {
+      // 3 seconds of violent shaking with small particle bursts
+      warden.shakeX = 12 + Math.sin(warden.deadTimer * 0.8) * 8;
+      warden.deathExpTimer--;
+      if (warden.deathExpTimer <= 0) {
+        warden.deathExpTimer = 8;
+        const ox = (Math.random() - 0.5) * warden.w;
+        const oy = (Math.random() - 0.5) * warden.h;
+        spawnExplosion(warden.x + warden.w / 2 + ox, warden.y + warden.h / 2 + oy, false);
+      }
+      if (warden.deadTimer <= 120) warden.deathPhase = 'explode';
+    } else if (warden.deathPhase === 'explode') {
+      // 2 seconds of slow-motion giant explosion
+      warden.deathExpTimer--;
+      if (warden.deathExpTimer <= 0) {
+        warden.deathExpTimer = 18;
+        spawnExplosion(warden.x + warden.w / 2 + (Math.random()-0.5)*80,
+                       warden.y + warden.h / 2 + (Math.random()-0.5)*80, true);
+      }
+    }
     if (warden.deadTimer <= 0) { won = true; player.wonSlide = true; score += 1000; updateHUD(); }
     return;
   }
@@ -2656,12 +2677,19 @@ function update(dt) {
   updateWraith();
   updateWarden();
 
-  // Flag (skip on boss level — win is triggered by boss death)
+  // Flag — loads warden boss level on level 1, wins on other non-boss levels
   if (!LEVELS[currentLevel].isBossLevel) {
     if (player.x + player.w > FLAG_X * TILE && !won) {
-      won = true; player.wonSlide = true;
-      player.x = FLAG_X * TILE - player.w + 6; player.vx = 0;
-      score += 1000; updateHUD();
+      if (currentLevel === 0) {
+        // Level 1 flag: go to warden boss (index 13)
+        loadLevel(13);
+        player.x = 2 * TILE; player.y = groundY * TILE - player.h;
+        player.vx = 0; player.vy = 0; camera = 0;
+      } else {
+        won = true; player.wonSlide = true;
+        player.x = FLAG_X * TILE - player.w + 6; player.vx = 0;
+        score += 1000; updateHUD();
+      }
     }
   }
 
