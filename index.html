@@ -2282,6 +2282,17 @@ function update(dt) {
     }
   }
 
+  // Frenzy activation (R or Q)
+  if (frenzyKeyPressed) {
+    frenzyKeyPressed = false;
+    if (player.frenzyKills >= 7 && player.frenzyTimer <= 0) {
+      player.frenzyKills = 0;
+      player.frenzyTimer = 900;
+      player.homingUsed = false;
+      spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
+    }
+  }
+
   // Frenzy tick + trail
   if (player.frenzyTimer > 0) {
     player.frenzyTimer--;
@@ -2452,12 +2463,11 @@ function killPlayer() {
 document.getElementById('go-restart').addEventListener('click', () => location.reload());
 document.addEventListener('keydown', e => {
   if ((e.code === 'KeyR' || e.code === 'Enter') && dead) { location.reload(); return; }
-  if (e.code === 'KeyR' && !dead && !won && player.frenzyKills >= 7 && player.frenzyTimer <= 0) {
-    player.frenzyKills = 0;
-    player.frenzyTimer = 900;
-    player.homingUsed = false;
-    spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
-  }
+});
+
+let frenzyKeyPressed = false;
+document.addEventListener('keydown', e => {
+  if ((e.code === 'KeyR' || e.code === 'KeyQ') && !dead) frenzyKeyPressed = true;
 });
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
