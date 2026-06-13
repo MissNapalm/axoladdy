@@ -178,8 +178,8 @@ const COLORS = {
   ground:  '#2a2040', groundTop: '#3a2e5a', groundHi: '#4a3e6a',
   stone:   '#3a3050', stoneDk: '#2a2040', stoneHi: '#5a4870',
   crystal: '#4a1a6a', crystalHi: '#8a3aaa', crystalGlow: '#cc66ff',
-  column:  '#1e2a3a', columnHi: '#2e3a4a',
-  orb:     '#00ffcc', orbDim: '#00aa88',
+  column:  '#1e1a3a', columnHi: '#2e2a4a',
+  orb:     '#cc88ff', orbDim: '#8844cc',
   pole:    '#445566',
 };
 
@@ -920,9 +920,9 @@ function update(dt) {
 function hitBlock(s) {
   if (!s.key || blockHit[s.key]) return;
   blockHit[s.key] = true;
-  if (s.type === 'qblock') { spawnCoinPop(s.x + TILE / 2, s.y - TILE); score += 200; }
+  if (s.type === 'qblock') { score += 200; }
   else if (s.type === 'brick') score += 50;
-  else if (s.type === 'hblock') { hp = Math.min(MAX_HP, hp + 1); updateHPBar(); spawnCoinPop(s.x + TILE / 2, s.y - TILE); }
+  else if (s.type === 'hblock') { hp = Math.min(MAX_HP, hp + 1); updateHPBar(); }
   updateHUD();
 }
 
@@ -1081,12 +1081,12 @@ function drawPipeTile(sx, sy, isTop) {
   ctx.fillStyle = COLORS.columnHi;
   ctx.fillRect(sx + 4, sy, 6, TILE);
   ctx.fillRect(sx + pw - 10, sy, 4, TILE);
-  ctx.fillStyle = '#111a22';
+  ctx.fillStyle = '#11101e';
   ctx.fillRect(sx, sy, 3, TILE);
   ctx.fillRect(sx + pw - 3, sy, 3, TILE);
   if (isTop) {
     // Capital / carved top
-    ctx.fillStyle = '#2e3e50'; ctx.fillRect(sx - 5, sy, pw + 10, 12);
+    ctx.fillStyle = '#2e2e50'; ctx.fillRect(sx - 5, sy, pw + 10, 12);
     ctx.fillStyle = '#3e4e60'; ctx.fillRect(sx - 3, sy, pw + 6, 4);
     // Glowing rune
     const t = performance.now() / 900;
@@ -1113,7 +1113,7 @@ function drawCoins() {
     // Core
     ctx.fillStyle = COLORS.orb;
     ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#aaffee';
+    ctx.fillStyle = '#ddaaff';
     ctx.beginPath(); ctx.arc(sx - 1.5, sy - 1.5, 2, 0, Math.PI*2); ctx.fill();
   }
 }
@@ -1375,7 +1375,7 @@ function loop(ts) {
   // Deep space gradient sky
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
   skyGrad.addColorStop(0, '#04041a');
-  skyGrad.addColorStop(1, '#0f0a28');
+  skyGrad.addColorStop(1, '#1a0a2e');
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, H);
 
@@ -1402,21 +1402,46 @@ function loop(ts) {
   ctx.restore();
 
   // Combo flash
-  if (comboCount >= 2 && comboTimer > 0) {
-    const a = Math.min(1, comboTimer / 30);
-    const scale = 1 + (1 - a) * 0.4;
+  if (comboCount >= 1 && comboTimer > 0) {
+    const MAX_T = 120;
+    const t = comboTimer / MAX_T;
+    // zoom-in pop: scale goes 2.2 → 1.0 in first 20% then holds, fade out last 30%
+    const popT = Math.min(1, (MAX_T - comboTimer) / 12);
+    const scale = 2.2 - 1.2 * popT;
+    const alpha = comboTimer < 36 ? comboTimer / 36 : 1;
+
+    // pick color by count
+    const colors = ['#ffffff','#ffee44','#ff9900','#ff4444','#ff44ff','#cc44ff'];
+    const col = colors[Math.min(comboCount - 1, colors.length - 1)];
+
     ctx.save();
-    ctx.globalAlpha = a;
+    ctx.globalAlpha = alpha;
     ctx.textAlign = 'center';
-    ctx.translate(W / 2, H / 2 - 60);
+    ctx.translate(W / 2, H / 2 - 40);
     ctx.scale(scale, scale);
-    ctx.font = 'bold 52px monospace';
-    ctx.fillStyle = '#ffdd00';
-    ctx.strokeStyle = '#a00060';
-    ctx.lineWidth = 5;
-    const label = comboCount + ' HIT COMBO!';
-    ctx.strokeText(label, 0, 0);
-    ctx.fillText(label, 0, 0);
+
+    // glow halo
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 40;
+
+    // big number
+    ctx.font = 'bold 90px monospace';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 8;
+    ctx.strokeText(comboCount, 0, 0);
+    ctx.fillStyle = col;
+    ctx.fillText(comboCount, 0, 0);
+
+    // sub-label
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 22px monospace';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 4;
+    const sub = comboCount === 1 ? 'KILL!' : comboCount < 4 ? 'COMBO!' : comboCount < 7 ? 'SLAYING!' : 'UNSTOPPABLE!!';
+    ctx.strokeText(sub, 0, 32);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(sub, 0, 32);
+
     ctx.restore();
   }
 
