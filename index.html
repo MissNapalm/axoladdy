@@ -1099,19 +1099,19 @@ function drawEnemy(g) {
     ctx.save(); ctx.translate(cx, g.y + g.h);
     ctx.scale(1 / squish, squish);
     // Body
-    ctx.fillStyle = '#5a1a8a';
+    ctx.fillStyle = '#cc3a7a';
     ctx.beginPath(); ctx.ellipse(0, -g.h/2, g.w/2 - 2, g.h/2 - 1, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#7a2ab0';
+    ctx.fillStyle = '#ee5a9a';
     ctx.beginPath(); ctx.ellipse(-2, -g.h/2 - 1, g.w/2 - 6, g.h/2 - 5, 0, 0, Math.PI*2); ctx.fill();
     // Eyes — glow
-    ctx.fillStyle = '#ff4488';
+    ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(-5, -g.h * 0.65, 4, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(5, -g.h * 0.65, 4, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ffaaff';
+    ctx.fillStyle = '#ff2266';
     ctx.beginPath(); ctx.arc(-5, -g.h * 0.65, 2, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(5, -g.h * 0.65, 2, 0, Math.PI*2); ctx.fill();
     // Tendrils / feet
-    ctx.strokeStyle = '#5a1a8a'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#cc3a7a'; ctx.lineWidth = 3;
     const legOff = wf ? 4 : -4;
     ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-8 + legOff, 2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(6, -4); ctx.lineTo(8 - legOff, 2); ctx.stroke();
@@ -1119,7 +1119,7 @@ function drawEnemy(g) {
     // Slime trail
     if (wf) {
       ctx.globalAlpha = 0.25;
-      ctx.fillStyle = '#5a1a8a';
+      ctx.fillStyle = '#cc3a7a';
       ctx.beginPath(); ctx.ellipse(cx - g.vx * 6, g.y + g.h - 2, 6, 3, 0, 0, Math.PI*2); ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -1132,7 +1132,7 @@ function drawGoombas() {
       if (g.deadTimer > 0) {
         const sx = g.x + g.w/2 - camera;
         ctx.globalAlpha = g.deadTimer / 40;
-        ctx.fillStyle = g.flying ? '#6a1a9a' : '#5a1a8a';
+        ctx.fillStyle = g.flying ? '#6a1a9a' : '#cc3a7a';
         ctx.beginPath(); ctx.arc(sx, g.y + g.h/2, 8, 0, Math.PI*2); ctx.fill();
         ctx.globalAlpha = 1;
       }
