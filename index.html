@@ -1269,9 +1269,12 @@ function drawPlayer() {
   ctx.scale(scaleX, 1);
   const img = !player.onGround && axo2Img.complete && axo2Img.naturalWidth > 0
     ? axo2Img : axoImg;
-  if (img.complete && img.naturalWidth > 0)
-    ctx.drawImage(img, -player.w / 2, -player.h / 2, player.w, player.h);
-  else {
+  if (img.complete && img.naturalWidth > 0) {
+    const aspect = img.naturalWidth / img.naturalHeight;
+    const dw = player.w * 1.4;
+    const dh = dw / aspect;
+    ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+  } else {
     ctx.fillStyle = '#ff69b4';
     ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
   }
@@ -1359,8 +1362,12 @@ function drawDeathAnimation() {
   ctx.save();
   ctx.translate(sx + player.w / 2, player.y + player.h / 2);
   ctx.rotate(Math.PI);
-  if (axoImg.complete && axoImg.naturalWidth > 0)
-    ctx.drawImage(axoImg, -player.w/2, -player.h/2, player.w, player.h);
+  if (axoImg.complete && axoImg.naturalWidth > 0) {
+    const aspect = axoImg.naturalWidth / axoImg.naturalHeight;
+    const dw = player.w * 1.4;
+    const dh = dw / aspect;
+    ctx.drawImage(axoImg, -dw/2, -dh/2, dw, dh);
+  }
   ctx.restore();
 }
 
