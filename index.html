@@ -13,6 +13,10 @@
   #zoom-wrap label { color: #adf; white-space: nowrap; }
   #zoom-slider { width: 80px; accent-color: #5c94fc; }
   #zoom-val { color: #ffdd00; width: 34px; text-align: right; }
+  #hp-wrap { display: flex; align-items: center; gap: 5px; }
+  #hp-label { color: #ff6688; font-weight: bold; white-space: nowrap; }
+  #hp-bar-bg { width: 80px; height: 10px; background: #330011; border: 1px solid #ff3366; border-radius: 3px; overflow: hidden; }
+  #hp-bar { height: 100%; width: 100%; background: #ff3366; transition: width 0.12s; border-radius: 2px; }
 
   /* Settings panel */
   #settings-btn { position: fixed; top: 8px; right: 8px; background: #333; color: #fff; border: 1px solid #666; font-family: monospace; font-size: 13px; padding: 4px 10px; cursor: pointer; z-index: 100; }
@@ -31,11 +35,23 @@
   #settings-panel button { margin-top: 10px; width: 100%; padding: 5px; background: #c84c0c; border: none; color: #fff; font-family: monospace; font-size: 13px; cursor: pointer; }
   #settings-panel button:hover { background: #e86020; }
   #settings-panel hr { border-color: #444; margin: 10px 0; }
+
+  #gameover {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75); z-index: 200;
+    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  }
+  #gameover.show { display: flex; }
+  #gameover h1 { color: #ff3366; font-family: monospace; font-size: 52px; letter-spacing: 4px; text-shadow: 0 0 24px #ff3366; }
+  #gameover p  { color: #cc99ff; font-family: monospace; font-size: 20px; }
+  #gameover button { background: #4a1060; border: 2px solid #9933cc; color: #cc99ff; font-family: monospace; font-size: 22px; padding: 10px 36px; cursor: pointer; letter-spacing: 2px; }
+  #gameover button:hover { background: #7a20a0; }
 </style>
 </head>
 <body>
 <div id="hud">
   <span>AXO <span id="score">000000</span></span>
+  <div id="hp-wrap"><span id="hp-label">HP</span><div id="hp-bar-bg"><div id="hp-bar"></div></div></div>
   <span id="jumpstate">—</span>
   <span>ORBS <span id="coins">00</span></span>
   <div id="zoom-wrap">
@@ -46,43 +62,40 @@
 </div>
 <canvas id="c" width="800" height="450"></canvas>
 
+<div id="gameover">
+  <h1>GAME OVER</h1>
+  <p id="go-score"></p>
+  <button id="go-restart">RESTART</button>
+</div>
+
 <button id="settings-btn">⚙ Settings</button>
 <div id="settings-panel">
   <h3>⚙ SETTINGS</h3>
 
-  <label><span class="lbl">Gravity (default)</span>
+  <label><span class="lbl">Gravity (ground)</span>
     <input type="range" id="s-gravity" min="0.02" max="1.0" step="0.01">
     <span class="val" id="v-gravity"></span>
   </label>
-  <label><span class="lbl">Gravity jump 1</span>
+  <label><span class="lbl">Gravity (air)</span>
     <input type="range" id="s-gravity1" min="0.02" max="1.0" step="0.01">
     <span class="val" id="v-gravity1"></span>
   </label>
-  <label><span class="lbl">Gravity jump 2</span>
-    <input type="range" id="s-gravity2" min="0.02" max="1.0" step="0.01">
-    <span class="val" id="v-gravity2"></span>
-  </label>
-  <label><span class="lbl">Gravity jump 3</span>
-    <input type="range" id="s-gravity3" min="0.02" max="1.0" step="0.01">
-    <span class="val" id="v-gravity3"></span>
-  </label>
-  <label><span class="lbl">Jump 1 height</span>
+  <label><span class="lbl">Jump height</span>
     <input type="range" id="s-jump1" min="0.5" max="25" step="0.1">
     <span class="val" id="v-jump1"></span>
   </label>
-  <label><span class="lbl">Jump 2 height</span>
-    <input type="range" id="s-jump2" min="0.5" max="25" step="0.1">
-    <span class="val" id="v-jump2"></span>
+  <label><span class="lbl">Dash horiz (F)</span>
+    <input type="range" id="s-dashH" min="4" max="60" step="0.5">
+    <span class="val" id="v-dashH"></span>
   </label>
-  <label><span class="lbl">Jump 3 height</span>
-    <input type="range" id="s-jump3" min="0.5" max="25" step="0.1">
-    <span class="val" id="v-jump3"></span>
+  <label><span class="lbl">Dash up (F+Up)</span>
+    <input type="range" id="s-dashV" min="4" max="40" step="0.5">
+    <span class="val" id="v-dashV"></span>
   </label>
-  <label><span class="lbl">Chain window (ms)</span>
-    <input type="range" id="s-window" min="50" max="800" step="10">
-    <span class="val" id="v-window"></span>
+  <label><span class="lbl">Dash length (frames)</span>
+    <input type="range" id="s-dashLen" min="4" max="40" step="1">
+    <span class="val" id="v-dashLen"></span>
   </label>
-
   <hr>
 
   <label><span class="lbl">Move speed</span>
@@ -103,8 +116,8 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
-const axoImg = new Image();
-axoImg.src = 'axo.png';
+const axoImg  = new Image(); axoImg.src  = 'axo.png';
+const axo2Img = new Image(); axo2Img.src = 'axo2.png';
 
 const W = 800, H = 450;
 const TILE = 32;
@@ -112,19 +125,24 @@ const TILE = 32;
 const DEFAULTS = {
   gravity:  0.32,
   gravity1: 0.24,
-  gravity2: 0.26,
-  gravity3: 0.15,
   jump1: 6.4,
-  jump2: 9.4,
-  jump3: 8.2,
-  tripleWindow: 350,
+  dashH: 26,
+  dashV: 14,
+  dashLen: 14,
   moveSpeed: 3.5,
   axoSize: 44,
 };
-const CFG = { ...DEFAULTS };
+
+function loadCFG() {
+  try { const s = localStorage.getItem('axo_cfg'); if (s) return { ...DEFAULTS, ...JSON.parse(s) }; } catch(e) {}
+  return { ...DEFAULTS };
+}
+function saveCFG() { localStorage.setItem('axo_cfg', JSON.stringify(CFG)); }
+
+const CFG = loadCFG();
 const CAM_EASE = 0.12;
 
-let zoom = 1.0;
+let zoom = parseFloat(localStorage.getItem('axo_zoom') || '1');
 
 // ── Input ────────────────────────────────────────────────────────────────────
 const keys = {};
@@ -164,76 +182,33 @@ function groundInGap(tx) {
   return GROUND_GAPS.some(g => tx >= g.x && tx < g.x + g.w);
 }
 
-// Platforms: long Sonic-style stretches, speed ramps, high paths
+// Platforms — sparse, open feel with clear gaps for aerial combat
 const platforms = [
-  // early low platforms
-  { x:10, y:10, w:4, t:'brick' },
-  { x:18, y:9,  w:3, t:'qblock' },
-  { x:25, y:8,  w:5, t:'brick' },
-  { x:35, y:7,  w:3, t:'qblock' },
-  { x:42, y:6,  w:6, t:'brick' },
-  { x:52, y:5,  w:4, t:'qblock' },
-  // after first gap — high road
-  { x:87, y:6,  w:8, t:'brick' },
-  { x:98, y:5,  w:5, t:'qblock' },
-  { x:106,y:4,  w:8, t:'brick' },
-  // long low platform
-  { x:115,y:10, w:12,t:'brick' },
-  { x:128,y:8,  w:6, t:'qblock' },
-  // after second gap
-  { x:148,y:6,  w:10,t:'brick' },
-  { x:160,y:4,  w:6, t:'qblock' },
-  { x:168,y:6,  w:8, t:'brick' },
-  { x:178,y:8,  w:5, t:'qblock' },
-  { x:186,y:10, w:8, t:'brick' },
-  // third section — big staircase up
-  { x:196,y:10, w:3, t:'brick' },
-  { x:200,y:8,  w:3, t:'brick' },
-  { x:204,y:6,  w:3, t:'brick' },
-  { x:208,y:4,  w:3, t:'brick' },
-  { x:212,y:2,  w:8, t:'qblock' },
-  // after third gap — long high run
-  { x:230,y:3,  w:20,t:'brick' },
-  { x:252,y:5,  w:8, t:'qblock' },
-  { x:262,y:7,  w:10,t:'brick' },
-  { x:274,y:9,  w:6, t:'qblock' },
-  // fourth section
-  { x:285,y:8,  w:8, t:'brick' },
-  { x:296,y:6,  w:6, t:'qblock' },
-  // after fourth gap
-  { x:307,y:5,  w:12,t:'brick' },
-  { x:322,y:3,  w:8, t:'qblock' },
-  { x:332,y:5,  w:10,t:'brick' },
-  { x:344,y:7,  w:6, t:'qblock' },
-  { x:353,y:9,  w:8, t:'brick' },
-  // fifth — zigzag
-  { x:363,y:7,  w:4, t:'brick' },
-  { x:370,y:5,  w:4, t:'qblock' },
-  { x:377,y:3,  w:4, t:'brick' },
-  // after fifth gap
-  { x:391,y:4,  w:14,t:'brick' },
-  { x:408,y:6,  w:8, t:'qblock' },
-  { x:418,y:8,  w:6, t:'brick' },
-  { x:427,y:6,  w:6, t:'qblock' },
-  { x:436,y:4,  w:8, t:'brick' },
-  { x:447,y:3,  w:5, t:'qblock' },
-  // after sixth gap
-  { x:468,y:6,  w:10,t:'brick' },
-  { x:480,y:4,  w:6, t:'qblock' },
-  { x:489,y:6,  w:8, t:'brick' },
-  { x:500,y:8,  w:5, t:'qblock' },
-  // seventh section — fast downhill feel
-  { x:510,y:7,  w:6, t:'brick' },
-  { x:519,y:8,  w:6, t:'qblock' },
-  // after seventh gap
-  { x:539,y:6,  w:12,t:'brick' },
-  { x:554,y:4,  w:8, t:'qblock' },
-  { x:564,y:6,  w:8, t:'brick' },
-  { x:574,y:8,  w:5, t:'qblock' },
-  // approach to final gap and flag
-  { x:588,y:7,  w:8, t:'brick' },
-  { x:598,y:5,  w:6, t:'qblock' },
-  { x:606,y:3,  w:8, t:'brick' },
+  { x:18,  y:9,  w:4, t:'qblock' },
+  { x:42,  y:6,  w:5, t:'brick'  },
+  { x:90,  y:5,  w:6, t:'qblock' },
+  { x:115, y:9,  w:8, t:'brick'  },
+  { x:150, y:6,  w:5, t:'qblock' },
+  { x:170, y:9,  w:6, t:'brick'  },
+  { x:204, y:5,  w:4, t:'brick'  },
+  { x:212, y:2,  w:6, t:'qblock' },
+  { x:234, y:3,  w:12,t:'brick'  },
+  { x:262, y:7,  w:7, t:'qblock' },
+  { x:290, y:8,  w:6, t:'brick'  },
+  { x:310, y:5,  w:8, t:'qblock' },
+  { x:332, y:3,  w:6, t:'brick'  },
+  { x:355, y:8,  w:6, t:'qblock' },
+  { x:370, y:5,  w:4, t:'brick'  },
+  { x:393, y:4,  w:10,t:'qblock' },
+  { x:420, y:7,  w:6, t:'brick'  },
+  { x:440, y:4,  w:6, t:'qblock' },
+  { x:470, y:6,  w:8, t:'brick'  },
+  { x:490, y:9,  w:5, t:'qblock' },
+  { x:515, y:7,  w:5, t:'brick'  },
+  { x:542, y:5,  w:8, t:'qblock' },
+  { x:566, y:8,  w:5, t:'brick'  },
+  { x:590, y:6,  w:6, t:'qblock' },
+  { x:606, y:3,  w:6, t:'brick'  },
 ];
 
 // Pipes
@@ -273,63 +248,67 @@ coinLine(468, 496, 5);
 coinLine(540, 562, 5);
 coinLine(575, 600, 6);
 
-// Goombas
+// Goombas — one or two per section
 const goombaDefs = [
-  { x:15,  pl:10,  pr:20  },
-  { x:35,  pl:30,  pr:42  },
-  { x:60,  pl:55,  pr:70  },
-  { x:90,  pl:87,  pr:100 },
-  { x:120, pl:115, pr:130 },
-  { x:150, pl:145, pr:162 },
-  { x:195, pl:190, pr:205 },
-  { x:235, pl:230, pr:248 },
-  { x:280, pl:275, pr:293 },
-  { x:320, pl:315, pr:332 },
-  { x:365, pl:360, pr:377 },
-  { x:410, pl:405, pr:425 },
-  { x:450, pl:445, pr:460 },
-  { x:475, pl:470, pr:488 },
-  { x:542, pl:538, pr:552 },
-  { x:568, pl:563, pr:578 },
-  { x:595, pl:590, pr:608 },
+  { x:15,  pl:8,   pr:25  },
+  { x:42,  pl:34,  pr:52  }, { x:50,  pl:42,  pr:60  },
+  { x:70,  pl:62,  pr:80  },
+  { x:92,  pl:85,  pr:103 }, { x:102, pl:93,  pr:114 },
+  { x:122, pl:114, pr:134 },
+  { x:152, pl:144, pr:164 }, { x:162, pl:154, pr:174 },
+  { x:196, pl:188, pr:210 },
+  { x:238, pl:230, pr:252 }, { x:248, pl:240, pr:260 },
+  { x:282, pl:274, pr:296 },
+  { x:322, pl:314, pr:336 }, { x:334, pl:326, pr:346 },
+  { x:368, pl:360, pr:382 },
+  { x:412, pl:404, pr:428 }, { x:424, pl:416, pr:436 },
+  { x:452, pl:444, pr:466 },
+  { x:480, pl:472, pr:494 },
+  { x:544, pl:536, pr:558 }, { x:556, pl:548, pr:568 },
+  { x:572, pl:564, pr:586 },
+  { x:596, pl:588, pr:614 },
 ];
 
-// Flying enemies [tileX, floatY in pixels from top, patrol width in tiles]
+// Flyers — one or two per section at varied heights
 const flyerDefs = [
-  { x:25,  fy:7*TILE, pw:8  },
-  { x:55,  fy:6*TILE, pw:6  },
-  { x:95,  fy:5*TILE, pw:10 },
-  { x:130, fy:6*TILE, pw:7  },
-  { x:170, fy:5*TILE, pw:8  },
-  { x:210, fy:4*TILE, pw:6  },
-  { x:255, fy:5*TILE, pw:9  },
-  { x:310, fy:6*TILE, pw:8  },
-  { x:350, fy:5*TILE, pw:7  },
-  { x:395, fy:4*TILE, pw:10 },
-  { x:440, fy:6*TILE, pw:6  },
-  { x:480, fy:5*TILE, pw:8  },
-  { x:525, fy:6*TILE, pw:7  },
-  { x:565, fy:4*TILE, pw:9  },
-  { x:600, fy:5*TILE, pw:6  },
+  { x:20,  fy:7*TILE, pw:8  },
+  { x:58,  fy:5*TILE, pw:7  }, { x:70,  fy:4*TILE, pw:6  },
+  { x:98,  fy:5*TILE, pw:8  },
+  { x:132, fy:6*TILE, pw:7  }, { x:148, fy:4*TILE, pw:7  },
+  { x:172, fy:5*TILE, pw:7  },
+  { x:212, fy:4*TILE, pw:6  }, { x:228, fy:3*TILE, pw:7  },
+  { x:258, fy:5*TILE, pw:8  },
+  { x:310, fy:6*TILE, pw:7  }, { x:328, fy:4*TILE, pw:7  },
+  { x:354, fy:5*TILE, pw:7  },
+  { x:396, fy:4*TILE, pw:8  }, { x:416, fy:6*TILE, pw:6  },
+  { x:444, fy:5*TILE, pw:7  },
+  { x:482, fy:4*TILE, pw:7  }, { x:500, fy:3*TILE, pw:6  },
+  { x:528, fy:6*TILE, pw:7  },
+  { x:566, fy:4*TILE, pw:8  }, { x:586, fy:6*TILE, pw:6  },
+  { x:602, fy:5*TILE, pw:6  },
 ];
 
 const FLAG_X = 610;
 
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
+const MAX_HP = 6;
+let hp = MAX_HP;
 
 const player = {
   x: 48, y: 0,
   vx: 0, vy: 0,
   w: 44, h: 44,
   onGround: false,
-  jumpCount: 0,
   lastLandTime: 0,
   spinAngle: 0,
-  spinning: false,   // triple jump spin (continues until landing)
-  homing: false,     // homing attack active
+  spinning: false,
+  homing: false,
   homingTarget: null,
-  homingUsed: false, // can only home once per airborne
+  homingUsed: false,
+  dashUsed: false,
+  dashFrames: 0,    // frames remaining in active dash
+  invincible: 0,
   dir: 1,
   dead: false,
   wonSlide: false,
@@ -383,12 +362,10 @@ const coinsEl = document.getElementById('coins');
 function jumpLabel() {
   if (player.wonSlide)  return '★ YOU WIN ★';
   if (player.dead)      return '✕ DEAD ✕';
-  if (player.homing)    return '🎯 HOMING!';
-  if (player.onGround)  return player.jumpCount === 0 ? '— READY —' : '— LANDED —';
-  if (player.jumpCount === 1) return '① JUMP';
-  if (player.jumpCount === 2) return '② DOUBLE';
-  if (player.jumpCount === 3) return '③ TRIPLE SPIN!';
-  return '—';
+  if (player.homing)    return '>> HOMING! <<';
+  if (player.onGround)  return '— READY —';
+  if (!player.onGround) return 'SPACE: HOMING';
+  return '— READY —';
 }
 
 function updateHUD() {
@@ -402,6 +379,7 @@ const coinParticles = [];
 const dustParticles = [];
 const trailParticles = [];
 const spindashParticles = [];
+const explosionParticles = [];
 
 function spawnCoinPop(x, y) {
   coinParticles.push({ x, y, vy: -6, life: 40, maxLife: 40 });
@@ -433,6 +411,43 @@ function spawnTrail(x, y) {
   });
 }
 
+function spawnDashTrail(x, y) {
+  trailParticles.push({
+    x: x + (Math.random() - 0.5) * 10,
+    y: y + (Math.random() - 0.5) * 10,
+    r: Math.random() * 10 + 8,
+    life: 12 + Math.floor(Math.random() * 6),
+    maxLife: 18,
+    hue: 180 + Math.random() * 60,
+    bright: true,
+  });
+}
+
+function spawnExplosion(x, y, flying) {
+  const hue = flying ? 280 : 140;
+  for (let i = 0; i < 24; i++) {
+    const angle = (Math.PI * 2 * i / 24) + Math.random() * 0.3;
+    const speed = 2.5 + Math.random() * 5;
+    explosionParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5,
+      r: 2 + Math.random() * 5,
+      life: 28 + Math.floor(Math.random() * 22),
+      maxLife: 50,
+      hue: hue + (Math.random() - 0.5) * 40,
+    });
+  }
+  // bright flash blob
+  explosionParticles.push({ x, y, vx:0, vy:0, r:18, life:6, maxLife:6, hue: flying?300:60, flash:true });
+}
+
+function updateHPBar() {
+  const bar = document.getElementById('hp-bar');
+  bar.style.width = Math.max(0, (hp / MAX_HP) * 100) + '%';
+  bar.style.background = hp > MAX_HP * 0.5 ? '#ff3366' : hp > MAX_HP * 0.25 ? '#ff8800' : '#ff2200';
+}
+
 function spawnSpindash(x, y, dir) {
   for (let i = 0; i < 3; i++) {
     spindashParticles.push({
@@ -452,6 +467,7 @@ const HOMING_RANGE = 300; // px
 const HOMING_SPEED = 14;
 
 let prevJumpKey = false;
+let prevEKey = false;
 
 function nearestLiveGoomba() {
   const px = player.x + player.w / 2, py = player.y + player.h / 2;
@@ -471,6 +487,7 @@ function update(dt) {
 
   player.w = CFG.axoSize;
   player.h = CFG.axoSize;
+  if (player.invincible > 0) player.invincible--;
 
   const now = performance.now();
   const goLeft  = pressed(['ArrowLeft',  'KeyA']);
@@ -478,6 +495,10 @@ function update(dt) {
   const jumpKey = pressed(['ArrowUp', 'KeyW', 'Space']);
   const jumpJustPressed = jumpKey && !prevJumpKey;
   prevJumpKey = jumpKey;
+
+  const eKey = pressed(['KeyF']);
+  const eJustPressed = eKey && !prevEKey;
+  prevEKey = eKey;
 
   if (player.wonSlide) {
     player.vy = 2.5; player.vx = 0;
@@ -487,23 +508,44 @@ function update(dt) {
     return;
   }
 
-  // Homing attack — Space while airborne
-  if (jumpJustPressed && !player.onGround && !player.homing && !player.homingUsed) {
+  // Space/jump while airborne — homing attack if enemy nearby
+  if (jumpJustPressed && !player.onGround && !player.homing) {
     const target = nearestLiveGoomba();
     if (target) {
       player.homing = true;
       player.homingTarget = target;
       player.homingUsed = true;
-      // Lock-on flash
       target.lockFlash = 10;
     }
+  }
+
+  // F — directional dash (one per airtime)
+  if (eJustPressed && !player.onGround && !player.homing && !player.dashUsed) {
+    const goingUp = pressed(['ArrowUp', 'KeyW']);
+    if (goingUp) {
+      player.vx = 0;
+      player.vy = -CFG.dashV;
+    } else {
+      player.vx = (goLeft ? -1 : goRight ? 1 : player.dir) * CFG.dashH;
+      player.vy = 0;
+    }
+    player.dashUsed = true;
+    player.dashFrames = CFG.dashLen;
+    player.spinning = false;
+  }
+
+  // Tick dash frames and spawn afterimage trail
+  if (player.dashFrames > 0) {
+    player.dashFrames--;
+    // dense afterimage trail — two per frame
+    spawnDashTrail(player.x + player.w / 2, player.y + player.h / 2);
+    spawnDashTrail(player.x + player.w / 2, player.y + player.h / 2);
   }
 
   // Drive homing movement
   if (player.homing && player.homingTarget) {
     const tg = player.homingTarget;
     if (tg.dead) {
-      // Target already dead — cancel
       player.homing = false; player.homingTarget = null;
     } else {
       const tx = tg.x + tg.w / 2, ty = tg.y + tg.h / 2;
@@ -511,18 +553,16 @@ function update(dt) {
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
-        // Hit! Kill goomba, bounce up
         tg.dead = true; tg.deadTimer = 40;
         score += 200; updateHUD();
+        spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, tg.flying);
         player.homing = false; player.homingTarget = null;
         player.vy = -CFG.jump1 * 0.85;
         player.vx = player.dir * CFG.moveSpeed * 0.5;
         player.spinning = false;
-        spawnDust(tg.x + tg.w / 2, tg.y, 10);
-        // Allow another homing after killing this one
         player.homingUsed = false;
+        player.dashUsed = false;
       } else {
-        // Fly toward target
         player.vx = (dx / dist) * HOMING_SPEED;
         player.vy = (dy / dist) * HOMING_SPEED;
         if (player.vx > 0) player.dir = 1;
@@ -532,43 +572,29 @@ function update(dt) {
     }
   }
 
-  // Normal movement (not homing)
-  if (!player.homing) {
+  // Normal movement (not homing, not dashing)
+  if (!player.homing && player.dashFrames <= 0) {
     if (goRight) { player.vx = CFG.moveSpeed; player.dir = 1; }
     else if (goLeft) { player.vx = -CFG.moveSpeed; player.dir = -1; }
     else player.vx *= 0.75;
   }
 
-  // Jump (ground only)
+  // Jump from ground only
   if (jumpJustPressed && player.onGround) {
-    const timeSinceLand = now - player.lastLandTime;
-    let tier = 1;
-    if (player.jumpCount >= 1 && timeSinceLand < CFG.tripleWindow) tier = player.jumpCount + 1;
-    if (tier > 3) tier = 1;
-    player.jumpCount = tier;
-    if (tier === 1) player.vy = -CFG.jump1;
-    else if (tier === 2) player.vy = -CFG.jump2;
-    else { player.vy = -CFG.jump3; player.spinning = true; player.spinAngle = 0; }
+    player.vy = -CFG.jump1;
     player.onGround = false;
-    player.homingUsed = false; // reset homing on each new jump
+    player.homingUsed = false;
   }
 
-  // Triple jump spin + homing spin
-  if (player.spinning) {
-    player.spinAngle += 18;
-    if (Math.random() < 0.6) spawnTrail(player.x + player.w / 2, player.y + player.h / 2);
-  }
-  if (player.homing) {
-    player.spinAngle += 28;
+  // Spin during homing or after a dash
+  if (player.spinning || player.homing) {
+    player.spinAngle += player.homing ? 28 : 18;
+    if (Math.random() < 0.5) spawnTrail(player.x + player.w / 2, player.y + player.h / 2);
   }
 
-  // Gravity (suppressed during homing)
-  if (!player.homing) {
-    const g = player.onGround ? CFG.gravity
-      : player.jumpCount === 1 ? CFG.gravity1
-      : player.jumpCount === 2 ? CFG.gravity2
-      : player.jumpCount === 3 ? CFG.gravity3
-      : CFG.gravity;
+  // Gravity (suppressed during homing and active dash frames)
+  if (!player.homing && player.dashFrames <= 0) {
+    const g = player.onGround ? CFG.gravity : CFG.gravity1;
     player.vy += g;
     if (player.vy > 20) player.vy = 20;
   }
@@ -604,9 +630,11 @@ function update(dt) {
           spawnDust(player.x + player.w / 2, player.y + player.h);
           player.spinning = false;
           player.homing = false; player.homingTarget = null;
+          player.dashFrames = 0;
         }
         player.onGround = true;
         player.homingUsed = false;
+        player.dashUsed = false;
       } else if (player.vy < 0) {
         player.y = s.y + s.h;
         player.vy = 1;
@@ -615,8 +643,6 @@ function update(dt) {
       }
     }
   }
-
-  if (!player.onGround && wasOnGround && player.jumpCount === 0) player.jumpCount = 1;
 
   // Pit death
   if (player.y > H + 200) { killPlayer(); return; }
@@ -648,8 +674,12 @@ function update(dt) {
       if (player.spinning || (!g.flying && player.vy > 0 && player.y + player.h < g.y + g.h / 2 + 10)) {
         g.dead = true; g.deadTimer = 40; player.vy = Math.min(player.vy, -6);
         score += 100; updateHUD();
-      } else if (!player.homing) {
-        killPlayer(); return;
+        spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
+      } else if (!player.homing && player.invincible === 0) {
+        hp--;
+        updateHPBar();
+        player.invincible = 80; // ~1.3s i-frames
+        if (hp <= 0) { killPlayer(); return; }
       }
     }
   }
@@ -684,17 +714,12 @@ function killPlayer() {
   if (dead) return;
   dead = true; player.dead = true; player.vy = -12; player.vx = 0;
   setTimeout(() => {
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 48px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', W / 2, H / 2 - 20);
-    ctx.font = '24px monospace';
-    ctx.fillText('Press R to restart', W / 2, H / 2 + 20);
-  }, 1500);
+    document.getElementById('go-score').textContent = 'Score: ' + String(score).padStart(6, '0');
+    document.getElementById('gameover').classList.add('show');
+  }, 1200);
 }
 
+document.getElementById('go-restart').addEventListener('click', () => location.reload());
 document.addEventListener('keydown', e => { if (e.code === 'KeyR' && dead) location.reload(); });
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
@@ -995,14 +1020,18 @@ function drawFlagPole() {
 }
 
 function drawPlayer() {
+  // Flicker every 4 frames while invincible
+  if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
   ctx.save();
   ctx.translate(sx + player.w / 2, player.y + player.h / 2);
   const scaleX = player.dir === -1 ? -1 : 1;
   if (player.spinning || player.homing) ctx.rotate((player.spinAngle * Math.PI) / 180);
   ctx.scale(scaleX, 1);
-  if (axoImg.complete && axoImg.naturalWidth > 0)
-    ctx.drawImage(axoImg, -player.w / 2, -player.h / 2, player.w, player.h);
+  const img = !player.onGround && axo2Img.complete && axo2Img.naturalWidth > 0
+    ? axo2Img : axoImg;
+  if (img.complete && img.naturalWidth > 0)
+    ctx.drawImage(img, -player.w / 2, -player.h / 2, player.w, player.h);
   else {
     ctx.fillStyle = '#ff69b4';
     ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
@@ -1033,9 +1062,19 @@ function drawParticlesAll() {
   for (let i = trailParticles.length - 1; i >= 0; i--) {
     const p = trailParticles[i]; p.r *= 0.9; p.life--;
     if (p.life <= 0) { trailParticles.splice(i, 1); continue; }
-    ctx.globalAlpha = (p.life / p.maxLife) * 0.75;
-    ctx.fillStyle = `hsl(${p.hue},100%,70%)`;
-    ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    const a = p.life / p.maxLife;
+    if (p.bright) {
+      ctx.globalAlpha = a * 0.9;
+      ctx.fillStyle = `hsl(${p.hue},100%,85%)`;
+      ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = a * 0.6;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r * 0.45, 0, Math.PI*2); ctx.fill();
+    } else {
+      ctx.globalAlpha = a * 0.75;
+      ctx.fillStyle = `hsl(${p.hue},100%,70%)`;
+      ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    }
     ctx.globalAlpha = 1;
   }
   // Spindash sparks
@@ -1045,6 +1084,17 @@ function drawParticlesAll() {
     ctx.globalAlpha = (p.life / p.maxLife) * 0.85;
     ctx.fillStyle = `hsl(${50 + Math.random()*20},100%,65%)`;
     ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // Kill explosions
+  for (let i = explosionParticles.length - 1; i >= 0; i--) {
+    const p = explosionParticles[i];
+    if (!p.flash) { p.x += p.vx; p.y += p.vy; p.vy += 0.15; }
+    p.r *= p.flash ? 0.75 : 0.96; p.life--;
+    if (p.life <= 0) { explosionParticles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.flash ? (p.life / p.maxLife) : (p.life / p.maxLife) * 0.9;
+    ctx.fillStyle = p.flash ? `hsl(${p.hue},100%,90%)` : `hsl(${p.hue},100%,60%)`;
+    ctx.beginPath(); ctx.arc(p.x - camera, p.y, Math.max(p.r, 0.5), 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
   }
 }
@@ -1116,14 +1166,18 @@ function loop(ts) {
 
 player.x = 48;
 player.y = groundY * TILE - player.h;
+updateHPBar();
 requestAnimationFrame(loop);
 
 // ── Zoom slider ──────────────────────────────────────────────────────────────
 const zoomSlider = document.getElementById('zoom-slider');
 const zoomVal    = document.getElementById('zoom-val');
+zoomSlider.value = zoom;
+zoomVal.textContent = zoom.toFixed(2) + 'x';
 zoomSlider.addEventListener('input', () => {
   zoom = parseFloat(zoomSlider.value);
   zoomVal.textContent = zoom.toFixed(2) + 'x';
+  localStorage.setItem('axo_zoom', zoom);
 });
 
 // ── Settings panel ────────────────────────────────────────────────────────────
@@ -1134,16 +1188,14 @@ document.addEventListener('keydown', e => {
 });
 
 const sliders = [
-  { id: 's-gravity',  vid: 'v-gravity',  key: 'gravity',       fmt: v => v.toFixed(2) },
-  { id: 's-gravity1', vid: 'v-gravity1', key: 'gravity1',      fmt: v => v.toFixed(2) },
-  { id: 's-gravity2', vid: 'v-gravity2', key: 'gravity2',      fmt: v => v.toFixed(2) },
-  { id: 's-gravity3', vid: 'v-gravity3', key: 'gravity3',      fmt: v => v.toFixed(2) },
-  { id: 's-jump1',    vid: 'v-jump1',    key: 'jump1',         fmt: v => v.toFixed(1) },
-  { id: 's-jump2',    vid: 'v-jump2',    key: 'jump2',         fmt: v => v.toFixed(1) },
-  { id: 's-jump3',    vid: 'v-jump3',    key: 'jump3',         fmt: v => v.toFixed(1) },
-  { id: 's-window',   vid: 'v-window',   key: 'tripleWindow',  fmt: v => v + 'ms'     },
-  { id: 's-speed',    vid: 'v-speed',    key: 'moveSpeed',     fmt: v => v.toFixed(1) },
-  { id: 's-size',     vid: 'v-size',     key: 'axoSize',       fmt: v => v + 'px'     },
+  { id: 's-gravity',  vid: 'v-gravity',  key: 'gravity',   fmt: v => v.toFixed(2) },
+  { id: 's-gravity1', vid: 'v-gravity1', key: 'gravity1',  fmt: v => v.toFixed(2) },
+  { id: 's-jump1',    vid: 'v-jump1',    key: 'jump1',     fmt: v => v.toFixed(1) },
+  { id: 's-dashH',    vid: 'v-dashH',    key: 'dashH',     fmt: v => v.toFixed(1) },
+  { id: 's-dashV',    vid: 'v-dashV',    key: 'dashV',     fmt: v => v.toFixed(1) },
+  { id: 's-dashLen',  vid: 'v-dashLen',  key: 'dashLen',   fmt: v => Math.round(v) + 'f' },
+  { id: 's-speed',    vid: 'v-speed',    key: 'moveSpeed', fmt: v => v.toFixed(1) },
+  { id: 's-size',     vid: 'v-size',     key: 'axoSize',   fmt: v => v + 'px'     },
 ];
 
 function syncSliders() {
@@ -1160,10 +1212,16 @@ for (const s of sliders) {
   const el = document.getElementById(s.id);
   const vl = document.getElementById(s.vid);
   if (!el) continue;
-  el.addEventListener('input', () => { CFG[s.key] = parseFloat(el.value); vl.textContent = s.fmt(CFG[s.key]); });
+  el.addEventListener('input', () => {
+    CFG[s.key] = parseFloat(el.value);
+    vl.textContent = s.fmt(CFG[s.key]);
+    saveCFG();
+  });
 }
 
-document.getElementById('s-reset').addEventListener('click', () => { Object.assign(CFG, DEFAULTS); syncSliders(); });
+document.getElementById('s-reset').addEventListener('click', () => {
+  Object.assign(CFG, DEFAULTS); syncSliders(); saveCFG();
+});
 syncSliders();
 </script>
 </body>
