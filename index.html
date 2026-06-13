@@ -579,7 +579,8 @@ const FLAG_X = 1190;
 
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
-let comboCount = 0, comboTimer = 0; // kill chain display
+let comboCount = 0, comboTimer = 0;
+let turboFlash = 0; // frames of turbo activation freeze (60 = 1s)
 const MAX_HP = 4;
 let hp = MAX_HP;
 
@@ -667,8 +668,17 @@ function loadLevel(n) {
   });
   flyers = lv.flyers.map((f, i) => {
     const type = (lvl >= 1 && i % 3 === 2) ? 'shocker' : 'normal';
-    const h = 3; // bats always 3 hits
-    return { id: i + 1000, x: f.x * TILE, baseY: f.fy, y: f.fy, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
+    const h = 3;
+    // Clamp bat y so it doesn't spawn inside a platform
+    let safeY = f.fy;
+    for (const p of lv.platforms) {
+      const px = p.x * TILE, py = p.y * TILE, pw = p.w * TILE, ph = TILE;
+      const bx = f.x * TILE, bw = TILE;
+      if (bx + bw > px && bx < px + pw && safeY + TILE > py && safeY < py + ph) {
+        safeY = py + ph + 2; // push below the platform
+      }
+    }
+    return { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
   });
   heartPickups = [];
   projectiles  = [];
@@ -716,7 +726,7 @@ function loadLevel(n) {
     vx: 0, vy: 0,
     onGround: false, jumping: false,
     homing: false, homingTarget: null, homingUsed: false, homingCount: 0,
-    frenzyTimer: 0, frenzyKills: 0,
+    frenzyTimer: 0, frenzyKills: 0, coinFrenzyAcc: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: false, dashUsedV: false,
     invincible: 0, dead: false, wonSlide: false,
@@ -2165,6 +2175,7 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
 function update(dt) {
   if (won && !player.wonSlide) return;
   if (dead) return;
+  if (turboFlash > 0) { turboFlash--; return; } // freeze during turbo activation
 
   player.w = CFG.axoSize;
   player.h = CFG.axoSize;
@@ -2385,6 +2396,11 @@ function update(dt) {
     coin.bobTimer += 0.05;
     if (rectsOverlap({ x: coin.x + 4, y: coin.y + 4, w: TILE - 8, h: TILE - 8 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       coin.collected = true; coinCount++; score += 200; updateHUD(); playSound('coin', 0.5);
+      // Coins nudge frenzy meter (every 3 coins = 1 kill)
+      if (player.frenzyTimer <= 0) {
+        player.coinFrenzyAcc = (player.coinFrenzyAcc || 0) + 1;
+        if (player.coinFrenzyAcc >= 3) { player.coinFrenzyAcc -= 3; player.frenzyKills = Math.min(player.frenzyKills + 1, 7); }
+      }
     }
   }
 
@@ -2395,6 +2411,7 @@ function update(dt) {
       player.frenzyKills = 0;
       player.frenzyTimer = 900;
       player.homingUsed = false;
+      turboFlash = 70;
       spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
     }
   }
@@ -3384,17 +3401,42 @@ function loop(ts) {
   ctx.restore();
   ctx.restore();
 
-  // Combo flash
-  if (comboCount >= 1 && comboTimer > 0) {
-    const MAX_T = 120;
-    const alpha = (comboTimer < 30 ? comboTimer / 30 : 1) * 0.7;
+  // Turbo activation freeze flash
+  if (turboFlash > 0) {
+    const t = turboFlash / 70;
+    ctx.save();
+    ctx.fillStyle = `rgba(80,220,255,${t * 0.45})`;
+    ctx.fillRect(0, 0, W, H);
+    const scale = 1 + (1 - t) * 0.4;
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(scale, scale);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.round(42 * scale)}px monospace`;
+    ctx.fillStyle = `rgba(255,255,255,${t})`;
+    ctx.shadowColor = '#50dcff';
+    ctx.shadowBlur = 30;
+    ctx.fillText('TURBO MODE', 0, 0);
+    ctx.font = `bold 16px monospace`;
+    ctx.fillStyle = `rgba(180,240,255,${t * 0.8})`;
+    ctx.fillText('infinite health  ·  ceiling wrap  ·  3 homes', 0, 44);
+    ctx.restore();
+  }
 
+  // Combo display — kill chain
+  if (comboCount >= 2 && comboTimer > 0) {
+    const alpha = (comboTimer < 30 ? comboTimer / 30 : 1);
+    const scale = 1 + Math.min((comboCount - 1) * 0.06, 0.5);
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.textAlign = 'left';
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#a09080';
-    ctx.fillText(`x${comboCount}`, 12, H - 28);
+    ctx.textBaseline = 'alphabetic';
+    const hue = Math.min(comboCount * 12, 120); // green → yellow → red
+    ctx.font = `bold ${Math.round(18 * scale)}px monospace`;
+    ctx.fillStyle = `hsl(${hue},100%,65%)`;
+    ctx.shadowColor = `hsl(${hue},100%,50%)`;
+    ctx.shadowBlur = 8;
+    ctx.fillText(`${comboCount}x COMBO`, 14, H - 30);
     ctx.restore();
   }
 
