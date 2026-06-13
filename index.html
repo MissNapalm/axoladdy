@@ -308,7 +308,26 @@ const LEVELS = [
   // Level 1 — original
   {
     gaps: [{x:80,w:5},{x:140,w:6},{x:220,w:8},{x:300,w:5},{x:380,w:9},{x:460,w:6},{x:530,w:7},{x:580,w:5},{x:650,w:6},{x:720,w:8},{x:800,w:7},{x:870,w:10},{x:940,w:6},{x:1010,w:8},{x:1080,w:7},{x:1140,w:6}],
-    platforms: [{x:18,y:9,w:4,t:'qblock'},{x:42,y:6,w:5,t:'brick'},{x:90,y:5,w:6,t:'qblock'},{x:115,y:9,w:8,t:'brick'},{x:150,y:6,w:5,t:'qblock'},{x:170,y:9,w:6,t:'brick'},{x:204,y:5,w:4,t:'brick'},{x:212,y:2,w:6,t:'qblock'},{x:234,y:3,w:12,t:'brick'},{x:262,y:7,w:7,t:'qblock'},{x:290,y:8,w:6,t:'brick'},{x:310,y:5,w:8,t:'qblock'},{x:332,y:3,w:6,t:'brick'},{x:355,y:8,w:6,t:'qblock'},{x:370,y:5,w:4,t:'brick'},{x:393,y:4,w:10,t:'qblock'},{x:420,y:7,w:6,t:'brick'},{x:440,y:4,w:6,t:'qblock'},{x:470,y:6,w:8,t:'brick'},{x:490,y:9,w:5,t:'qblock'},{x:515,y:7,w:5,t:'brick'},{x:542,y:5,w:8,t:'qblock'},{x:566,y:8,w:5,t:'brick'},{x:590,y:6,w:6,t:'qblock'},{x:606,y:3,w:6,t:'brick'},{x:630,y:8,w:5,t:'qblock'},{x:660,y:5,w:6,t:'brick'},{x:680,y:2,w:7,t:'qblock'},{x:710,y:7,w:5,t:'brick'},{x:740,y:4,w:8,t:'qblock'},{x:762,y:9,w:5,t:'brick'},{x:790,y:5,w:6,t:'qblock'},{x:818,y:3,w:7,t:'brick'},{x:840,y:7,w:6,t:'qblock'},{x:862,y:4,w:5,t:'brick'},{x:890,y:2,w:8,t:'qblock'},{x:920,y:6,w:6,t:'brick'},{x:950,y:9,w:5,t:'qblock'},{x:976,y:4,w:7,t:'brick'},{x:1000,y:6,w:6,t:'qblock'},{x:1020,y:3,w:8,t:'brick'},{x:1050,y:8,w:5,t:'qblock'},{x:1070,y:5,w:6,t:'brick'},{x:1100,y:2,w:7,t:'qblock'},{x:1130,y:7,w:5,t:'brick'},{x:1155,y:4,w:8,t:'qblock'},{x:1175,y:6,w:6,t:'brick'},{x:55,y:7,w:1,t:'hblock'},{x:175,y:7,w:1,t:'hblock'},{x:295,y:6,w:1,t:'hblock'},{x:415,y:6,w:1,t:'hblock'},{x:535,y:6,w:1,t:'hblock'},{x:660,y:7,w:1,t:'hblock'},{x:780,y:6,w:1,t:'hblock'},{x:900,y:6,w:1,t:'hblock'},{x:1020,y:7,w:1,t:'hblock'},{x:1140,y:6,w:1,t:'hblock'}],
+    platforms: [
+      // Original ground-level platforms
+      {x:18,y:9,w:4,t:'qblock'},{x:42,y:6,w:5,t:'brick'},{x:90,y:5,w:6,t:'qblock'},{x:115,y:9,w:8,t:'brick'},{x:150,y:6,w:5,t:'qblock'},{x:170,y:9,w:6,t:'brick'},{x:204,y:5,w:4,t:'brick'},{x:234,y:3,w:12,t:'brick'},{x:262,y:7,w:7,t:'qblock'},{x:290,y:8,w:6,t:'brick'},{x:310,y:5,w:8,t:'qblock'},{x:332,y:3,w:6,t:'brick'},{x:355,y:8,w:6,t:'qblock'},{x:370,y:5,w:4,t:'brick'},{x:393,y:4,w:10,t:'qblock'},{x:420,y:7,w:6,t:'brick'},{x:440,y:4,w:6,t:'qblock'},{x:470,y:6,w:8,t:'brick'},{x:490,y:9,w:5,t:'qblock'},{x:515,y:7,w:5,t:'brick'},{x:542,y:5,w:8,t:'qblock'},{x:566,y:8,w:5,t:'brick'},{x:590,y:6,w:6,t:'qblock'},{x:606,y:3,w:6,t:'brick'},{x:630,y:8,w:5,t:'qblock'},{x:660,y:5,w:6,t:'brick'},{x:710,y:7,w:5,t:'brick'},{x:740,y:4,w:8,t:'qblock'},{x:762,y:9,w:5,t:'brick'},{x:790,y:5,w:6,t:'qblock'},{x:818,y:3,w:7,t:'brick'},{x:840,y:7,w:6,t:'qblock'},{x:862,y:4,w:5,t:'brick'},{x:920,y:6,w:6,t:'brick'},{x:950,y:9,w:5,t:'qblock'},{x:976,y:4,w:7,t:'brick'},{x:1000,y:6,w:6,t:'qblock'},{x:1050,y:8,w:5,t:'qblock'},{x:1070,y:5,w:6,t:'brick'},{x:1130,y:7,w:5,t:'brick'},{x:1155,y:4,w:8,t:'qblock'},{x:1175,y:6,w:6,t:'brick'},
+      // Vertical staircase towers — each set steps up to y:1
+      {x:60,y:8,w:4,t:'brick'},{x:62,y:6,w:4,t:'brick'},{x:64,y:4,w:4,t:'qblock'},{x:66,y:2,w:4,t:'qblock'},{x:68,y:1,w:5,t:'qblock'},
+      {x:200,y:7,w:4,t:'brick'},{x:202,y:5,w:4,t:'brick'},{x:204,y:3,w:4,t:'qblock'},{x:206,y:1,w:5,t:'qblock'},
+      {x:450,y:8,w:3,t:'brick'},{x:452,y:6,w:3,t:'brick'},{x:454,y:4,w:3,t:'qblock'},{x:456,y:2,w:3,t:'qblock'},{x:458,y:1,w:4,t:'qblock'},
+      {x:680,y:7,w:4,t:'brick'},{x:682,y:5,w:4,t:'brick'},{x:684,y:3,w:5,t:'qblock'},{x:686,y:1,w:5,t:'qblock'},
+      {x:890,y:6,w:5,t:'brick'},{x:892,y:4,w:5,t:'brick'},{x:894,y:2,w:6,t:'qblock'},{x:896,y:1,w:6,t:'qblock'},
+      {x:1020,y:7,w:4,t:'brick'},{x:1022,y:5,w:4,t:'brick'},{x:1024,y:3,w:5,t:'qblock'},{x:1026,y:1,w:5,t:'qblock'},
+      {x:1100,y:6,w:4,t:'brick'},{x:1102,y:4,w:4,t:'brick'},{x:1104,y:2,w:5,t:'qblock'},{x:1106,y:1,w:5,t:'qblock'},
+      // High floating platforms connecting the tops
+      {x:100,y:2,w:5,t:'brick'},{x:145,y:1,w:6,t:'qblock'},{x:215,y:1,w:8,t:'brick'},
+      {x:320,y:1,w:7,t:'qblock'},{x:390,y:2,w:5,t:'brick'},{x:480,y:1,w:6,t:'qblock'},
+      {x:560,y:2,w:5,t:'brick'},{x:620,y:1,w:6,t:'qblock'},{x:750,y:1,w:7,t:'brick'},
+      {x:830,y:2,w:5,t:'qblock'},{x:960,y:1,w:6,t:'brick'},{x:1060,y:1,w:6,t:'qblock'},
+      {x:1140,y:2,w:6,t:'brick'},
+      // Health blocks
+      {x:55,y:7,w:1,t:'hblock'},{x:175,y:7,w:1,t:'hblock'},{x:295,y:6,w:1,t:'hblock'},{x:415,y:6,w:1,t:'hblock'},{x:535,y:6,w:1,t:'hblock'},{x:660,y:7,w:1,t:'hblock'},{x:780,y:6,w:1,t:'hblock'},{x:900,y:6,w:1,t:'hblock'},{x:1020,y:7,w:1,t:'hblock'},{x:1140,y:6,w:1,t:'hblock'}
+    ],
     pipes: [{x:20,h:2},{x:45,h:3},{x:65,h:4},{x:120,h:2},{x:160,h:3},{x:200,h:2},{x:270,h:4},{x:310,h:3},{x:360,h:2},{x:420,h:3},{x:470,h:4},{x:520,h:2},{x:560,h:3},{x:600,h:2},{x:640,h:3},{x:695,h:4},{x:750,h:2},{x:810,h:3},{x:855,h:4},{x:910,h:2},{x:960,h:3},{x:1015,h:4},{x:1060,h:2},{x:1110,h:3},{x:1160,h:2}],
     coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,14,10);cl(18,30,9);cl(36,50,8);ca(60,9,5,7);cl(88,112,5);ca(130,8,4,6);cl(148,170,5);ca(195,8,5,7);cl(230,248,3);cl(263,280,6);cl(307,328,5);ca(340,6,4,6);cl(363,388,4);cl(392,410,4);ca(430,5,5,7);cl(468,496,5);cl(540,562,5);cl(575,600,6);cl(620,648,8);ca(665,6,5,7);cl(685,712,5);ca(730,7,4,6);cl(748,780,4);cl(795,820,6);ca(840,5,5,7);cl(858,890,4);cl(908,940,5);ca(960,6,4,6);cl(978,1010,5);cl(1025,1055,4);ca(1075,5,5,7);cl(1090,1130,6);cl(1145,1180,5); }),
     goombas: [{x:15,pl:8,pr:25},{x:42,pl:34,pr:52},{x:50,pl:42,pr:60},{x:70,pl:62,pr:80},{x:92,pl:85,pr:103},{x:102,pl:93,pr:114},{x:122,pl:114,pr:134},{x:152,pl:144,pr:164},{x:162,pl:154,pr:174},{x:196,pl:188,pr:210},{x:238,pl:230,pr:252},{x:248,pl:240,pr:260},{x:282,pl:274,pr:296},{x:322,pl:314,pr:336},{x:334,pl:326,pr:346},{x:368,pl:360,pr:382},{x:412,pl:404,pr:428},{x:424,pl:416,pr:436},{x:452,pl:444,pr:466},{x:480,pl:472,pr:494},{x:544,pl:536,pr:558},{x:556,pl:548,pr:568},{x:572,pl:564,pr:586},{x:596,pl:588,pr:614},{x:625,pl:618,pr:638},{x:638,pl:630,pr:650},{x:662,pl:654,pr:676},{x:700,pl:692,pr:716},{x:714,pl:706,pr:726},{x:742,pl:734,pr:758},{x:780,pl:772,pr:796},{x:794,pl:786,pr:808},{x:822,pl:814,pr:838},{x:858,pl:850,pr:874},{x:872,pl:864,pr:884},{x:900,pl:892,pr:916},{x:940,pl:932,pr:956},{x:954,pl:946,pr:966},{x:980,pl:972,pr:996},{x:1020,pl:1012,pr:1036},{x:1034,pl:1026,pr:1046},{x:1060,pl:1052,pr:1076},{x:1100,pl:1092,pr:1116},{x:1114,pl:1106,pr:1126},{x:1145,pl:1137,pr:1161},{x:1175,pl:1167,pr:1190}],
@@ -715,7 +734,7 @@ function damageEnemy(g, dmg) {
     // Frenzy kill counter
     if (player.frenzyTimer <= 0) {
       player.frenzyKills++;
-      if (player.frenzyKills >= 10) {
+      if (player.frenzyKills >= 7) {
         player.frenzyKills = 0;
         player.frenzyTimer = 900;
         player.homingUsed = false;
@@ -2438,6 +2457,14 @@ function killPlayer() {
 
 document.getElementById('go-restart').addEventListener('click', () => location.reload());
 document.addEventListener('keydown', e => { if ((e.code === 'KeyR' || e.code === 'Enter') && dead) location.reload(); });
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyQ' && !dead && !won) {
+    player.frenzyTimer = 900;
+    player.frenzyKills = 0;
+    player.homingUsed = false;
+    spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
+  }
+});
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
 function drawBg() {
@@ -3282,7 +3309,7 @@ function loop(ts) {
       ctx.fillText('FRENZY', W / 2, by - 3);
     } else {
       // Building: show kill progress toward 10
-      const frac = player.frenzyKills / 10;
+      const frac = player.frenzyKills / 7;
       ctx.fillStyle = 'rgba(255,180,40,0.8)';
       ctx.fillRect(bx, by, bw * frac, bh);
       ctx.strokeStyle = 'rgba(255,180,40,0.6)';
@@ -3291,7 +3318,7 @@ function loop(ts) {
       ctx.font = 'bold 9px monospace';
       ctx.fillStyle = '#ffb428';
       ctx.textAlign = 'center';
-      ctx.fillText(`KILLS ${player.frenzyKills}/10`, W / 2, by - 3);
+      ctx.fillText(`KILLS ${player.frenzyKills}/7`, W / 2, by - 3);
     }
     ctx.restore();
   }
