@@ -3456,8 +3456,17 @@ function drawGround() {
     const sx = tx * TILE - camera;
     if (sx < -TILE || sx > W + TILE) continue;
     for (let ty = groundY; ty <= groundY + 2; ty++) drawGroundTile(sx, ty * TILE, ty === groundY);
+    if (showTileNumbers && tx % 10 === 0) {
+      ctx.save();
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText(tx, sx + TILE / 2, groundY * TILE - 3);
+      ctx.restore();
+    }
   }
 }
+let showTileNumbers = true;
 
 function drawGroundTile(sx, sy, isTop) {
   const t = performance.now() / 2000;
