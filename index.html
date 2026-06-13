@@ -50,9 +50,26 @@
   #gameover p  { color: #c8b89a; font-family: monospace; font-size: 20px; }
   #gameover button { background: #2a1a10; border: 2px solid #c87840; color: #d4a855; font-family: monospace; font-size: 22px; padding: 10px 36px; cursor: pointer; letter-spacing: 2px; }
   #gameover button:hover { background: #3a2416; }
+  #title-screen {
+    position: fixed; inset: 0; background: #000;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 999;
+  }
+  #title-screen video { width: 800px; height: 450px; object-fit: contain; display: block; }
+  #press-enter {
+    position: absolute; bottom: 30%; left: 50%; transform: translateX(-50%);
+    color: #fff; font-family: 'Courier New', monospace; font-size: 22px;
+    letter-spacing: 4px; display: none;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
 </style>
 </head>
 <body>
+<div id="title-screen">
+  <video id="intro-vid" autoplay muted playsinline src="intro.mov"></video>
+  <div id="press-enter">PRESS ENTER TO START</div>
+</div>
 <div id="hud">
   <span>AXO <span id="score">000000</span></span>
   <div id="hp-wrap"></div>
@@ -4371,11 +4388,34 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
-// Populate initial level
-loadLevel(currentLevel);
-player.hp = player.maxHp;
-updateHPBar();
-requestAnimationFrame(loop);
+// Title screen
+(function() {
+  const screen = document.getElementById('title-screen');
+  const vid    = document.getElementById('intro-vid');
+  const prompt = document.getElementById('press-enter');
+  let ready = false;
+
+  vid.addEventListener('ended', () => {
+    prompt.style.display = 'block';
+    ready = true;
+  });
+
+  // If video fails to load/play, skip straight to prompt
+  vid.addEventListener('error', () => { prompt.style.display = 'block'; ready = true; });
+
+  function dismiss() {
+    if (!ready) return;
+    screen.style.display = 'none';
+    loadLevel(currentLevel);
+    player.hp = player.maxHp;
+    updateHPBar();
+    requestAnimationFrame(loop);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') dismiss();
+  });
+})();
 
 // ── Level button ─────────────────────────────────────────────────────────────
 document.getElementById('level-btn').addEventListener('change', (e) => {
