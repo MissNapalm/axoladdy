@@ -322,74 +322,63 @@ const LEVELS = [
       {x:1150,w:6},
     ],
     platforms: [
-      // ── Opening stretch ───────────────────────────────────────────────────────
-      {x:5,y:9,w:5,t:'qblock'},{x:18,y:7,w:4,t:'brick'},{x:30,y:9,w:6,t:'qblock'},
-      {x:48,y:7,w:5,t:'brick'},{x:62,y:9,w:4,t:'qblock'},{x:75,y:6,w:5,t:'brick'},
-      {x:88,y:9,w:5,t:'qblock'},{x:102,y:7,w:4,t:'brick'},
+      // ── Opening stretch (thinned) ─────────────────────────────────────────────
+      {x:5,y:9,w:5,t:'qblock'},{x:30,y:7,w:4,t:'brick'},
+      {x:62,y:9,w:4,t:'qblock'},{x:88,y:6,w:5,t:'brick'},
 
-      // ── ZONE 1 — mid bridge over pit ─────────────────────────────────────────
-      {x:125,y:8,w:4,t:'brick'},{x:133,y:6,w:5,t:'brick'},
-      {x:142,y:5,w:12,t:'qblock'},
-      {x:158,y:6,w:5,t:'brick'},{x:167,y:8,w:5,t:'qblock'},
-      {x:192,y:6,w:4,t:'brick'},{x:200,y:8,w:5,t:'qblock'},
-      {x:210,y:9,w:6,t:'brick'},{x:230,y:7,w:5,t:'qblock'},{x:250,y:9,w:5,t:'brick'},
+      // ── ZONE 1 — mid bridge ───────────────────────────────────────────────────
+      {x:133,y:6,w:5,t:'brick'},
+      {x:145,y:5,w:10,t:'qblock'},
+      {x:162,y:7,w:5,t:'qblock'},
+      {x:210,y:9,w:6,t:'brick'},{x:240,y:7,w:5,t:'qblock'},
 
       // ── Mid stretch ──────────────────────────────────────────────────────────
-      {x:268,y:6,w:5,t:'brick'},{x:282,y:8,w:4,t:'qblock'},{x:300,y:5,w:5,t:'brick'},
-      {x:315,y:8,w:5,t:'qblock'},{x:330,y:6,w:5,t:'brick'},{x:346,y:8,w:5,t:'qblock'},
-      {x:360,y:5,w:5,t:'brick'},{x:375,y:8,w:5,t:'qblock'},
+      {x:272,y:6,w:5,t:'brick'},{x:305,y:8,w:5,t:'qblock'},
+      {x:338,y:6,w:5,t:'brick'},{x:372,y:8,w:5,t:'qblock'},
 
-      // ── ZONE 2 — mid bridge over pit ─────────────────────────────────────────
-      {x:388,y:7,w:4,t:'brick'},{x:396,y:5,w:5,t:'brick'},
-      {x:405,y:6,w:14,t:'qblock'},
-      {x:422,y:5,w:5,t:'brick'},{x:430,y:7,w:4,t:'qblock'},
-      {x:462,y:6,w:4,t:'brick'},{x:470,y:8,w:4,t:'qblock'},
-      {x:484,y:9,w:5,t:'brick'},{x:498,y:7,w:5,t:'qblock'},{x:512,y:9,w:5,t:'brick'},
+      // ── ZONE 2 — mid bridge ───────────────────────────────────────────────────
+      {x:396,y:5,w:5,t:'brick'},
+      {x:408,y:6,w:12,t:'qblock'},
+      {x:428,y:7,w:4,t:'qblock'},
+      {x:490,y:9,w:5,t:'brick'},{x:512,y:7,w:5,t:'qblock'},
 
       // ── Mid stretch 2 ────────────────────────────────────────────────────────
-      {x:525,y:6,w:5,t:'brick'},{x:538,y:8,w:5,t:'qblock'},{x:552,y:5,w:5,t:'brick'},
-      {x:564,y:8,w:4,t:'qblock'},{x:578,y:6,w:4,t:'brick'},{x:592,y:8,w:4,t:'qblock'},
-      {x:606,y:5,w:4,t:'brick'},{x:620,y:8,w:5,t:'qblock'},
+      {x:530,y:6,w:5,t:'brick'},{x:560,y:8,w:5,t:'qblock'},
+      {x:592,y:6,w:4,t:'brick'},{x:618,y:8,w:5,t:'qblock'},
 
-      // ── ZONE 3 — mid bridge over pit ─────────────────────────────────────────
-      {x:633,y:7,w:4,t:'brick'},{x:641,y:5,w:5,t:'brick'},
-      {x:650,y:6,w:16,t:'qblock'},
-      {x:669,y:5,w:5,t:'brick'},{x:678,y:7,w:4,t:'qblock'},
-      {x:692,y:6,w:4,t:'qblock'},{x:700,y:8,w:4,t:'brick'},
-      {x:714,y:9,w:5,t:'qblock'},{x:728,y:7,w:5,t:'brick'},{x:742,y:9,w:5,t:'qblock'},
+      // ── ZONE 3 — mid bridge ───────────────────────────────────────────────────
+      {x:641,y:5,w:5,t:'brick'},
+      {x:653,y:6,w:14,t:'qblock'},
+      {x:675,y:7,w:4,t:'qblock'},
+      {x:718,y:9,w:5,t:'qblock'},{x:742,y:7,w:5,t:'brick'},
 
       // ── Mid stretch 3 ────────────────────────────────────────────────────────
-      {x:756,y:6,w:5,t:'brick'},{x:770,y:8,w:4,t:'qblock'},{x:784,y:5,w:5,t:'brick'},
-      {x:798,y:8,w:4,t:'qblock'},{x:812,y:6,w:5,t:'brick'},{x:826,y:8,w:4,t:'qblock'},
-      {x:840,y:5,w:5,t:'qblock'},{x:854,y:8,w:5,t:'brick'},
+      {x:762,y:6,w:5,t:'brick'},{x:792,y:8,w:4,t:'qblock'},
+      {x:822,y:6,w:5,t:'brick'},{x:848,y:8,w:5,t:'qblock'},
 
-      // ── ZONE 4 — mid bridge over pit ─────────────────────────────────────────
-      {x:862,y:7,w:4,t:'brick'},{x:868,y:5,w:5,t:'brick'},
-      {x:877,y:6,w:10,t:'qblock'},
-      {x:890,y:5,w:6,t:'brick'},
-      {x:900,y:6,w:10,t:'qblock'},
-      {x:913,y:5,w:5,t:'brick'},{x:920,y:7,w:4,t:'qblock'},
-      {x:928,y:5,w:4,t:'qblock'},{x:936,y:7,w:4,t:'brick'},{x:944,y:9,w:5,t:'qblock'},
-      {x:958,y:7,w:5,t:'brick'},{x:972,y:9,w:5,t:'qblock'},
+      // ── ZONE 4 — mid bridge ───────────────────────────────────────────────────
+      {x:868,y:5,w:5,t:'brick'},
+      {x:880,y:6,w:18,t:'qblock'},
+      {x:906,y:5,w:5,t:'brick'},
+      {x:944,y:9,w:5,t:'qblock'},{x:968,y:7,w:5,t:'brick'},
 
       // ── Mid stretch 4 ────────────────────────────────────────────────────────
-      {x:986,y:6,w:5,t:'brick'},{x:1000,y:8,w:5,t:'qblock'},{x:1014,y:5,w:5,t:'brick'},
-      {x:1028,y:8,w:4,t:'qblock'},{x:1042,y:6,w:4,t:'brick'},
+      {x:990,y:6,w:5,t:'brick'},{x:1020,y:8,w:5,t:'qblock'},
+      {x:1048,y:6,w:4,t:'brick'},
 
-      // ── ZONE 5 — mid bridge over pit ─────────────────────────────────────────
-      {x:1052,y:7,w:4,t:'brick'},{x:1058,y:5,w:5,t:'brick'},
-      {x:1067,y:6,w:14,t:'qblock'},
-      {x:1084,y:5,w:5,t:'brick'},{x:1092,y:7,w:4,t:'qblock'},
-      {x:1104,y:6,w:4,t:'qblock'},{x:1112,y:8,w:4,t:'brick'},
-      {x:1126,y:9,w:5,t:'qblock'},{x:1140,y:7,w:5,t:'brick'},{x:1154,y:9,w:5,t:'qblock'},
+      // ── ZONE 5 — mid bridge ───────────────────────────────────────────────────
+      {x:1062,y:5,w:5,t:'brick'},
+      {x:1072,y:6,w:12,t:'qblock'},
+      {x:1092,y:7,w:4,t:'qblock'},
+      {x:1130,y:9,w:5,t:'qblock'},{x:1152,y:7,w:5,t:'brick'},
 
       // ── Final approach ───────────────────────────────────────────────────────
-      {x:1162,y:6,w:5,t:'brick'},{x:1170,y:8,w:6,t:'qblock'},{x:1182,y:5,w:8,t:'brick'},
+      {x:1168,y:7,w:5,t:'brick'},{x:1182,y:5,w:8,t:'brick'},
 
       // ── Health blocks ────────────────────────────────────────────────────────
-      {x:60,y:7,w:1,t:'hblock'},{x:175,y:6,w:1,t:'hblock'},{x:355,y:6,w:1,t:'hblock'},
-      {x:490,y:5,w:1,t:'hblock'},{x:655,y:5,w:1,t:'hblock'},{x:840,y:5,w:1,t:'hblock'},
-      {x:910,y:6,w:1,t:'hblock'},{x:1042,y:7,w:1,t:'hblock'},{x:1086,y:5,w:1,t:'hblock'},
+      {x:60,y:7,w:1,t:'hblock'},{x:355,y:6,w:1,t:'hblock'},
+      {x:490,y:5,w:1,t:'hblock'},{x:840,y:5,w:1,t:'hblock'},
+      {x:1042,y:7,w:1,t:'hblock'},
     ],
     pipes: [{x:20,h:2},{x:40,h:3},{x:72,h:2},{x:106,h:4},{x:255,h:3},{x:278,h:2},{x:348,h:3},{x:378,h:4},{x:518,h:2},{x:542,h:3},{x:608,h:4},{x:632,h:2},{x:758,h:3},{x:786,h:2},{x:860,h:4},{x:974,h:3},{x:998,h:2},{x:1048,h:3},{x:1128,h:4},{x:1156,h:2}],
     coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,14,10);cl(18,30,9);cl(36,50,8);ca(60,9,5,7);cl(88,112,5);ca(130,8,4,6);cl(148,170,5);ca(195,8,5,7);cl(230,248,3);cl(263,280,6);cl(307,328,5);ca(340,6,4,6);cl(363,388,4);cl(392,410,4);ca(430,5,5,7);cl(468,496,5);cl(540,562,5);cl(575,600,6);cl(620,648,8);ca(665,6,5,7);cl(685,712,5);ca(730,7,4,6);cl(748,780,4);cl(795,820,6);ca(840,5,5,7);cl(858,890,4);cl(908,940,5);ca(960,6,4,6);cl(978,1010,5);cl(1025,1055,4);ca(1075,5,5,7);cl(1090,1130,6);cl(1145,1180,5); }),
@@ -2248,7 +2237,7 @@ function update(dt) {
     const wantH = goLeft || goRight || (!goingUp);
     const wantUp = goingUp;
     const frenzy = player.frenzyTimer > 0;
-    const maxDash = frenzy ? 3 : 1;
+    const maxDash = frenzy ? 4 : 1;
     const canUp = wantUp && player.dashUsedUp < maxDash;
     const canH  = wantH  && player.dashUsedH  < maxDash;
 
