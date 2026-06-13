@@ -2457,6 +2457,13 @@ function update(dt) {
     if (g.dead) { g.deadTimer--; if (g.lockFlash) g.lockFlash--; continue; }
     if (g.lockFlash) g.lockFlash--;
     if (g.shockStun > 0) { g.shockStun--; continue; } // frozen during shockwave
+    // Reverse at patrol bounds or pit edges (ground enemies only)
+    if (!g.flying) {
+      const nextX = g.x + g.vx;
+      const edgeTile = Math.floor((g.vx > 0 ? nextX + g.w : nextX) / TILE);
+      const onPit = LEVELS[currentLevel].gaps.some(gap => edgeTile >= gap.x && edgeTile < gap.x + gap.w);
+      if (onPit) g.vx *= -1;
+    }
     g.x += g.vx;
     if (g.x <= g.pl || g.x + g.w >= g.pr) g.vx *= -1;
     g.frame += 0.08;
