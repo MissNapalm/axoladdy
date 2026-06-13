@@ -647,7 +647,7 @@ function update(dt) {
   }
 
   // F — directional dash (one per airtime, supports diagonal)
-  if (eJustPressed && !player.onGround && !player.homing && !player.dashUsed) {
+  if (eJustPressed && !player.homing && !player.dashUsed) {
     const goingUp = keys[KEYS.up] || false;
     const horizDir = goLeft ? -1 : goRight ? 1 : player.dir;
     if (goingUp && (goLeft || goRight)) {
