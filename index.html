@@ -1295,9 +1295,10 @@ function drawPlayer() {
       walkFrame = 0; walkTick = 0;
       frameIdx = 0;
     }
+    const footOffset = dh * 0.043; // transparent bottom padding in source frames
     ctx.drawImage(walkSheet,
       frameIdx * WALK_FW, 0, WALK_FW, WALK_FH,
-      -dw / 2, -dh, dw, dh);
+      -dw / 2, -dh + footOffset, dw, dh);
   } else {
     ctx.fillStyle = '#ff69b4';
     ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
