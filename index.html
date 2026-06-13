@@ -2360,6 +2360,7 @@ function update(dt) {
       if (rectsOverlap({ x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 }, s)) {
         if (player.vx > 0) player.x = s.x - player.w;
         else if (player.vx < 0) player.x = s.x + s.w;
+        if (player.dashFrames > 0 && s.key) hitBlock(s);
         player.vx = 0;
       }
     }
@@ -2636,6 +2637,32 @@ function update(dt) {
   updateHUD();
 }
 
+function spawnBlockDebris(x, y, type) {
+  const colors = type === 'qblock' ? ['#f5c542','#e8a800','#fff176','#c8960a']
+               : type === 'hblock' ? ['#ff6666','#cc0000','#ff9999','#880000']
+               : ['#a0522d','#8b3a0f','#c47a3a','#5c2a0a'];
+  const count = 10 + Math.floor(Math.random() * 6);
+  for (let i = 0; i < count; i++) {
+    const angle = -Math.PI + Math.random() * Math.PI * 2;
+    const spd = 3 + Math.random() * 7;
+    explosionParticles.push({
+      x: x + (Math.random() - 0.5) * TILE,
+      y: y + (Math.random() - 0.5) * TILE,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd - 3,
+      r: 4 + Math.random() * 6,
+      life: 35 + Math.floor(Math.random() * 25),
+      maxLife: 60,
+      hue: 0, color: colors[Math.floor(Math.random() * colors.length)],
+      gravity: 0.45, square: true,
+      rot: Math.random() * Math.PI * 2,
+      rotV: (Math.random() - 0.5) * 0.3,
+    });
+  }
+  // bright flash
+  explosionParticles.push({ x, y, vx:0, vy:0, r:20, life:5, maxLife:5, hue:45, flash:true });
+}
+
 function hitBlock(s) {
   if (!s.key || blockHit[s.key]) return;
   blockHit[s.key] = true;
@@ -2643,6 +2670,8 @@ function hitBlock(s) {
   else if (s.type === 'brick') score += 50;
   else if (s.type === 'hblock') { hp = Math.min(MAX_HP, hp + 1); updateHPBar(); }
   updateHUD();
+  spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, s.type);
+  playSound('hit', 0.5);
 }
 
 function hurtPlayer(dmg = 1) {
@@ -3435,15 +3464,33 @@ function drawParticlesAll() {
     ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
   }
-  // Kill explosions
+  // Kill explosions + block debris
   for (let i = explosionParticles.length - 1; i >= 0; i--) {
     const p = explosionParticles[i];
-    if (!p.flash) { p.x += p.vx; p.y += p.vy; p.vy += 0.15; }
-    p.r *= p.flash ? 0.75 : 0.96; p.life--;
+    if (!p.flash) {
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.gravity !== undefined ? p.gravity : 0.15;
+      if (p.rot !== undefined) { p.rot += p.rotV; p.vx *= 0.97; }
+    }
+    p.r *= p.flash ? 0.75 : 0.97; p.life--;
     if (p.life <= 0) { explosionParticles.splice(i, 1); continue; }
-    ctx.globalAlpha = p.flash ? (p.life / p.maxLife) : (p.life / p.maxLife) * 0.9;
-    ctx.fillStyle = p.flash ? `hsl(${p.hue},100%,90%)` : `hsl(${p.hue},100%,60%)`;
-    ctx.beginPath(); ctx.arc(p.x - camera, p.y, Math.max(p.r, 0.5), 0, Math.PI*2); ctx.fill();
+    const alpha = p.flash ? (p.life / p.maxLife) : (p.life / p.maxLife) * 0.92;
+    ctx.globalAlpha = alpha;
+    if (p.square) {
+      // Block debris chunk
+      ctx.save();
+      ctx.translate(p.x - camera, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r);
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-p.r / 2, -p.r / 2, p.r, p.r);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = p.flash ? `hsl(${p.hue},100%,90%)` : `hsl(${p.hue},100%,60%)`;
+      ctx.beginPath(); ctx.arc(p.x - camera, p.y, Math.max(p.r, 0.5), 0, Math.PI*2); ctx.fill();
+    }
     ctx.globalAlpha = 1;
   }
   // Enemy projectiles
