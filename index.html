@@ -1920,7 +1920,7 @@ function updateWarden() {
   const wx = warden.x + warden.w / 2;
 
   // Gravity — stomp lands on actual ground, otherwise hover 1 tile up
-  const floorY = warden.state === 'stomp' ? WARDEN_GROUND : WARDEN_HOVER;
+  const floorY = (warden.state === 'stomp' || warden.state === 'stomp_recover') ? WARDEN_GROUND : WARDEN_HOVER;
   if (!warden.onGround) {
     warden.vy += 0.5;
     if (warden.vy > 22) warden.vy = 22;
@@ -1938,8 +1938,8 @@ function updateWarden() {
         warden.shockwaves.push({ cx: cx + 80, dir:  1, r: 8, maxR: 380, life: 50, maxLife: 50 });
         warden.shockwaves.push({ cx: cx - 80, dir: -1, r: 8, maxR: 380, life: 50, maxLife: 50 });
       }
-      warden.state = 'idle';
-      warden.stateTimer = 70 + Math.floor(Math.random() * 40);
+      warden.state = 'stomp_recover';
+      warden.stateTimer = 120; // 2 seconds on ground before getting up
     }
   }
   warden.x += warden.vx;
@@ -2027,8 +2027,18 @@ function updateWarden() {
 
   } else if (warden.state === 'stomp') {
     if (warden.stateTimer <= 0 && !warden.onGround) {
-      warden.y = WARDEN_HOVER - warden.h; warden.vy = 0; warden.onGround = true;
-      warden.state = 'idle'; warden.stateTimer = 60;
+      warden.y = WARDEN_GROUND - warden.h; warden.vy = 0; warden.onGround = true;
+      warden.state = 'stomp_recover'; warden.stateTimer = 120;
+    }
+
+  } else if (warden.state === 'stomp_recover') {
+    // Stay on ground for 2s, then float back up
+    warden.vx = 0;
+    if (warden.stateTimer <= 0) {
+      warden.state = 'idle';
+      warden.stateTimer = 60 + Math.floor(Math.random() * 40);
+      warden.onGround = false;
+      warden.vy = -4; // gentle rise back to hover height
     }
   }
 
