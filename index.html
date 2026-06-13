@@ -1054,7 +1054,7 @@ function updateBoss() {
         o.dead = true; o.deadTimer = 30;
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
-        player.vy = Math.min(player.vy, -CFG.jump1 * 0.6);
+        player.vy = Math.min(player.vy, -CFG.jump1 * 0.3);
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false; player.homingUsed = false;
         comboCount++; comboTimer = 120;
@@ -1216,7 +1216,7 @@ function updateBoss() {
     } else if (player.homing && player.homingTarget === boss && allOrbsDead) {
       damageBoss(1);
       player.homing = false; player.homingTarget = null; player.ballForm = true;
-      player.vy = Math.min(player.vy, -CFG.jump1 * 0.6);
+      player.vy = Math.min(player.vy, -CFG.jump1 * 0.3);
       player.vx = player.dir * CFG.moveSpeed * 1.5;
       player.homingUsed = false; comboCount++; comboTimer = 120;
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
@@ -1492,7 +1492,7 @@ function updateWraith() {
         if (clKillable) {
           cl.dead = true; cl.deadTimer = 30;
           player.homing = false; player.homingTarget = null; player.ballForm = true;
-          player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
+          player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.homingUsed = false; comboCount++; comboTimer = 120;
           damageWraith(1);
@@ -1521,7 +1521,7 @@ function updateWraith() {
         damageWraith(1);
       } else if (!player.homing && player.vy > 0 && player.y + player.h < cl.y + cl.h * 0.5 + 10 && clKillable) {
         cl.dead = true; cl.deadTimer = 30;
-        player.vy = Math.min(player.vy, -7); comboCount++; comboTimer = 120;
+        player.vy = Math.min(player.vy, -3); comboCount++; comboTimer = 120;
         damageWraith(1);
       } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
         hurtPlayer(1); player.invincible = 80;
@@ -1723,7 +1723,7 @@ function updateWraith() {
     } else if (player.homing && player.homingTarget === wraith && allClonesDead) {
       damageWraith(1);
       player.homing = false; player.homingTarget = null; player.ballForm = true;
-      player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
+      player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
       player.vx = player.dir * CFG.moveSpeed * 1.5;
       player.homingUsed = false; comboCount++; comboTimer = 120;
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
@@ -2007,9 +2007,9 @@ function updateWarden() {
         playSound('hit', 0.7);
         score += 300; updateHUD();
         comboCount++; comboTimer = 120;
-        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -9; }
-        else if (player.dashFrames > 0) { player.vx = -Math.sign(player.vx||1)*8; player.vy = -6; player.dashFrames = 0; }
-        else { player.vy = Math.min(player.vy, -6); }
+        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -3; }
+        else if (player.dashFrames > 0) { player.vx = -Math.sign(player.vx||1)*8; player.vy = -3; player.dashFrames = 0; }
+        else { player.vy = Math.min(player.vy, -3); }
         // If this was the last sentinel, open warden for 5s
         if (warden.sentinels.filter(x => !x.dead).length === 0) {
           warden.vulnTimer = 300;
@@ -2175,7 +2175,7 @@ function updateWarden() {
       } else {
         damageWarden(1);
         player.homing = false; player.homingTarget = null; player.ballForm = true;
-        player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
+        player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.homingUsed = false; comboCount++; comboTimer = 120;
       }
@@ -2555,7 +2555,7 @@ function update(dt) {
         if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
-        player.vy = Math.min(player.vy, -CFG.jump1 * 0.5);
+        player.vy = Math.min(player.vy, -CFG.jump1 * 0.25);
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false;
       } else {
@@ -2691,7 +2691,7 @@ function update(dt) {
     frenzyKeyPressed = false; frenzyKeyDev = false;
     if ((devMode || player.frenzyKills >= 12) && player.frenzyTimer <= 0) {
       player.frenzyKills = 0;
-      player.frenzyTimer = 120;
+      player.frenzyTimer = 300;
       player.homingUsed = false;
       turboFlash = 70;
       hp = MAX_HP; updateHPBar();
@@ -2811,7 +2811,7 @@ function update(dt) {
         }
       } else if (player.spinning || (!g.flying && player.vy > 0 && player.y + player.h < g.y + g.h / 2 + 10)) {
         damageEnemy(g, 1);
-        player.vy = Math.min(player.vy, -6);
+        player.vy = Math.min(player.vy, -3);
       } else if (player.homing) {
         // homing handled separately
       } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
@@ -3846,7 +3846,7 @@ function loop(ts) {
     ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
     if (player.frenzyTimer > 0) {
       // Active: drain bar pulses cyan
-      const frac = player.frenzyTimer / 120;
+      const frac = player.frenzyTimer / 300;
       const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
       ctx.fillStyle = `rgba(80,220,255,${pulse})`;
       ctx.fillRect(bx, by, bw * frac, bh);
