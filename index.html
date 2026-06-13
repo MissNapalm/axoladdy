@@ -2522,26 +2522,23 @@ function update(dt) {
         }
       }
     } else {
-      // Normal / shocker shoot logic
-      if (!g.shootCooldown) g.shootCooldown = 180 + Math.floor(Math.random() * 120);
-      g.shootCooldown--;
-      if (g.shootCooldown <= 0) {
-        const dx = (player.x + player.w / 2) - (g.x + g.w / 2);
-        const dy = (player.y + player.h / 2) - (g.y + g.h / 2);
-        const dist = Math.hypot(dx, dy);
-        if (dist < 380) {
-          if (g.flying) {
+      // Shocker shoot logic — flying enemies only
+      if (g.flying) {
+        if (!g.shootCooldown) g.shootCooldown = 180 + Math.floor(Math.random() * 120);
+        g.shootCooldown--;
+        if (g.shootCooldown <= 0) {
+          const dx = (player.x + player.w / 2) - (g.x + g.w / 2);
+          const dy = (player.y + player.h / 2) - (g.y + g.h / 2);
+          const dist = Math.hypot(dx, dy);
+          if (dist < 380) {
             const spd = 4.5, ang = Math.atan2(dy, dx);
             for (const spread of [-0.25, 0, 0.25]) {
               projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2,
                 vx: Math.cos(ang + spread) * spd, vy: Math.sin(ang + spread) * spd, life: 130, flying: true });
             }
-          } else {
-            const spd = 2.2;
-            projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2, vx: (dx/dist)*spd, vy: (dy/dist)*spd, life: 160, flying: false });
           }
+          g.shootCooldown = 180 + Math.floor(Math.random() * 120);
         }
-        g.shootCooldown = g.flying ? 180 + Math.floor(Math.random() * 120) : 240 + Math.floor(Math.random() * 160);
       }
     }
 
