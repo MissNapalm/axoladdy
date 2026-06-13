@@ -624,6 +624,8 @@ let blockHit = {};
 // ── Solids ────────────────────────────────────────────────────────────────────
 function buildSolids() {
   const lv = LEVELS[currentLevel];
+  // Strip all platforms above tile row 5 — no high blocks anywhere
+  lv.platforms = lv.platforms.filter(p => p.y >= 5);
   const solids = [];
   for (let tx = 0; tx < LEVEL_W_TILES; tx++) {
     if (groundInGap(tx)) continue;
@@ -631,10 +633,9 @@ function buildSolids() {
       solids.push({ x: tx * TILE, y: ty * TILE, w: TILE, h: TILE, type: 'ground', tx, ty });
   }
   for (const p of lv.platforms) {
-    const py = Math.max(p.y, 5); // clamp blocks to mid-height — no high blocks
     for (let i = 0; i < p.w; i++) {
-      const tx = p.x + i, key = `${tx}_${py}`;
-      solids.push({ x: tx * TILE, y: py * TILE, w: TILE, h: TILE, type: p.t, tx, ty: py, key });
+      const tx = p.x + i, key = `${tx}_${p.y}`;
+      solids.push({ x: tx * TILE, y: p.y * TILE, w: TILE, h: TILE, type: p.t, tx, ty: p.y, key });
     }
   }
   for (const pipe of lv.pipes) {
@@ -2551,8 +2552,8 @@ function update(dt) {
     const gunnerVulnerable = g.type !== 'gunner' || g.gunState === 'charge' || g.gunState === 'fire';
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !g.hitFlash && gunnerVulnerable) {
-        if (!g.flying) {
-          // Dash into ground enemy — hurts player, bounces back, goomba unharmed
+        if (!g.flying && player.frenzyTimer <= 0) {
+          // Normal mode: dash into ground enemy hurts player, bounces back, goomba unharmed
           hurtPlayer(1); player.invincible = 60;
           player.vx = -Math.sign(player.vx) * 10;
           player.vy = -7;
@@ -2561,7 +2562,8 @@ function update(dt) {
           playSound('hurt', 0.6);
           if (hp <= 0) { killPlayer(); return; }
         } else {
-          damageEnemy(g, g.hp); // dash insta-kills flyers
+          // Frenzy OR flying enemy: dash kills
+          damageEnemy(g, g.hp);
           player.vx = -Math.sign(player.vx) * 8;
           player.vy = -6;
           player.dashFrames = 0;
