@@ -2396,23 +2396,6 @@ function update(dt) {
       player.frenzyTimer = 900;
       player.homingUsed = false;
       spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
-      // Spawn extra enemies around the player
-      const gY = (groundY - 1) * TILE;
-      for (let i = 0; i < 4; i++) {
-        const side = i % 2 === 0 ? 1 : -1;
-        const dist = 120 + i * 80;
-        const ex = player.x + side * dist;
-        const id = 9000 + Date.now() % 1000 + i;
-        goombas.push({ id, x: ex, y: gY, vx: -1.4 * side, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: ex - 64, pr: ex + 64, frame: 0, flying: false, hp: 2, maxHp: 2, hitFlash: 0, type: i === 1 ? 'shocker' : 'normal', shockStun: 0 });
-      }
-      for (let i = 0; i < 3; i++) {
-        const side = i % 2 === 0 ? 1 : -1;
-        const dist = 100 + i * 90;
-        const ex = player.x + side * dist;
-        const ey = player.y - (60 + i * 40);
-        const id = 9100 + Date.now() % 1000 + i;
-        flyers.push({ id, x: ex, baseY: ey, y: ey, vx: 1.2 * side, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: ex - 80, pr: ex + 80, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: 3, maxHp: 3, hitFlash: 0, type: 'normal', shockStun: 0 });
-      }
     }
   }
 
