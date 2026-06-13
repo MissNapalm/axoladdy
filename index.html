@@ -1286,7 +1286,7 @@ function drawPlayer() {
   const footOffset = CFG.spriteOffset;
 
   if ((player.homing || player.ballForm) && ballImg.complete && ballImg.naturalWidth > 0) {
-    const bd = dh * 0.7;
+    const bd = dh * 1.1;
     // Translate to ball center (hitbox center), rotate around it
     ctx.translate(sx + player.w / 2, player.y + player.h / 2);
     ctx.rotate((player.spinAngle * Math.PI) / 180);
