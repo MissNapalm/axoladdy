@@ -1272,6 +1272,7 @@ function drawPlayer() {
   ctx.save();
   ctx.translate(sx + player.w / 2, player.y + player.h);
   const scaleX = player.dir === -1 ? -1 : 1;
+  ctx.rotate(20 * Math.PI / 180);
   if (player.spinning || player.homing) ctx.rotate((player.spinAngle * Math.PI) / 180);
   ctx.scale(scaleX, 1);
   ctx.imageSmoothingEnabled = false;
