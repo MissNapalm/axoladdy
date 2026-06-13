@@ -137,7 +137,7 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
 const walkSheet   = new Image(); walkSheet.src   = 'walk_sheet.png';
-const ballImg     = new Image(); ballImg.src     = 'ball.png';
+const ballImg     = new Image(); ballImg.src     = 'ball_scaled.png';
 const WALK_FRAMES = 27;  // indices 0-26 = walk cycle
 const AIR_FRAME   = 13;  // frame 14 (0-based 13) — leaping pose, reused as air
 const WALK_FW     = 177; // frame width in sheet
@@ -1286,7 +1286,7 @@ function drawPlayer() {
   const footOffset = CFG.spriteOffset;
 
   if ((player.homing || player.ballForm) && ballImg.complete && ballImg.naturalWidth > 0) {
-    const bd = dh * 0.8; // slightly smaller than hitbox
+    const bd = dh * 0.7;
     // Translate to ball center (hitbox center), rotate around it
     ctx.translate(sx + player.w / 2, player.y + player.h / 2);
     ctx.rotate((player.spinAngle * Math.PI) / 180);
