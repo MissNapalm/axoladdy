@@ -129,15 +129,14 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-const axoImg      = new Image(); axoImg.src      = 'axo.png';
-const axo2Img     = new Image(); axo2Img.src     = 'axo2.png';
 const walkSheet   = new Image(); walkSheet.src   = 'walk_sheet.png';
-const WALK_FRAMES = 27;
+const WALK_FRAMES = 27;  // indices 0-26 = walk cycle, index 27 = air
+const AIR_FRAME   = 27;
 const WALK_FW     = 177; // frame width in sheet
 const WALK_FH     = 128; // frame height in sheet
 let   walkFrame   = 0;
 let   walkTick    = 0;
-const WALK_SPEED  = 4; // game frames per animation frame
+const WALK_SPEED  = 4;   // game frames per animation frame
 
 const W = 800, H = 450;
 const TILE = 32;
@@ -1277,33 +1276,31 @@ function drawPlayer() {
   ctx.scale(scaleX, 1);
   ctx.imageSmoothingEnabled = false;
 
-  const useWalk = player.onGround && Math.abs(player.vx) > 0.2
-    && !player.spinning && !player.homing
-    && walkSheet.complete && walkSheet.naturalWidth > 0;
+  const dh = player.h * 1.8;
+  const dw = Math.round(dh * (WALK_FW / WALK_FH));
 
-  if (useWalk) {
-    // Advance walk animation
-    walkTick++;
-    if (walkTick >= WALK_SPEED) { walkTick = 0; walkFrame = (walkFrame + 1) % WALK_FRAMES; }
-    const dh = player.h * 1.8;
-    const dw = Math.round(dh * (WALK_FW / WALK_FH));
+  if (walkSheet.complete && walkSheet.naturalWidth > 0) {
+    let frameIdx;
+    if (!player.onGround || player.spinning || player.homing) {
+      // Air / spin frame
+      walkFrame = 0; walkTick = 0;
+      frameIdx = AIR_FRAME;
+    } else if (Math.abs(player.vx) > 0.2) {
+      // Walking — advance cycle
+      walkTick++;
+      if (walkTick >= WALK_SPEED) { walkTick = 0; walkFrame = (walkFrame + 1) % WALK_FRAMES; }
+      frameIdx = walkFrame;
+    } else {
+      // Standing — hold frame 0
+      walkFrame = 0; walkTick = 0;
+      frameIdx = 0;
+    }
     ctx.drawImage(walkSheet,
-      walkFrame * WALK_FW, 0, WALK_FW, WALK_FH,
+      frameIdx * WALK_FW, 0, WALK_FW, WALK_FH,
       -dw / 2, -dh / 2, dw, dh);
   } else {
-    // Reset walk cycle when stopped/airborne
-    if (!player.onGround || Math.abs(player.vx) <= 0.2) { walkFrame = 0; walkTick = 0; }
-    const img = !player.onGround && axo2Img.complete && axo2Img.naturalWidth > 0
-      ? axo2Img : axoImg;
-    if (img.complete && img.naturalWidth > 0) {
-      const aspect = img.naturalWidth / img.naturalHeight;
-      const dh = player.h;
-      const dw = Math.round(dh * aspect);
-      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-    } else {
-      ctx.fillStyle = '#ff69b4';
-      ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
-    }
+    ctx.fillStyle = '#ff69b4';
+    ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
   }
   ctx.restore();
 }
@@ -1389,11 +1386,11 @@ function drawDeathAnimation() {
   ctx.save();
   ctx.translate(sx + player.w / 2, player.y + player.h / 2);
   ctx.rotate(Math.PI);
-  if (axoImg.complete && axoImg.naturalWidth > 0) {
-    const aspect = axoImg.naturalWidth / axoImg.naturalHeight;
-    const dh = player.h;
-    const dw = Math.round(dh * aspect);
-    ctx.drawImage(axoImg, -dw/2, -dh/2, dw, dh);
+  if (walkSheet.complete && walkSheet.naturalWidth > 0) {
+    const dh = player.h * 1.8;
+    const dw = Math.round(dh * (WALK_FW / WALK_FH));
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(walkSheet, 0, 0, WALK_FW, WALK_FH, -dw/2, -dh/2, dw, dh);
   }
   ctx.restore();
 }
