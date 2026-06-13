@@ -6,7 +6,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-  canvas { display: block; image-rendering: pixelated; border: 2px solid #222; }
+  canvas { display: block; image-rendering: auto; border: 2px solid #222; }
   #hud { color: #c8b89a; font-family: 'Courier New', monospace; font-size: 13px; background: #0f0d0b; width: 800px; display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; gap: 8px; }
   #jumpstate { color: #d4a855; font-weight: bold; flex: 1; text-align: center; }
   #zoom-wrap { display: flex; align-items: center; gap: 4px; }
@@ -2357,10 +2357,9 @@ function update(dt) {
   if (!player.homing) {
     const nearX = getSolidsNear(player.x, player.y, player.w, player.h);
     for (const s of nearX) {
-      if (rectsOverlap({ x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 }, s)) {
+      if (!blockHit[s.key] && rectsOverlap({ x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 }, s)) {
         if (player.vx > 0) player.x = s.x - player.w;
         else if (player.vx < 0) player.x = s.x + s.w;
-        if (player.dashFrames > 0 && s.key) hitBlock(s);
         player.vx = 0;
       }
     }
@@ -2375,7 +2374,7 @@ function update(dt) {
   if (!player.homing) {
     const nearY = getSolidsNear(player.x, player.y, player.w, player.h);
     for (const s of nearY) {
-      if (rectsOverlap({ x: player.x + 2, y: player.y, w: player.w - 4, h: player.h }, s)) {
+      if (!blockHit[s.key] && rectsOverlap({ x: player.x + 2, y: player.y, w: player.w - 4, h: player.h }, s)) {
         if (player.vy > 0) {
           player.y = s.y - player.h;
           player.vy = 0;
@@ -2402,11 +2401,11 @@ function update(dt) {
     }
   }
 
-  // Break blocks touched during homing or dashing (without stopping movement)
+  // Break blocks touched during homing or dashing — must run BEFORE Y collision
   if (player.homing || player.dashFrames > 0) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
-      if (s.key && rectsOverlap(pr, s)) hitBlock(s);
+      if (s.key && !blockHit[s.key] && rectsOverlap(pr, s)) hitBlock(s);
     }
   }
 
