@@ -540,8 +540,20 @@ function loadLevel(n) {
   blockHit = {};
 
   coins = lv.coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
-  goombas = lv.goombas.map((g, i) => ({ id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: 2, maxHp: 2, hitFlash: 0 }));
-  flyers  = lv.flyers.map((f, i) => ({ id: i + 1000, x: f.x * TILE, baseY: f.fy, y: f.fy, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: 1, maxHp: 1, hitFlash: 0 }));
+  // Level 2+ enemies get more HP; every 3rd enemy in level 2+ is a 'shocker'
+  const lvl = n; // 0-indexed
+  const gHP = lvl >= 1 ? 3 : 2;
+  const fHP = lvl >= 1 ? 2 : 1;
+  goombas = lv.goombas.map((g, i) => {
+    const type = (lvl >= 1 && i % 3 === 1) ? 'shocker' : 'normal';
+    const h = type === 'shocker' ? 2 : gHP;
+    return { id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type };
+  });
+  flyers = lv.flyers.map((f, i) => {
+    const type = (lvl >= 1 && i % 3 === 2) ? 'shocker' : 'normal';
+    const h = type === 'shocker' ? 1 : fHP;
+    return { id: i + 1000, x: f.x * TILE, baseY: f.fy, y: f.fy, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type };
+  });
   heartPickups = [];
   projectiles  = [];
 
@@ -675,6 +687,15 @@ function spawnDashTrail(x, y) {
 }
 
 
+function spawnShockerBurst(g) {
+  const cx = g.x + g.w / 2, cy = g.y + g.h / 2;
+  const count = 8;
+  for (let a = 0; a < count; a++) {
+    const ang = (a / count) * Math.PI * 2;
+    projectiles.push({ x: cx, y: cy, vx: Math.cos(ang) * 3.2, vy: Math.sin(ang) * 3.2, life: 80, flying: g.flying });
+  }
+}
+
 function damageEnemy(g, dmg) {
   if (g.dead) return false;
   g.hp -= dmg;
@@ -688,6 +709,8 @@ function damageEnemy(g, dmg) {
     }
     return true; // killed
   }
+  // Shocker: emit a ring burst every time it's hit
+  if (g.type === 'shocker') spawnShockerBurst(g);
   g.hitFlash = 18; // stagger flash
   playSound('hit', 0.35);
   return false; // hurt but alive
@@ -2784,6 +2807,23 @@ function drawEnemy(g) {
     return;
   }
 
+  // Shocker ring aura
+  if (g.type === 'shocker') {
+    const pulse = 0.5 + 0.5 * Math.sin(t * 4 + g.id);
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.25 * pulse;
+    ctx.strokeStyle = '#ffee44';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(cx, cy, er + 6 + pulse * 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.15 + 0.1 * pulse;
+    ctx.fillStyle = '#ffee44';
+    ctx.beginPath(); ctx.arc(cx, cy, er + 3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Tough enemy — darker tint (HP > 1 on level 2+)
+  const toughTint = g.type === 'normal' && g.maxHp > (g.flying ? 1 : 2);
+
   if (g.flying) {
     // Bat — black with red eyes
     const wingSpan = 30 + Math.sin(t * 3 + g.wobble) * 10;
@@ -2827,13 +2867,13 @@ function drawEnemy(g) {
     ctx.beginPath(); ctx.arc(cx - 4, cy - 2, 1.8, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(cx + 4, cy - 2, 1.8, 0, Math.PI*2); ctx.fill();
   } else {
-    // Ground blob — pink
+    // Ground blob — pink (tough enemies are darker red)
     const squish = wf ? 1.1 : 0.95;
     ctx.save(); ctx.translate(cx, g.y + g.h);
     ctx.scale(1 / squish, squish);
-    ctx.fillStyle = '#cc3a7a';
+    ctx.fillStyle = toughTint ? '#992233' : '#cc3a7a';
     ctx.beginPath(); ctx.ellipse(0, -g.h/2, g.w/2 - 2, g.h/2 - 1, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ee5a9a';
+    ctx.fillStyle = toughTint ? '#bb3344' : '#ee5a9a';
     ctx.beginPath(); ctx.ellipse(-2, -g.h/2 - 1, g.w/2 - 6, g.h/2 - 5, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(-5, -g.h * 0.65, 4, 0, Math.PI*2); ctx.fill();
