@@ -110,6 +110,14 @@
     <input type="range" id="s-size" min="16" max="96" step="2">
     <span class="val" id="v-size"></span>
   </label>
+  <label><span class="lbl">Sprite rotation (°)</span>
+    <input type="range" id="s-spriteRot" min="-45" max="45" step="1">
+    <span class="val" id="v-spriteRot"></span>
+  </label>
+  <label><span class="lbl">Ground offset (px)</span>
+    <input type="range" id="s-spriteOffset" min="-20" max="20" step="1">
+    <span class="val" id="v-spriteOffset"></span>
+  </label>
 
   <hr>
   <h3 style="margin-bottom:8px">⌨ KEY BINDINGS</h3>
@@ -130,6 +138,7 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 const walkSheet   = new Image(); walkSheet.src   = 'walk_sheet.png';
+const ballImg     = new Image(); ballImg.src     = 'ball.png';
 const WALK_FRAMES = 27;  // indices 0-26 = walk cycle
 const AIR_FRAME   = 13;  // frame 14 (0-based 13) — leaping pose, reused as air
 const WALK_FW     = 177; // frame width in sheet
@@ -150,6 +159,8 @@ const DEFAULTS = {
   dashLen: 14,
   moveSpeed: 3.5,
   axoSize: 44,
+  spriteRot: 20,
+  spriteOffset: 4,
 };
 
 function loadCFG() {
@@ -1271,31 +1282,32 @@ function drawPlayer() {
   ctx.save();
   ctx.translate(sx + player.w / 2, player.y + player.h);
   const scaleX = player.dir === -1 ? -1 : 1;
-  ctx.rotate(20 * Math.PI / 180);
+  if (!player.homing) ctx.rotate(CFG.spriteRot * Math.PI / 180);
   if (player.spinning || player.homing) ctx.rotate((player.spinAngle * Math.PI) / 180);
   ctx.scale(scaleX, 1);
   ctx.imageSmoothingEnabled = false;
 
   const dh = player.h * 1.0;
-  const dw = Math.round(dh * (WALK_FW / WALK_FH));
+  const footOffset = CFG.spriteOffset;
 
-  if (walkSheet.complete && walkSheet.naturalWidth > 0) {
+  if (player.homing && ballImg.complete && ballImg.naturalWidth > 0) {
+    // Ball form during homing attack
+    const bdw = Math.round(dh * (ballImg.naturalWidth / ballImg.naturalHeight));
+    ctx.drawImage(ballImg, -bdw / 2, -dh + footOffset, bdw, dh);
+  } else if (walkSheet.complete && walkSheet.naturalWidth > 0) {
+    const dw = Math.round(dh * (WALK_FW / WALK_FH));
     let frameIdx;
-    if (!player.onGround || player.spinning || player.homing) {
-      // Air / spin frame
+    if (!player.onGround || player.spinning) {
       walkFrame = 0; walkTick = 0;
       frameIdx = AIR_FRAME;
     } else if (Math.abs(player.vx) > 0.2) {
-      // Walking — advance cycle
       walkTick++;
       if (walkTick >= WALK_SPEED) { walkTick = 0; walkFrame = (walkFrame + 1) % WALK_FRAMES; }
       frameIdx = walkFrame;
     } else {
-      // Standing — hold frame 0
       walkFrame = 0; walkTick = 0;
       frameIdx = 0;
     }
-    const footOffset = dh * 0.043; // transparent bottom padding in source frames
     ctx.drawImage(walkSheet,
       frameIdx * WALK_FW, 0, WALK_FW, WALK_FH,
       -dw / 2, -dh + footOffset, dw, dh);
@@ -1522,8 +1534,10 @@ const sliders = [
   { id: 's-dashH',    vid: 'v-dashH',    key: 'dashH',     fmt: v => v.toFixed(1) },
   { id: 's-dashV',    vid: 'v-dashV',    key: 'dashV',     fmt: v => v.toFixed(1) },
   { id: 's-dashLen',  vid: 'v-dashLen',  key: 'dashLen',   fmt: v => Math.round(v) + 'f' },
-  { id: 's-speed',    vid: 'v-speed',    key: 'moveSpeed', fmt: v => v.toFixed(1) },
-  { id: 's-size',     vid: 'v-size',     key: 'axoSize',   fmt: v => v + 'px'     },
+  { id: 's-speed',        vid: 'v-speed',        key: 'moveSpeed',    fmt: v => v.toFixed(1) },
+  { id: 's-size',         vid: 'v-size',         key: 'axoSize',      fmt: v => v + 'px'     },
+  { id: 's-spriteRot',    vid: 'v-spriteRot',    key: 'spriteRot',    fmt: v => Math.round(v) + '°' },
+  { id: 's-spriteOffset', vid: 'v-spriteOffset', key: 'spriteOffset', fmt: v => Math.round(v) + 'px' },
 ];
 
 function syncSliders() {
