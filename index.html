@@ -551,6 +551,7 @@ function loadLevel(n) {
       hitFlash: 0, lockFlash: 0, shakeX: 0, eyePulse: 0, invulTimer: 0,
       dashWalls: [], gravZones: [], clones: [], shockwaves: [], tentacles: [],
       telegraphTimer: 0, telegraphType: '',
+      surgeCount: 0, surgePhase: 'none', surgeLockX: 0,
     });
   }
 
@@ -1111,7 +1112,7 @@ function drawBoss() {
 }
 
 // ── Abyssal Wraith ────────────────────────────────────────────────────────────
-const WRAITH_MAX_HP   = 24;
+const WRAITH_MAX_HP   = 28;
 const WRAITH_ARENA_X  = 10 * TILE;
 const WRAITH_ARENA_R  = 135 * TILE;
 const WRAITH_GROUND   = (groundY - 1) * TILE;
@@ -1143,6 +1144,9 @@ const wraith = {
   telegraphTimer: 0,  // countdown before attack executes
   telegraphType: '',  // what's coming
   invulTimer: 0,      // brief invul after phase transition
+  surgeCount: 0,      // how many surge lunges done this wave
+  surgePhase: 'none', // 'none'|'snap'|'rise'|'cooldown' — phase 4 anti-hover lunge
+  surgeLockX: 0,      // X locked to player for snap
 };
 
 function damageWraith(dmg) {
@@ -1160,9 +1164,16 @@ function damageWraith(dmg) {
     score += 8000; updateHUD();
     return true;
   }
-  // Phase transition invul
-  const newPhase = wraith.hp > wraith.maxHp * 0.6 ? 1 : wraith.hp > wraith.maxHp * 0.3 ? 2 : 3;
-  if (newPhase !== wraith.phase) { wraith.invulTimer = 90; wraith.phase = newPhase; wraith.clones = []; wraith.shockwaves = []; }
+  // Phase transition invul (4 phases)
+  const newPhase = wraith.hp > wraith.maxHp * 0.6 ? 1
+                 : wraith.hp > wraith.maxHp * 0.3 ? 2
+                 : wraith.hp > wraith.maxHp * 0.1 ? 3 : 4;
+  if (newPhase !== wraith.phase) {
+    wraith.invulTimer = 90; wraith.phase = newPhase;
+    wraith.clones = []; wraith.shockwaves = [];
+    // Phase 4 entry: enter enrage immediately
+    if (newPhase === 4) { wraith.state = 'surge'; wraith.stateTimer = 50; wraith.surgeCount = 0; }
+  }
   spawnExplosion(wraith.x + wraith.w / 2, wraith.y + wraith.h / 2, true);
   return false;
 }
@@ -1293,7 +1304,7 @@ function updateWraith() {
   }
 
   // ── Tentacles (phase 3 visual + hitbox) ─────────────────────────────────────
-  if (wraith.phase === 3 && wraith.tentacles.length === 0) {
+  if (wraith.phase >= 3 && wraith.tentacles.length === 0) {
     for (let i = 0; i < 6; i++) {
       wraith.tentacles.push({ angle: (i / 6) * Math.PI * 2, length: 40, targetLen: 80 + i * 15, speed: 0.025 + i * 0.004 });
     }
@@ -1338,10 +1349,16 @@ function updateWraith() {
         if      (r < 0.4)  { wraith.state = 'clonewave'; wraith.stateTimer = 25; }
         else if (r < 0.7)  { wraith.state = 'stomp';     wraith.stateTimer = 40; }
         else               { wraith.state = 'ring';      wraith.stateTimer = 40; }
-      } else {
+      } else if (wraith.phase === 3) {
         if      (r < 0.35) { wraith.state = 'clonewave'; wraith.stateTimer = 20; }
         else if (r < 0.65) { wraith.state = 'stomp';     wraith.stateTimer = 32; }
         else               { wraith.state = 'ring';      wraith.stateTimer = 32; }
+      } else {
+        // Phase 4 — pure aggression: surge after every clone clear
+        if      (r < 0.4)  { wraith.state = 'clonewave'; wraith.stateTimer = 18; }
+        else if (r < 0.65) { wraith.state = 'surge';     wraith.stateTimer = 50; wraith.surgeCount = 0; }
+        else if (r < 0.8)  { wraith.state = 'stomp';     wraith.stateTimer = 28; }
+        else               { wraith.state = 'ring';      wraith.stateTimer = 28; }
       }
     }
 
@@ -1385,6 +1402,64 @@ function updateWraith() {
       }
     }
     if (wraith.stateTimer <= 0) { wraith.state = 'idle'; wraith.stateTimer = 80 + Math.floor(Math.random() * 50); }
+
+  } else if (wraith.state === 'surge') {
+    // Phase 4 anti-hover: wraith snaps directly beneath the player then rockets up
+    // Telegraph: stateTimer 50→35 — wraith slides horizontally under player (telegraphed)
+    // Launch:    stateTimer 35 — fire upward
+    // Chase:     wraith.vy carries it up, deal damage if it hits player from below
+    if (wraith.stateTimer === 49) {
+      // Lock target X (player's current position)
+      wraith.surgeLockX = Math.max(WRAITH_ARENA_X + 10, Math.min(WRAITH_ARENA_R - wraith.w - 10, player.x + player.w / 2 - wraith.w / 2));
+      wraith.surgePhase = 'snap';
+    }
+    if (wraith.surgePhase === 'snap') {
+      // Slide quickly beneath player horizontally
+      wraith.x += (wraith.surgeLockX - wraith.x) * 0.18;
+      // Move below player (just off screen if needed)
+      const targetSurgeY = Math.min(WRAITH_GROUND - wraith.h, player.y + player.h + 20);
+      wraith.y += (targetSurgeY - wraith.y) * 0.15;
+      if (wraith.stateTimer === 36) {
+        wraith.surgePhase = 'rise';
+        wraith.vy = -28;  // fast upward rocket
+        wraith.vx = (player.x + player.w / 2 > wraith.x + wraith.w / 2 ? 1 : -1) * 3;
+      }
+    }
+    if (wraith.surgePhase === 'rise') {
+      wraith.x += wraith.vx;
+      wraith.y += wraith.vy;
+      wraith.vy += 0.6;  // gravity pulls back
+      wraith.x = Math.max(WRAITH_ARENA_X, Math.min(WRAITH_ARENA_R - wraith.w, wraith.x));
+      // Damage player on contact during rise
+      const wRise = { x: wraith.x + 4, y: wraith.y + 4, w: wraith.w - 8, h: wraith.h - 8 };
+      const pR = { x: player.x, y: player.y, w: player.w, h: player.h };
+      if (rectsOverlap(wRise, pR)) {
+        if (player.dashFrames > 0) {
+          damageWraith(2);  // reward the counter-dash
+          player.vx = -Math.sign(player.vx || 1) * 14; player.vy = -10; player.dashFrames = 0;
+          wraith.surgePhase = 'cooldown'; wraith.vy = -5;
+        } else if (player.invincible === 0) {
+          hp -= 2; updateHPBar(); player.invincible = 100;
+          player.vy = player.vy < 0 ? 12 : -10;
+          player.vx = (player.x < wraith.x + wraith.w / 2 ? -1 : 1) * 12;
+          if (hp <= 0) { killPlayer(); return; }
+        }
+      }
+      // After apex, go to cooldown
+      if (wraith.vy > 4) { wraith.surgePhase = 'cooldown'; }
+    }
+    if (wraith.stateTimer <= 0) {
+      wraith.surgeCount++;
+      if (wraith.surgeCount < 3) {
+        // Surge again — snap to new position
+        wraith.stateTimer = 50;
+        wraith.surgeLockX = Math.max(WRAITH_ARENA_X + 10, Math.min(WRAITH_ARENA_R - wraith.w - 10, player.x + player.w / 2 - wraith.w / 2));
+        wraith.surgePhase = 'snap';
+      } else {
+        wraith.surgePhase = 'none';
+        wraith.state = 'idle'; wraith.stateTimer = 40 + Math.floor(Math.random() * 20);
+      }
+    }
   }
 
   wraith.x = Math.max(WRAITH_ARENA_X, Math.min(WRAITH_ARENA_R - wraith.w, wraith.x));
@@ -1423,9 +1498,9 @@ function drawWraith() {
   const phase = wraith.phase;
   const shk = Math.sin(performance.now() * 0.9) * (wraith.shakeX > 0 ? wraith.shakeX : 0);
 
-  const bodyColor   = phase === 1 ? '#080818' : phase === 2 ? '#180808' : '#000000';
-  const accentColor = phase === 1 ? '#3300aa' : phase === 2 ? '#aa0000' : '#ff6600';
-  const glowColor   = phase === 1 ? '#6644ff' : phase === 2 ? '#ff3300' : '#ffaa00';
+  const bodyColor   = phase === 1 ? '#080818' : phase === 2 ? '#180808' : phase === 3 ? '#000000' : '#111100';
+  const accentColor = phase === 1 ? '#3300aa' : phase === 2 ? '#aa0000' : phase === 3 ? '#ff6600' : '#dddd00';
+  const glowColor   = phase === 1 ? '#6644ff' : phase === 2 ? '#ff3300' : phase === 3 ? '#ffaa00' : '#ffffaa';
 
   // ── Draw shockwaves ──────────────────────────────────────────────────────────
   for (const sw of wraith.shockwaves) {
@@ -1477,6 +1552,26 @@ function drawWraith() {
     ctx.restore();
   }
 
+  // ── Phase 4 surge telegraph ──────────────────────────────────────────────────
+  if (phase === 4 && wraith.surgePhase === 'snap') {
+    const tx = wraith.surgeLockX + wraith.w / 2 - camera;
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.025);
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.35 * pulse;
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx, H); ctx.stroke();
+    ctx.setLineDash([]);
+    // Warning chevron above player
+    ctx.fillStyle = '#ffff44';
+    ctx.globalAlpha = 0.8 * pulse;
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('▼ SURGE ▼', tx, player.y - 20);
+    ctx.restore();
+  }
+
   // ── Draw wraith body ─────────────────────────────────────────────────────────
   ctx.save();
   ctx.translate(wsx + wraith.w / 2 + shk, wraith.y + wraith.h / 2);
@@ -1489,7 +1584,7 @@ function drawWraith() {
   ctx.beginPath(); ctx.ellipse(0, 0, wraith.w, wraith.h * 1.1, 0, 0, Math.PI * 2); ctx.fill();
 
   // Tentacles (phase 3)
-  if (phase === 3) {
+  if (phase >= 3) {
     for (const tent of wraith.tentacles) {
       ctx.save();
       ctx.strokeStyle = accentColor;
