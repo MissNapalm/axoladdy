@@ -2680,6 +2680,9 @@ function hitBlock(s) {
   updateHUD();
   spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, s.type);
   playSound('hit', 0.5);
+  // Remove block entirely from solids array
+  const idx = solids.indexOf(s);
+  if (idx !== -1) solids.splice(idx, 1);
 }
 
 function hurtPlayer(dmg = 1) {
@@ -2946,7 +2949,8 @@ function drawPlatforms() {
       const tx = p.x + i, sx = tx * TILE - camera;
       if (sx < -TILE || sx > W + TILE) continue;
       const key = `${tx}_${p.y}`;
-      drawBlock(sx, p.y * TILE, blockHit[key] ? 'used' : p.t);
+      if (blockHit[key]) continue; // block destroyed — gone completely
+      drawBlock(sx, p.y * TILE, p.t);
     }
   }
 }
