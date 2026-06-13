@@ -389,6 +389,7 @@ const FLAG_X = 1190;
 
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
+let comboCount = 0, comboTimer = 0; // kill chain display
 const MAX_HP = 4;
 let hp = MAX_HP;
 
@@ -688,9 +689,10 @@ function update(dt) {
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
         const killed = damageEnemy(tg, 1);
+        if (killed) { comboCount++; comboTimer = 120; }
         player.homing = false; player.homingTarget = null;
-        player.vy = -CFG.jump1 * 0.85;
-        player.vx = player.dir * CFG.moveSpeed * 0.5;
+        player.vy = -CFG.jump1 * 1.3;
+        player.vx = player.dir * CFG.moveSpeed * 2.5;
         player.spinning = false;
         player.homingUsed = false;
         player.dashUsed = false;
@@ -763,6 +765,7 @@ function update(dt) {
           player.spinning = false;
           player.homing = false; player.homingTarget = null;
           player.dashFrames = 0;
+          comboCount = 0; comboTimer = 0;
         }
         player.onGround = true;
         player.homingUsed = false;
@@ -889,6 +892,7 @@ function update(dt) {
   const targetCamY = player.y + player.h / 2 - H / 2;
   cameraY += (Math.min(Math.max(targetCamY, groundY * TILE - H), 0) - cameraY) * CAM_EASE;
 
+  if (comboTimer > 0) comboTimer--;
   updateHUD();
 }
 
@@ -1385,6 +1389,25 @@ function loop(ts) {
 
   ctx.restore();
   ctx.restore();
+
+  // Combo flash
+  if (comboCount >= 2 && comboTimer > 0) {
+    const a = Math.min(1, comboTimer / 30);
+    const scale = 1 + (1 - a) * 0.4;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center';
+    ctx.translate(W / 2, H / 2 - 60);
+    ctx.scale(scale, scale);
+    ctx.font = 'bold 52px monospace';
+    ctx.fillStyle = '#ffdd00';
+    ctx.strokeStyle = '#a00060';
+    ctx.lineWidth = 5;
+    const label = comboCount + ' HIT COMBO!';
+    ctx.strokeText(label, 0, 0);
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+  }
 
   // Screen-space overlays
   if (won) {
