@@ -683,6 +683,9 @@ function damageEnemy(g, dmg) {
     score += g.flying ? 200 : 100; updateHUD();
     spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
     playSound('hit', 0.6);
+    if (Math.random() < 0.28) {
+      heartPickups.push({ x: g.x + g.w / 2 - 10, y: g.y, vx: (Math.random() - 0.5) * 3, vy: -5, collected: false, bobTimer: 0 });
+    }
     return true; // killed
   }
   g.hitFlash = 18; // stagger flash
@@ -2226,6 +2229,24 @@ function update(dt) {
     }
   }
 
+  // Heart pickups
+  const groundFloor = (groundY - 1) * TILE;
+  for (let i = heartPickups.length - 1; i >= 0; i--) {
+    const h = heartPickups[i];
+    if (h.collected) { heartPickups.splice(i, 1); continue; }
+    h.vy += 0.45;
+    if (h.vy > 18) h.vy = 18;
+    h.x += h.vx;
+    h.y += h.vy;
+    h.vx *= 0.96;
+    if (h.y + 20 >= groundFloor) { h.y = groundFloor - 20; h.vy = 0; h.vx = 0; }
+    h.bobTimer += 0.06;
+    if (rectsOverlap({ x: h.x, y: h.y, w: 20, h: 20 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      h.collected = true;
+      hp = Math.min(MAX_HP, hp + 1); updateHPBar();
+    }
+  }
+
   // Ground enemies + flyers — unified update
   const allEnemies = [...goombas, ...flyers];
   for (const g of allEnemies) {
@@ -2697,6 +2718,32 @@ function drawCoins() {
 }
 
 
+function drawHeartPickups() {
+  for (const h of heartPickups) {
+    if (h.collected) continue;
+    const sx = h.x - camera;
+    if (sx < -40 || sx > W + 40) continue;
+    const bob = Math.sin(h.bobTimer) * 2;
+    const sy = h.y + bob;
+    ctx.save();
+    ctx.translate(sx + 10, sy + 10);
+    // Simple heart shape
+    const pulse = 1 + 0.08 * Math.sin(h.bobTimer * 2);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = '#ff4466';
+    ctx.beginPath();
+    ctx.moveTo(0, 4);
+    ctx.bezierCurveTo(-10, -4, -10, -10, 0, -6);
+    ctx.bezierCurveTo(10, -10, 10, -4, 0, 4);
+    ctx.fill();
+    ctx.fillStyle = '#ff88aa';
+    ctx.beginPath();
+    ctx.ellipse(-3, -5, 2.5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 function drawLockOn(g) {
   const sx = g.x + g.w / 2 - camera;
   const sy = g.y + g.h / 2;
@@ -3042,6 +3089,7 @@ function loop(ts) {
   drawGround();
   drawPlatforms();
   drawCoins();
+  drawHeartPickups();
   drawGoombas();
   drawBoss();
   drawWraith();
