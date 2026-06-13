@@ -3109,8 +3109,17 @@ function update(dt) {
           player.onGround = false;
           playSound('hurt', 0.6);
           if (hp <= 0) { killPlayer(); return; }
+        } else if (g.flying && player.frenzyTimer <= 0) {
+          // Normal mode: dash into bat hurts player
+          hurtPlayer(1); player.invincible = 60;
+          player.vx = -Math.sign(player.vx) * 10;
+          player.vy = -7;
+          player.dashFrames = 0;
+          player.onGround = false;
+          playSound('hurt', 0.6);
+          if (hp <= 0) { killPlayer(); return; }
         } else {
-          // Frenzy OR flying enemy: dash kills
+          // Frenzy: dash kills anything
           damageEnemy(g, g.hp);
           player.vx = -Math.sign(player.vx) * 8;
           player.vy = -6;
