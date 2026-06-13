@@ -2691,7 +2691,7 @@ function update(dt) {
     frenzyKeyPressed = false; frenzyKeyDev = false;
     if ((devMode || player.frenzyKills >= 12) && player.frenzyTimer <= 0) {
       player.frenzyKills = 0;
-      player.frenzyTimer = 420;
+      player.frenzyTimer = 540;
       player.homingUsed = false;
       turboFlash = 70;
       hp = MAX_HP; updateHPBar();
@@ -3846,7 +3846,7 @@ function loop(ts) {
     ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
     if (player.frenzyTimer > 0) {
       // Active: drain bar pulses cyan
-      const frac = player.frenzyTimer / 420;
+      const frac = player.frenzyTimer / 540;
       const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
       ctx.fillStyle = `rgba(80,220,255,${pulse})`;
       ctx.fillRect(bx, by, bw * frac, bh);
