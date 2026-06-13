@@ -878,6 +878,11 @@ function damageEnemy(g, dmg) {
     if (player.frenzyTimer <= 0) {
       player.frenzyKills = Math.min(player.frenzyKills + 1, 12);
     }
+    // Any kill while airborne unlocks one more home
+    if (!player.onGround) {
+      player.homingUsed = false;
+      player.homingCount = Math.max(0, player.homingCount - 1);
+    }
     return true; // killed
   }
   // Shocker: emit a ring burst every time it's hit
@@ -2555,7 +2560,7 @@ function update(dt) {
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
         const killed = damageEnemy(tg, 1);
-        if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
+        if (killed) { comboCount++; comboTimer = 120; }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
         player.vy = -6;
