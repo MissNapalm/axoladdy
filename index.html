@@ -691,7 +691,7 @@ function loadLevel(n) {
     const h = 2; // goombas always 2 hits
     return { id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
   });
-  const halfwayX = 60 * TILE; // normal bats for first cluster only, red from 2nd (x:72)
+  const halfwayX = 240 * TILE; // black bats for first ~4 clusters, red from ~tile 270
   flyers = lv.flyers.map((f, i) => {
     const type = 'normal';
     const isRed = f.x * TILE >= halfwayX;
@@ -3084,7 +3084,8 @@ function update(dt) {
           const dist = Math.hypot(dx, dy);
           if (dist < 380) {
             const spd = 4.5, ang = Math.atan2(dy, dx);
-            for (const spread of [-0.25, 0, 0.25]) {
+            const spreads = g.red ? [-0.25, 0, 0.25] : [0];
+            for (const spread of spreads) {
               projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2,
                 vx: Math.cos(ang + spread) * spd, vy: Math.sin(ang + spread) * spd, life: 130, flying: true });
             }
