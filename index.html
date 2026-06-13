@@ -691,7 +691,7 @@ function loadLevel(n) {
     const h = 2; // goombas always 2 hits
     return { id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
   });
-  const halfwayX = (FLAG_X / 3) * TILE; // one-third through — red bats appear sooner
+  const halfwayX = 120 * TILE; // red bats start at 3rd cluster (x:138)
   flyers = lv.flyers.map((f, i) => {
     const type = 'normal';
     const isRed = f.x * TILE >= halfwayX;
@@ -899,10 +899,13 @@ function damageEnemy(g, dmg) {
     if (Math.random() < 0.28) {
       heartPickups.push({ x: g.x + g.w / 2 - 10, y: g.y, vx: (Math.random() - 0.5) * 3, vy: -5, collected: false, bobTimer: 0 });
     }
-    // Frenzy kill counter — fills meter, R to activate
+    // Frenzy kill counter — fills meter, R to activate; red bats count as 3 kills
     if (player.frenzyTimer <= 0) {
-      player.frenzyKills = Math.min(player.frenzyKills + 1, 12);
+      const killVal = g.red ? 3 : 1;
+      player.frenzyKills = Math.min(player.frenzyKills + killVal, 12);
     }
+    // Red bats also add 2 extra combo hits (caller adds 1, total = 3)
+    if (g.red) { comboCount += 2; comboTimer = 120; }
     // Any kill while airborne unlocks one more home
     if (!player.onGround) {
       player.homingUsed = false;
