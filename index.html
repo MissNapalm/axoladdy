@@ -2353,6 +2353,14 @@ function update(dt) {
   // Ceiling — invisible wall at top of world
   if (player.y < 0) { player.y = 0; if (player.vy < 0) player.vy = 0; }
 
+  // Destroy any platform block touched while dashing or homing — BEFORE collision checks
+  if (player.homing || player.dashFrames > 0) {
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
+      if (s.key && !blockHit[s.key] && rectsOverlap(pr, s)) hitBlock(s);
+    }
+  }
+
   // Collide X — skip wall collision while homing so player reaches target
   if (!player.homing) {
     const nearX = getSolidsNear(player.x, player.y, player.w, player.h);
@@ -2401,15 +2409,6 @@ function update(dt) {
     }
   }
 
-  // Break blocks on homing/dash impact — only blocks the player center is inside
-  if (player.homing || player.dashFrames > 0) {
-    const cx = player.x + player.w / 2, cy = player.y + player.h / 2;
-    for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
-      if (s.key && !blockHit[s.key] && cx > s.x && cx < s.x + s.w && cy > s.y && cy < s.y + s.h) {
-        hitBlock(s);
-      }
-    }
-  }
 
   // Pit death — frenzy wraps to ceiling instead
   if (player.y > H + 200) {
