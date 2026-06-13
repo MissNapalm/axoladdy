@@ -416,26 +416,26 @@ const LEVELS = [
       {x:1162,pl:1155,pr:1178},{x:1178,pl:1170,pr:1192},
     ],
     flyers: [
-      // bat+goomba pairs — bat ~15 tiles ahead of goomba at reachable height
-      {x:18,fy:6*TILE,pw:7},{x:45,fy:6*TILE,pw:7},
-      {x:72,fy:6*TILE,pw:7},{x:98,fy:6*TILE,pw:7},
-      {x:138,fy:6*TILE,pw:7},{x:162,fy:6*TILE,pw:7},
-      {x:222,fy:6*TILE,pw:7},{x:248,fy:6*TILE,pw:7},
-      {x:282,fy:6*TILE,pw:7},{x:308,fy:6*TILE,pw:7},
-      {x:338,fy:6*TILE,pw:7},{x:362,fy:6*TILE,pw:7},
-      {x:402,fy:6*TILE,pw:7},{x:426,fy:6*TILE,pw:7},
-      {x:498,fy:6*TILE,pw:7},{x:522,fy:6*TILE,pw:7},
-      {x:552,fy:6*TILE,pw:7},{x:576,fy:6*TILE,pw:7},
-      {x:608,fy:6*TILE,pw:7},{x:632,fy:6*TILE,pw:7},
-      {x:665,fy:6*TILE,pw:7},{x:690,fy:6*TILE,pw:7},
-      {x:728,fy:6*TILE,pw:7},{x:752,fy:6*TILE,pw:7},
-      {x:785,fy:6*TILE,pw:7},{x:810,fy:6*TILE,pw:7},
-      {x:848,fy:6*TILE,pw:7},{x:870,fy:6*TILE,pw:7},
-      {x:928,fy:6*TILE,pw:7},{x:952,fy:6*TILE,pw:7},
-      {x:995,fy:6*TILE,pw:7},{x:1020,fy:6*TILE,pw:7},
-      {x:1055,fy:6*TILE,pw:7},{x:1080,fy:6*TILE,pw:7},
-      {x:1125,fy:6*TILE,pw:7},{x:1150,fy:6*TILE,pw:7},
-      {x:1168,fy:6*TILE,pw:7},{x:1182,fy:6*TILE,pw:7},
+      // 3 bats per cluster — two flanking + one in the middle
+      {x:18,fy:6*TILE,pw:7},{x:31,fy:7*TILE,pw:7},{x:45,fy:6*TILE,pw:7},
+      {x:72,fy:6*TILE,pw:7},{x:85,fy:7*TILE,pw:7},{x:98,fy:6*TILE,pw:7},
+      {x:138,fy:6*TILE,pw:7},{x:150,fy:7*TILE,pw:7},{x:162,fy:6*TILE,pw:7},
+      {x:222,fy:6*TILE,pw:7},{x:235,fy:7*TILE,pw:7},{x:248,fy:6*TILE,pw:7},
+      {x:282,fy:6*TILE,pw:7},{x:295,fy:7*TILE,pw:7},{x:308,fy:6*TILE,pw:7},
+      {x:338,fy:6*TILE,pw:7},{x:350,fy:7*TILE,pw:7},{x:362,fy:6*TILE,pw:7},
+      {x:402,fy:6*TILE,pw:7},{x:414,fy:7*TILE,pw:7},{x:426,fy:6*TILE,pw:7},
+      {x:498,fy:6*TILE,pw:7},{x:510,fy:7*TILE,pw:7},{x:522,fy:6*TILE,pw:7},
+      {x:552,fy:6*TILE,pw:7},{x:564,fy:7*TILE,pw:7},{x:576,fy:6*TILE,pw:7},
+      {x:608,fy:6*TILE,pw:7},{x:620,fy:7*TILE,pw:7},{x:632,fy:6*TILE,pw:7},
+      {x:665,fy:6*TILE,pw:7},{x:677,fy:7*TILE,pw:7},{x:690,fy:6*TILE,pw:7},
+      {x:728,fy:6*TILE,pw:7},{x:740,fy:7*TILE,pw:7},{x:752,fy:6*TILE,pw:7},
+      {x:785,fy:6*TILE,pw:7},{x:797,fy:7*TILE,pw:7},{x:810,fy:6*TILE,pw:7},
+      {x:848,fy:6*TILE,pw:7},{x:859,fy:7*TILE,pw:7},{x:870,fy:6*TILE,pw:7},
+      {x:928,fy:6*TILE,pw:7},{x:940,fy:7*TILE,pw:7},{x:952,fy:6*TILE,pw:7},
+      {x:995,fy:6*TILE,pw:7},{x:1007,fy:7*TILE,pw:7},{x:1020,fy:6*TILE,pw:7},
+      {x:1055,fy:6*TILE,pw:7},{x:1067,fy:7*TILE,pw:7},{x:1080,fy:6*TILE,pw:7},
+      {x:1125,fy:6*TILE,pw:7},{x:1137,fy:7*TILE,pw:7},{x:1150,fy:6*TILE,pw:7},
+      {x:1168,fy:6*TILE,pw:7},{x:1175,fy:7*TILE,pw:7},{x:1182,fy:6*TILE,pw:7},
     ],
   },
   // Level 2 — wide gaps, tall platforms
@@ -3600,20 +3600,21 @@ function loop(ts) {
     ctx.restore();
   }
 
-  // Combo display — kill chain
+  // Combo display — big text at top center
   if (comboCount >= 1 && comboTimer > 0) {
     const alpha = (comboTimer < 30 ? comboTimer / 30 : 1);
-    const scale = 1 + Math.min((comboCount - 1) * 0.06, 0.5);
+    const scale = 1 + Math.min((comboCount - 1) * 0.08, 0.8);
+    const hue = Math.min(comboCount * 12, 120);
+    const fontSize = Math.round(36 * scale);
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    const hue = Math.min(comboCount * 12, 120); // green → yellow → red
-    ctx.font = `bold ${Math.round(18 * scale)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = `bold ${fontSize}px monospace`;
     ctx.fillStyle = `hsl(${hue},100%,65%)`;
-    ctx.shadowColor = `hsl(${hue},100%,50%)`;
-    ctx.shadowBlur = 8;
-    ctx.fillText(`${comboCount}x COMBO`, 14, H - 30);
+    ctx.shadowColor = `hsl(${hue},100%,40%)`;
+    ctx.shadowBlur = 16;
+    ctx.fillText(`x${comboCount} COMBO`, W / 2, 12);
     ctx.restore();
   }
 
