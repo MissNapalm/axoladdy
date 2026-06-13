@@ -127,6 +127,7 @@
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
 
 const axoImg  = new Image(); axoImg.src  = 'axo.png';
 const axo2Img = new Image(); axo2Img.src = 'axo2.png';
@@ -1269,10 +1270,11 @@ function drawPlayer() {
   ctx.scale(scaleX, 1);
   const img = !player.onGround && axo2Img.complete && axo2Img.naturalWidth > 0
     ? axo2Img : axoImg;
+  ctx.imageSmoothingEnabled = false;
   if (img.complete && img.naturalWidth > 0) {
     const aspect = img.naturalWidth / img.naturalHeight;
-    const dw = player.w * 1.4;
-    const dh = dw / aspect;
+    const dh = player.h;
+    const dw = Math.round(dh * aspect);
     ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
   } else {
     ctx.fillStyle = '#ff69b4';
@@ -1364,8 +1366,8 @@ function drawDeathAnimation() {
   ctx.rotate(Math.PI);
   if (axoImg.complete && axoImg.naturalWidth > 0) {
     const aspect = axoImg.naturalWidth / axoImg.naturalHeight;
-    const dw = player.w * 1.4;
-    const dh = dw / aspect;
+    const dh = player.h;
+    const dw = Math.round(dh * aspect);
     ctx.drawImage(axoImg, -dw/2, -dh/2, dw, dh);
   }
   ctx.restore();
@@ -1379,6 +1381,7 @@ function loop(ts) {
 
   // Draw with zoom
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   // Deep space gradient sky
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
   skyGrad.addColorStop(0, '#04041a');
