@@ -13,10 +13,9 @@
   #zoom-wrap label { color: #adf; white-space: nowrap; }
   #zoom-slider { width: 80px; accent-color: #5c94fc; }
   #zoom-val { color: #ffdd00; width: 34px; text-align: right; }
-  #hp-wrap { display: flex; align-items: center; gap: 5px; }
-  #hp-label { color: #ff6688; font-weight: bold; white-space: nowrap; }
-  #hp-bar-bg { width: 80px; height: 10px; background: #330011; border: 1px solid #ff3366; border-radius: 3px; overflow: hidden; }
-  #hp-bar { height: 100%; width: 100%; background: #ff3366; transition: width 0.12s; border-radius: 2px; }
+  #hp-wrap { display: flex; align-items: center; gap: 3px; }
+  .hrt { font-size: 18px; line-height: 1; transition: filter 0.1s; }
+  .hrt.empty { filter: grayscale(1) brightness(0.35); }
 
   /* Settings panel */
   #settings-btn { position: fixed; top: 8px; right: 8px; background: #333; color: #fff; border: 1px solid #666; font-family: monospace; font-size: 13px; padding: 4px 10px; cursor: pointer; z-index: 100; }
@@ -56,7 +55,7 @@
 <body>
 <div id="hud">
   <span>AXO <span id="score">000000</span></span>
-  <div id="hp-wrap"><span id="hp-label">HP</span><div id="hp-bar-bg"><div id="hp-bar"></div></div></div>
+  <div id="hp-wrap"></div>
   <span id="jumpstate">—</span>
   <span>ORBS <span id="coins">00</span></span>
   <div id="zoom-wrap">
@@ -390,7 +389,7 @@ const FLAG_X = 1190;
 
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
-const MAX_HP = 6;
+const MAX_HP = 4;
 let hp = MAX_HP;
 
 const player = {
@@ -419,6 +418,7 @@ let coins   = coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, col
 let goombas = goombaDefs.map((g, i) => ({ id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false }));
 let flyers  = flyerDefs.map((f, i) => ({ id: i + 1000, x: f.x * TILE, baseY: f.fy, y: f.fy, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2 }));
 let heartPickups = [];   // { x, y, vy, bobTimer, collected }
+let projectiles  = [];   // { x, y, vx, vy, life, flying }
 let blockHit = {};
 
 // ── Solids ────────────────────────────────────────────────────────────────────
@@ -546,9 +546,14 @@ function spawnExplosion(x, y, flying) {
 }
 
 function updateHPBar() {
-  const bar = document.getElementById('hp-bar');
-  bar.style.width = Math.max(0, (hp / MAX_HP) * 100) + '%';
-  bar.style.background = hp > MAX_HP * 0.5 ? '#ff3366' : hp > MAX_HP * 0.25 ? '#ff8800' : '#ff2200';
+  const wrap = document.getElementById('hp-wrap');
+  wrap.innerHTML = '';
+  for (let i = 0; i < MAX_HP; i++) {
+    const s = document.createElement('span');
+    s.className = 'hrt' + (i < hp ? '' : ' empty');
+    s.textContent = '❤';
+    wrap.appendChild(s);
+  }
 }
 
 function spawnSpindash(x, y, dir) {
@@ -784,6 +789,21 @@ function update(dt) {
       g.wobble += 0.04;
       g.y = g.baseY + Math.sin(g.wobble) * 18;
     }
+
+    // Shoot at player if within range and cooldown elapsed
+    if (!g.shootCooldown) g.shootCooldown = 90 + Math.floor(Math.random() * 60);
+    g.shootCooldown--;
+    if (g.shootCooldown <= 0) {
+      const dx = (player.x + player.w / 2) - (g.x + g.w / 2);
+      const dy = (player.y + player.h / 2) - (g.y + g.h / 2);
+      const dist = Math.hypot(dx, dy);
+      if (dist < 380) {
+        const spd = g.flying ? 4.5 : 3.5;
+        projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2, vx: (dx/dist)*spd, vy: (dy/dist)*spd, life: 120, flying: g.flying });
+      }
+      g.shootCooldown = 120 + Math.floor(Math.random() * 80);
+    }
+
     const gr = { x: g.x + 2, y: g.y + 2, w: g.w - 4, h: g.h - 4 };
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
@@ -795,7 +815,27 @@ function update(dt) {
       } else if (!player.homing && player.invincible === 0) {
         hp--;
         updateHPBar();
-        player.invincible = 80; // ~1.3s i-frames
+        player.invincible = 80;
+        if (hp <= 0) { killPlayer(); return; }
+      }
+    }
+  }
+
+  // Projectiles
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx; p.y += p.vy; p.life--;
+    if (p.life <= 0) { projectiles.splice(i, 1); continue; }
+    if (rectsOverlap({ x: p.x - 5, y: p.y - 5, w: 10, h: 10 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      projectiles.splice(i, 1);
+      if (player.invincible === 0) {
+        hp--;
+        updateHPBar();
+        // Knockback away from projectile direction
+        player.vx = (p.vx > 0 ? 1 : -1) * 9;
+        player.vy = -7;
+        player.onGround = false;
+        player.invincible = 80;
         if (hp <= 0) { killPlayer(); return; }
       }
     }
@@ -1250,6 +1290,20 @@ function drawParticlesAll() {
     ctx.fillStyle = p.flash ? `hsl(${p.hue},100%,90%)` : `hsl(${p.hue},100%,60%)`;
     ctx.beginPath(); ctx.arc(p.x - camera, p.y, Math.max(p.r, 0.5), 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
+  }
+  // Enemy projectiles
+  for (const p of projectiles) {
+    const sx = p.x - camera;
+    const t = performance.now() / 80;
+    // glowing orb: outer glow + core
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = p.flying ? '#cc44ff' : '#ff44aa';
+    ctx.beginPath(); ctx.arc(sx, p.y, 9, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = p.flying ? '#ee88ff' : '#ff88cc';
+    ctx.beginPath(); ctx.arc(sx, p.y, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(sx - 1.5, p.y - 1.5, 2, 0, Math.PI*2); ctx.fill();
   }
 }
 
