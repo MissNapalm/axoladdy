@@ -480,7 +480,6 @@ const player = {
   homing: false,
   homingTarget: null,
   homingUsed: false,
-  homingCooldown: 0,   // 240-frame lockout after landing from a homing chain
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -597,7 +596,7 @@ function loadLevel(n) {
     x: TILE * 3, y: (groundY - 3) * TILE,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingUsed: false, homingCooldown: 0,
+    homing: false, homingTarget: null,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: false, dashUsedV: false,
     invincible: 0, dead: false, wonSlide: false,
@@ -622,12 +621,11 @@ const scoreEl = document.getElementById('score');
 const coinsEl = document.getElementById('coins');
 
 function jumpLabel() {
-  if (player.wonSlide)           return '★ YOU WIN ★';
-  if (player.dead)               return '✕ DEAD ✕';
-  if (player.homing)             return '>> HOMING! <<';
-  if (player.homingCooldown > 0) return `HOME: ${Math.ceil(player.homingCooldown / 60)}s`;
-  if (player.onGround)           return '— READY —';
-  if (!player.onGround)          return 'SPACE: HOMING';
+  if (player.wonSlide)  return '★ YOU WIN ★';
+  if (player.dead)      return '✕ DEAD ✕';
+  if (player.homing)    return '>> HOMING! <<';
+  if (player.onGround)  return '— READY —';
+  if (!player.onGround) return 'SPACE: HOMING';
   return '— READY —';
 }
 
@@ -2070,12 +2068,8 @@ function update(dt) {
     return;
   }
 
-  // Tick homing cooldown
-  if (player.homingCooldown > 0) player.homingCooldown--;
-
   // Space/jump while airborne — homing attack if enemy nearby
-  // Blocked if homingUsed (hit but no kill yet) or cooldown active (just landed from chain)
-  if (jumpJustPressed && !player.onGround && !player.homing && !player.homingUsed && player.homingCooldown === 0) {
+  if (jumpJustPressed && !player.onGround && !player.homing) {
     const target = nearestLiveGoomba();
     if (target) {
       player.homing = true;
@@ -2147,12 +2141,13 @@ function update(dt) {
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
         const killed = damageEnemy(tg, 1);
-        if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; }
+        if (killed) { comboCount++; comboTimer = 120; }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
         player.vy = Math.min(player.vy, -CFG.jump1 * 0.5);
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false;
+        player.homingUsed = false;
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
         player.vy = (dy / dist) * HOMING_SPEED;
@@ -2233,7 +2228,6 @@ function update(dt) {
           comboCount = 0; comboTimer = 0;
         }
         player.onGround = true;
-        if (player.homingUsed) player.homingCooldown = 240; // 4s lockout after landing from a homing chain
         player.homingUsed = false;
         player.dashUsedUp = false; player.dashUsedH = false;
       } else if (player.vy < 0) {
