@@ -135,7 +135,6 @@
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
 
 const walkSheet   = new Image(); walkSheet.src   = 'walk_sheet.png';
 const ballImg     = new Image(); ballImg.src     = 'ball.png';
@@ -1283,41 +1282,47 @@ function drawPlayer() {
   if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
   ctx.save();
-  ctx.translate(sx + player.w / 2, player.y + player.h);
-  const scaleX = player.dir === -1 ? -1 : 1;
-  ctx.scale(scaleX, 1);
-  // Rotation after scale so direction flip doesn't invert the angle
-  if (!player.homing && !player.ballForm) ctx.rotate(CFG.spriteRot * Math.PI / 180);
-  if (player.spinning || player.homing || player.ballForm) ctx.rotate((player.spinAngle * Math.PI) / 180);
   const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
 
   if ((player.homing || player.ballForm) && ballImg.complete && ballImg.naturalWidth > 0) {
+    const bd = dh * 0.8; // slightly smaller than hitbox
+    // Translate to ball center (hitbox center), rotate around it
+    ctx.translate(sx + player.w / 2, player.y + player.h / 2);
+    ctx.rotate((player.spinAngle * Math.PI) / 180);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(ballImg, -dh / 2, -dh + footOffset, dh, dh);
-  } else if (walkSheet.complete && walkSheet.naturalWidth > 0) {
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    const dw = Math.round(dh * (WALK_FW / WALK_FH));
-    let frameIdx;
-    if (!player.onGround || player.spinning) {
-      walkFrame = 0; walkTick = 0;
-      frameIdx = AIR_FRAME;
-    } else if (Math.abs(player.vx) > 0.2) {
-      walkTick++;
-      if (walkTick >= WALK_SPEED) { walkTick = 0; walkFrame = (walkFrame + 1) % WALK_FRAMES; }
-      frameIdx = walkFrame;
-    } else {
-      walkFrame = 0; walkTick = 0;
-      frameIdx = 0;
-    }
-    ctx.drawImage(walkSheet,
-      frameIdx * WALK_FW, 0, WALK_FW, WALK_FH,
-      -dw / 2, -dh + footOffset, dw, dh);
+    ctx.drawImage(ballImg, -bd / 2, -bd / 2, bd, bd);
   } else {
-    ctx.fillStyle = '#ff69b4';
-    ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+    // Normal / walk / air sprite
+    ctx.translate(sx + player.w / 2, player.y + player.h);
+    const scaleX = player.dir === -1 ? -1 : 1;
+    ctx.scale(scaleX, 1);
+    ctx.rotate(CFG.spriteRot * Math.PI / 180);
+    if (player.spinning) ctx.rotate((player.spinAngle * Math.PI) / 180);
+    if (walkSheet.complete && walkSheet.naturalWidth > 0) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      const dw = Math.round(dh * (WALK_FW / WALK_FH));
+      let frameIdx;
+      if (!player.onGround || player.spinning) {
+        walkFrame = 0; walkTick = 0;
+        frameIdx = AIR_FRAME;
+      } else if (Math.abs(player.vx) > 0.2) {
+        walkTick++;
+        if (walkTick >= WALK_SPEED) { walkTick = 0; walkFrame = (walkFrame + 1) % WALK_FRAMES; }
+        frameIdx = walkFrame;
+      } else {
+        walkFrame = 0; walkTick = 0;
+        frameIdx = 0;
+      }
+      ctx.drawImage(walkSheet,
+        frameIdx * WALK_FW, 0, WALK_FW, WALK_FH,
+        -dw / 2, -dh + footOffset, dw, dh);
+    } else {
+      ctx.fillStyle = '#ff69b4';
+      ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+    }
   }
   ctx.restore();
 }
