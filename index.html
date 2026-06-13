@@ -480,6 +480,7 @@ const player = {
   homing: false,
   homingTarget: null,
   homingUsed: false,
+  homingCooldown: 0,   // 240-frame lockout after landing from a homing chain
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -596,7 +597,7 @@ function loadLevel(n) {
     x: TILE * 3, y: (groundY - 3) * TILE,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null,
+    homing: false, homingTarget: null, homingUsed: false, homingCooldown: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: false, dashUsedV: false,
     invincible: 0, dead: false, wonSlide: false,
@@ -621,11 +622,12 @@ const scoreEl = document.getElementById('score');
 const coinsEl = document.getElementById('coins');
 
 function jumpLabel() {
-  if (player.wonSlide)  return '★ YOU WIN ★';
-  if (player.dead)      return '✕ DEAD ✕';
-  if (player.homing)    return '>> HOMING! <<';
-  if (player.onGround)  return '— READY —';
-  if (!player.onGround) return 'SPACE: HOMING';
+  if (player.wonSlide)           return '★ YOU WIN ★';
+  if (player.dead)               return '✕ DEAD ✕';
+  if (player.homing)             return '>> HOMING! <<';
+  if (player.homingCooldown > 0) return `HOME: ${Math.ceil(player.homingCooldown / 60)}s`;
+  if (player.onGround)           return '— READY —';
+  if (!player.onGround)          return 'SPACE: HOMING';
   return '— READY —';
 }
 
@@ -2068,9 +2070,12 @@ function update(dt) {
     return;
   }
 
+  // Tick homing cooldown
+  if (player.homingCooldown > 0) player.homingCooldown--;
+
   // Space/jump while airborne — homing attack if enemy nearby
-  // homingUsed resets on landing OR on a successful kill, so kills chain but misses don't
-  if (jumpJustPressed && !player.onGround && !player.homing && !player.homingUsed) {
+  // Blocked if homingUsed (hit but no kill yet) or cooldown active (just landed from chain)
+  if (jumpJustPressed && !player.onGround && !player.homing && !player.homingUsed && player.homingCooldown === 0) {
     const target = nearestLiveGoomba();
     if (target) {
       player.homing = true;
@@ -2228,6 +2233,7 @@ function update(dt) {
           comboCount = 0; comboTimer = 0;
         }
         player.onGround = true;
+        if (player.homingUsed) player.homingCooldown = 240; // 4s lockout after landing from a homing chain
         player.homingUsed = false;
         player.dashUsedUp = false; player.dashUsedH = false;
       } else if (player.vy < 0) {
