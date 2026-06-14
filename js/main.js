@@ -576,7 +576,7 @@ const ABILITY_DEFS = [
 
 const abilityMenu = {
   open: false,
-  purchased: new Set(JSON.parse(localStorage.getItem('axo_abilities') || '["dash1","home1"]')),
+  purchased: new Set(JSON.parse(localStorage.getItem('axo_abilities') || '["dash1"]')),
   cursor: { group: 0, item: 0 },
   flashTimer: 0, // flashes on failed purchase
 };
