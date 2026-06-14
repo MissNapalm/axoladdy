@@ -319,8 +319,8 @@ function update(dt) {
     }
   }
 
-  // Cancel frenzy when entering the boss arena
-  if (player.frenzyTimer > 0 && redBat.active && !redBat.dead) {
+  // Cancel frenzy when entering the boss arena (only once player is close to the boss)
+  if (player.frenzyTimer > 0 && redBat.active && !redBat.dead && player.x >= redBat.x - 600) {
     player.frenzyTimer = 0;
     player.frenzyKills = 0;
   }
