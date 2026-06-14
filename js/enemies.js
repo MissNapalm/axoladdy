@@ -81,7 +81,7 @@ function updateChaser() {
   if (chaser.state === 'hover') {
     // Float beside player, lerp to opposite side based on movement direction
     const wantOffX = player.vx < -0.5 ? -180 : player.vx > 0.5 ? 180 : chaser.targetOffX;
-    chaser.targetOffX += (wantOffX - chaser.targetOffX) * 0.08;
+    chaser.targetOffX += (wantOffX - chaser.targetOffX) * 0.14;
     const tx = player.x + chaser.targetOffX;
     const ty = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 10;
     const dx = tx - chaser.x, dy = ty - chaser.y;
