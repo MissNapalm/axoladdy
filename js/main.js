@@ -576,8 +576,9 @@ const ABILITY_DEFS = [
 
 const abilityMenu = {
   open: false,
-  purchased: new Set(JSON.parse(localStorage.getItem('axo_abilities') || '[]')),
+  purchased: new Set(JSON.parse(localStorage.getItem('axo_abilities') || '["dash1","home1"]')),
   cursor: { group: 0, item: 0 },
+  flashTimer: 0, // flashes on failed purchase
 };
 
 // Apply purchased abilities to CFG on load
@@ -598,83 +599,202 @@ function canBuyAbility(grp, item) {
 }
 
 function drawAbilityMenu() {
+  const t = performance.now() / 1000;
+  if (abilityMenu.flashTimer > 0) abilityMenu.flashTimer--;
+
   ctx.save();
   ctx.scale(DPR, DPR);
 
-  ctx.fillStyle = 'rgba(0,0,0,0.80)';
+  // Blurred dark backdrop with subtle vignette
+  ctx.fillStyle = 'rgba(4,6,12,0.88)';
   ctx.fillRect(0, 0, W, H);
+  const vig = ctx.createRadialGradient(W/2, H/2, 60, W/2, H/2, W * 0.75);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
 
-  const pw = 560, ph = 330, px = (W - pw) / 2, py = (H - ph) / 2;
-  ctx.fillStyle = '#0d0d0d';
-  ctx.strokeStyle = '#c87840'; ctx.lineWidth = 2;
+  const pw = 620, ph = 340, px = (W - pw) / 2, py = (H - ph) / 2;
+
+  // Panel shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 40;
+  ctx.fillStyle = '#080c14';
   ctx.fillRect(px, py, pw, ph);
-  ctx.strokeRect(px, py, pw, ph);
+  ctx.shadowBlur = 0;
 
+  // Subtle top-edge highlight
+  const topLine = ctx.createLinearGradient(px, py, px + pw, py);
+  topLine.addColorStop(0,   'rgba(255,255,255,0)');
+  topLine.addColorStop(0.3, 'rgba(255,200,80,0.18)');
+  topLine.addColorStop(0.7, 'rgba(255,200,80,0.18)');
+  topLine.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = topLine; ctx.fillRect(px, py, pw, 1);
+
+  // Title area
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(px, py, pw, 46);
+
+  ctx.font = '600 15px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#d4a855'; ctx.font = 'bold 18px monospace';
-  ctx.fillText('ABILITIES', W / 2, py + 28);
+  // Spaced title — draw char by char
+  const title = 'A B I L I T I E S';
+  ctx.fillText(title, W / 2, py + 29);
 
-  ctx.fillStyle = '#ffcc44'; ctx.font = '13px monospace'; ctx.textAlign = 'right';
-  ctx.fillText('ORBS: ' + totalCoins, px + pw - 14, py + 28);
+  // Orb counter — top right
+  const orbX = px + pw - 16;
+  ctx.textAlign = 'right';
+  ctx.font = '500 12px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,200,60,0.5)';
+  ctx.fillText('◆', orbX - 38, py + 28);
+  ctx.fillStyle = '#ffd84a';
+  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.fillText(totalCoins, orbX, py + 29);
 
-  ctx.fillStyle = '#555'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-  ctx.fillText('ARROW KEYS  ·  ENTER to buy (30 orbs)  ·  TAB to close', W / 2, py + 44);
+  // Thin separator
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(px, py + 46, pw, 1);
 
-  const colW = pw / ABILITY_DEFS.length;
+  // Hint bar bottom
+  ctx.textAlign = 'center';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fillText('← → navigate   ·   ENTER purchase   ·   TAB close', W / 2, py + ph - 10);
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(px, py + ph - 24, pw, 1);
 
-  for (let gi = 0; gi < ABILITY_DEFS.length; gi++) {
-    const grp = ABILITY_DEFS[gi];
+  const cols = ABILITY_DEFS.length;
+  const colW  = pw / cols;
+  const cardW = colW - 28;
+  const cardH = 72;
+  const cardGap = 10;
+  const startY = py + 62;
+
+  for (let gi = 0; gi < cols; gi++) {
+    const grp  = ABILITY_DEFS[gi];
     const colX = px + gi * colW + colW / 2;
-    let rowY = py + 62;
 
-    ctx.fillStyle = '#c87840'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
-    ctx.fillText(grp.group, colX, rowY);
-    rowY += 20;
+    // Column header
+    ctx.textAlign = 'center';
+    ctx.font = '500 10px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillText(grp.group.split('').join(' '), colX, startY - 8);
 
     for (let ii = 0; ii < grp.items.length; ii++) {
-      const item = grp.items[ii];
+      const item     = grp.items[ii];
       const owned    = abilityMenu.purchased.has(item.id);
       const buyable  = canBuyAbility(grp, item);
       const locked   = !owned && !buyable;
       const selected = abilityMenu.cursor.group === gi && abilityMenu.cursor.item === ii;
+      const pulse    = 0.5 + 0.5 * Math.sin(t * 3);
 
-      const bw = colW - 20, bh = 66, bx = colX - bw / 2, by = rowY;
+      const bx = colX - cardW / 2;
+      const by = startY + ii * (cardH + cardGap);
 
-      ctx.fillStyle = owned ? '#0f2a0f' : selected ? '#1e1006' : '#111';
-      ctx.fillRect(bx, by, bw, bh);
-      ctx.strokeStyle = owned ? '#44aa44' : selected ? '#e88030' : locked ? '#2a2a2a' : '#554433';
-      ctx.lineWidth = selected ? 2 : 1;
-      ctx.strokeRect(bx, by, bw, bh);
-
-      ctx.fillStyle = owned ? '#44ee44' : locked ? '#444' : '#d4a855';
-      ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
-      ctx.fillText(item.label, colX, by + 18);
-
-      // Wrap desc
-      const words = item.desc.split(' ');
-      let line = '', lines = [];
-      for (const w of words) {
-        const t = line ? line + ' ' + w : w;
-        if (t.length > 20) { lines.push(line); line = w; } else line = t;
+      // Connector line between cards
+      if (ii > 0) {
+        ctx.strokeStyle = owned ? 'rgba(80,220,80,0.35)' : 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(colX, by - cardGap);
+        ctx.lineTo(colX, by);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
-      if (line) lines.push(line);
-      ctx.fillStyle = owned ? '#66bb66' : locked ? '#333' : '#a09080';
-      ctx.font = '10px monospace';
-      lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, colX, by + 32 + i * 12));
 
+      // Card background
+      ctx.save();
       if (owned) {
-        ctx.fillStyle = '#44ee44'; ctx.font = 'bold 10px monospace';
-        ctx.fillText('✓ OWNED', colX, by + 58);
-      } else if (selected && buyable) {
-        ctx.fillStyle = '#ffcc44'; ctx.font = 'bold 10px monospace';
-        ctx.fillText('ENTER to buy', colX, by + 58);
+        ctx.fillStyle = 'rgba(30,80,30,0.55)';
+      } else if (selected) {
+        ctx.fillStyle = `rgba(38,24,8,${0.7 + pulse * 0.15})`;
       } else if (locked) {
-        ctx.fillStyle = '#444'; ctx.font = '10px monospace';
-        ctx.fillText(totalCoins < ABILITY_COST ? 'need 30 orbs' : 'unlock previous', colX, by + 58);
+        ctx.fillStyle = 'rgba(10,10,14,0.6)';
+      } else {
+        ctx.fillStyle = 'rgba(20,16,10,0.8)';
+      }
+      ctx.beginPath();
+      ctx.roundRect(bx, by, cardW, cardH, 6);
+      ctx.fill();
+
+      // Card border / glow
+      if (selected) {
+        ctx.shadowColor = '#e87820';
+        ctx.shadowBlur  = 10 + pulse * 8;
+        ctx.strokeStyle = `rgba(240,140,40,${0.6 + pulse * 0.4})`;
+        ctx.lineWidth   = 1.5;
+      } else if (owned) {
+        ctx.strokeStyle = 'rgba(60,180,60,0.4)';
+        ctx.lineWidth   = 1;
+      } else if (locked) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth   = 1;
+      } else {
+        ctx.strokeStyle = 'rgba(200,140,40,0.25)';
+        ctx.lineWidth   = 1;
+      }
+      ctx.beginPath(); ctx.roundRect(bx, by, cardW, cardH, 6); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // Owned shimmer overlay
+      if (owned) {
+        const shim = ctx.createLinearGradient(bx, by, bx, by + cardH);
+        shim.addColorStop(0,   'rgba(80,220,80,0.08)');
+        shim.addColorStop(0.5, 'rgba(80,220,80,0.02)');
+        shim.addColorStop(1,   'rgba(80,220,80,0.0)');
+        ctx.fillStyle = shim;
+        ctx.beginPath(); ctx.roundRect(bx, by, cardW, cardH, 6); ctx.fill();
       }
 
-      rowY += bh + 6;
+      // Label
+      ctx.textAlign = 'left';
+      ctx.font = `600 13px system-ui, sans-serif`;
+      ctx.fillStyle = owned ? '#7eed7e' : locked ? 'rgba(255,255,255,0.2)' : selected ? '#ffe090' : 'rgba(255,255,255,0.8)';
+      ctx.fillText(item.label, bx + 14, by + 22);
+
+      // Cost badge (top-right of card)
+      if (!owned) {
+        const costAlpha = locked ? 0.2 : buyable ? 1 : 0.5;
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = `rgba(255,210,50,${costAlpha})`;
+        ctx.fillText('◆ 30', bx + cardW - 10, by + 22);
+      } else {
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(80,220,80,0.7)';
+        ctx.fillText('✓', bx + cardW - 10, by + 22);
+      }
+
+      // Description
+      ctx.textAlign = 'left';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.fillStyle = owned ? 'rgba(120,220,120,0.55)' : locked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.38)';
+      ctx.fillText(item.desc, bx + 14, by + 40);
+
+      // Status line
+      if (selected && buyable) {
+        ctx.font = `bold 10px system-ui, sans-serif`;
+        ctx.fillStyle = `rgba(255,200,60,${0.6 + pulse * 0.4})`;
+        ctx.fillText('Press ENTER to unlock', bx + 14, by + 60);
+      } else if (selected && locked && totalCoins < ABILITY_COST) {
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(220,80,60,0.7)';
+        ctx.fillText('Need ' + ABILITY_COST + ' orbs  (' + totalCoins + ' owned)', bx + 14, by + 60);
+      } else if (selected && locked) {
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.fillText('Unlock previous ability first', bx + 14, by + 60);
+      }
     }
+  }
+
+  // Flash red on failed purchase
+  if (abilityMenu.flashTimer > 0) {
+    ctx.fillStyle = `rgba(220,40,20,${(abilityMenu.flashTimer / 20) * 0.18})`;
+    ctx.fillRect(px, py, pw, ph);
   }
 
   ctx.restore();
@@ -705,6 +825,8 @@ document.addEventListener('keydown', e => {
       CFG[item.cfgKey] = item.cfgVal;
       saveCFG();
       saveAbilities();
+    } else if (!abilityMenu.purchased.has(item.id)) {
+      abilityMenu.flashTimer = 20;
     }
   }
   if (e.code === 'Escape') abilityMenu.open = false;
