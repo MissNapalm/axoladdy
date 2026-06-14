@@ -95,9 +95,15 @@ function updateChaser() {
     }
 
   } else if (chaser.state === 'aiming') {
-    // Freeze in place, slowly rotate laser toward player
-    chaser.vx *= 0.85; chaser.vy *= 0.85;
-    chaser.x += chaser.vx; chaser.y += chaser.vy;
+    // Keep following player while tracking laser
+    const wantOffXA = player.vx < -0.5 ? -180 : player.vx > 0.5 ? 180 : chaser.targetOffX;
+    chaser.targetOffX += (wantOffXA - chaser.targetOffX) * 0.14;
+    const txA = player.x + chaser.targetOffX;
+    const tyA = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 10;
+    const dxA = txA - chaser.x, dyA = tyA - chaser.y;
+    chaser.vx += dxA * 0.1; chaser.vy += dyA * 0.1;
+    chaser.vx *= 0.75;      chaser.vy *= 0.75;
+    chaser.x += chaser.vx;  chaser.y += chaser.vy;
     const targetAngle = Math.atan2(py - cy, px - cx);
     // Wrap angle diff
     let diff = targetAngle - chaser.laserAngle;
