@@ -1,7 +1,9 @@
 // ── Drawing ───────────────────────────────────────────────────────────────────
-// Persistent offscreen canvas for bat red-tint compositing (avoids per-frame alloc)
-const _batTintCanvas = document.createElement('canvas');
-const _batTintCtx    = _batTintCanvas.getContext('2d');
+// Persistent offscreen canvases for tint compositing (avoids per-frame alloc)
+const _batTintCanvas    = document.createElement('canvas');
+const _batTintCtx       = _batTintCanvas.getContext('2d');
+const _baddieTintCanvas = document.createElement('canvas');
+const _baddieTintCtx    = _baddieTintCanvas.getContext('2d');
 
 function drawBatSprite(targetCtx, frame, dw, dh, dx, dy, redTint) {
   const col = frame % BAT_COLS, row = Math.floor(frame / BAT_COLS);
@@ -22,6 +24,26 @@ function drawBatSprite(targetCtx, frame, dw, dh, dx, dy, redTint) {
     targetCtx.drawImage(batSheet, col * BAT_FW, row * BAT_FH, BAT_FW, BAT_FH, dx, dy, dw, dh);
   }
 }
+function drawBaddieSprite(targetCtx, frame, dw, dh, dx, dy, tint) {
+  const col = frame % BADDIE_COLS, row = Math.floor(frame / BADDIE_COLS);
+  if (tint) {
+    if (_baddieTintCanvas.width !== dw || _baddieTintCanvas.height !== dh) {
+      _baddieTintCanvas.width = dw; _baddieTintCanvas.height = dh;
+    }
+    _baddieTintCtx.clearRect(0, 0, dw, dh);
+    _baddieTintCtx.drawImage(baddieSheet, col * BADDIE_FW, row * BADDIE_FH, BADDIE_FW, BADDIE_FH, 0, 0, dw, dh);
+    _baddieTintCtx.globalCompositeOperation = 'source-atop';
+    _baddieTintCtx.globalAlpha = 0.8;
+    _baddieTintCtx.fillStyle = tint;
+    _baddieTintCtx.fillRect(0, 0, dw, dh);
+    _baddieTintCtx.globalCompositeOperation = 'source-over';
+    _baddieTintCtx.globalAlpha = 1;
+    targetCtx.drawImage(_baddieTintCanvas, dx, dy);
+  } else {
+    targetCtx.drawImage(baddieSheet, col * BADDIE_FW, row * BADDIE_FH, BADDIE_FW, BADDIE_FH, dx, dy, dw, dh);
+  }
+}
+
 function drawBg() {
   const t = performance.now() / 1000;
   if (currentTheme === 'city') {
@@ -554,14 +576,12 @@ function drawEnemy(g) {
   if (sx < -TILE * 2 || sx > W + TILE * 2) return;
   if (player.homingTarget === g || g.lockFlash > 0) drawLockOn(g);
   const cx = sx + g.w / 2, cy = g.y + g.h / 2;
-  const wf = Math.floor(g.frame) % 2;
   const t = performance.now() / 400;
   // Hit flash overlay
   const es = CFG.enemySize;
   const er = es / 2;
   if (g.hitFlash > 0 && Math.floor(g.hitFlash / 3) % 2 === 0) {
     if (g.flying) {
-      // Orange hit-flash: draw tinted sprite via offscreen canvas
       const batFrame2 = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BAT_FRAMES;
       const scale = g.red ? 1.5 : 1;
       const dw = Math.round(TILE * CFG.batScale * scale), dh = Math.round(dw * BAT_FH / BAT_FW);
@@ -579,11 +599,9 @@ function drawEnemy(g) {
       _batTintCtx.globalAlpha = 1;
       ctx.drawImage(_batTintCanvas, cx - dw/2, cy - dh/2);
     } else {
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = '#ff8844';
-      ctx.beginPath(); ctx.ellipse(cx, cy, er, er, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
+      const bFrame2 = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
+      const dw = Math.round(TILE * CFG.gnomeScale), dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
+      drawBaddieSprite(ctx, bFrame2, dw, dh, cx - dw / 2, g.y + g.h - dh, '#ff6600');
     }
     return;
   }
@@ -602,8 +620,6 @@ function drawEnemy(g) {
     ctx.restore();
   }
 
-  const toughTint = g.flying && g.maxHp >= 3;
-
   if (g.flying) {
     const isRedBat = g.red;
     const scale = isRedBat ? 1.5 : 1;
@@ -612,31 +628,20 @@ function drawEnemy(g) {
     const dh = Math.round(dw * (BAT_FH / BAT_FW));
     drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, isRedBat);
   } else {
-    // Ground blob — pink (tough enemies are darker red)
-    const squish = wf ? 1.1 : 0.95;
-    ctx.save(); ctx.translate(cx, g.y + g.h);
-    ctx.scale(1 / squish, squish);
-    ctx.fillStyle = toughTint ? '#992233' : '#cc3a7a';
-    ctx.beginPath(); ctx.ellipse(0, -g.h/2, g.w/2 - 2, g.h/2 - 1, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = toughTint ? '#bb3344' : '#ee5a9a';
-    ctx.beginPath(); ctx.ellipse(-2, -g.h/2 - 1, g.w/2 - 6, g.h/2 - 5, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ffccdd';
-    ctx.beginPath(); ctx.arc(-5, -g.h * 0.65, 4, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(5, -g.h * 0.65, 4, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ff2266';
-    ctx.beginPath(); ctx.arc(-5, -g.h * 0.65, 2, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(5, -g.h * 0.65, 2, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = '#cc3a7a'; ctx.lineWidth = 3;
-    const legOff = wf ? 4 : -4;
-    ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-8 + legOff, 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(6, -4); ctx.lineTo(8 - legOff, 2); ctx.stroke();
-    ctx.restore();
-    if (wf) {
-      ctx.globalAlpha = 0.25;
-      ctx.fillStyle = '#cc3a7a';
-      ctx.beginPath(); ctx.ellipse(cx - g.vx * 6, g.y + g.h - 2, 6, 3, 0, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
+    // Ground goomba — sprite from baddie.mov sheet
+    const baddieFrame = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
+    const dw = Math.round(TILE * CFG.gnomeScale);
+    const dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
+    // Flip sprite based on walk direction
+    ctx.save();
+    if (g.vx > 0) {
+      ctx.translate(cx + dw / 2, 0);
+      ctx.scale(-1, 1);
+      drawBaddieSprite(ctx, baddieFrame, dw, dh, 0, g.y + g.h - dh, null);
+    } else {
+      drawBaddieSprite(ctx, baddieFrame, dw, dh, cx - dw / 2, g.y + g.h - dh, null);
     }
+    ctx.restore();
   }
 }
 

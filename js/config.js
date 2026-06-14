@@ -11,11 +11,17 @@ canvas.height *= DPR;
 const walkSheet     = new Image(); walkSheet.src     = 'assets/images/walk_sheet.png';
 const fireballSheet = new Image(); fireballSheet.src = 'assets/images/fireball_sheet.png';
 const batSheet      = new Image(); batSheet.src      = 'assets/images/bat_sheet.png';
+const baddieSheet   = new Image(); baddieSheet.src   = 'assets/images/baddie_sheet.png';
 
-const BAT_FRAMES = 59;
-const BAT_COLS   = 10;
-const BAT_FW     = 128;
-const BAT_FH     = 135;
+const BAT_FRAMES    = 59;
+const BAT_COLS      = 10;
+const BAT_FW        = 128;
+const BAT_FH        = 135;
+
+const BADDIE_FRAMES = 59;
+const BADDIE_COLS   = 10;
+const BADDIE_FW     = 128;
+const BADDIE_FH     = 142;
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 function playSound() {}
@@ -47,6 +53,7 @@ const DEFAULTS = {
   moveSpeed: 3.5,
   axoSize: 44,
   enemySize: 32,
+  gnomeScale: 1.0,
   batScale: 1.8,
   smoothing: 1,
   spriteRot: 20,
