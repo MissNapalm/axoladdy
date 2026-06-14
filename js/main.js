@@ -348,17 +348,41 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
+// ── Music ─────────────────────────────────────────────────────────────────────
+const introMusic = new Audio('intro.mp3');
+introMusic.loop = true;
+introMusic.volume = 0.7;
+
+const levelMusic = {
+  2: new Audio('ice.mp3'),
+};
+for (const t of Object.values(levelMusic)) { t.loop = true; t.volume = 0.7; }
+
+let currentTrack = null;
+function playTrack(audio) {
+  if (currentTrack === audio) return;
+  if (currentTrack) { currentTrack.pause(); currentTrack.currentTime = 0; }
+  currentTrack = audio;
+  if (audio) audio.play().catch(() => {});
+}
+
 // Title screen
 (function() {
   const screen = document.getElementById('title-screen');
   const vid    = document.getElementById('intro-vid');
   const prompt = document.getElementById('press-enter');
   let dismissed = false;
+  let musicStarted = false;
 
-  const introMusic = new Audio('intro.mp3');
-  introMusic.loop = true;
-  introMusic.volume = 0.7;
-  introMusic.play().catch(() => {});
+  function startIntroMusic() {
+    if (musicStarted) return;
+    musicStarted = true;
+    playTrack(introMusic);
+  }
+
+  // Start on first user interaction (bypasses autoplay block)
+  document.addEventListener('keydown', startIntroMusic, { once: true });
+  document.addEventListener('click',   startIntroMusic, { once: true });
 
   vid.addEventListener('ended', () => { prompt.style.display = 'block'; });
   vid.addEventListener('error', () => { prompt.style.display = 'block'; });
@@ -367,8 +391,7 @@ function loop(ts) {
     if (dismissed) return;
     dismissed = true;
     vid.pause();
-    introMusic.pause();
-    introMusic.currentTime = 0;
+    playTrack(null);
     screen.style.display = 'none';
     loadLevel(currentLevel);
     hp = MAX_HP;

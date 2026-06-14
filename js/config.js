@@ -580,6 +580,7 @@ function loadLevel(n) {
   currentLevel = ((n % LEVELS.length) + LEVELS.length) % LEVELS.length;
   localStorage.setItem('axo_level', currentLevel);
   const lv = LEVELS[currentLevel];
+  if (typeof playTrack === 'function') playTrack(levelMusic?.[currentLevel] ?? null);
 
   solids = buildSolids();
   blockHit = {};
