@@ -566,14 +566,14 @@ function getSolidsNear(px, py, pw, ph) {
 }
 
 // ── Chaser (test enemy) — defined here so initLevel can reset it ──────────────
-const CHASER_R = 16;
+const CHASER_R = 22;
 const chaser = {
   active: false, triggered: false, descending: false,
   dead: false, deadTimer: 0,
   x: 0, y: 0, vx: 0, vy: 0,
   w: CHASER_R * 2, h: CHASER_R * 2,
   hp: 3, maxHp: 3, hitFlash: 0, wobble: 0,
-  targetOffX: 80, targetOffY: -200,
+  targetOffX: 60, targetOffY: -200,
   // attack state machine
   state: 'hover',   // hover | aiming | telegraph | cooldown
   stateTimer: 0,
@@ -833,10 +833,10 @@ function damageEnemy(g, dmg) {
       const killVal = g.red ? 3 : 1;
       player.frenzyKills = Math.min(player.frenzyKills + killVal, 12);
     }
-    // Kill while airborne: re-enable homing only if still under chain limit
+    // Kill while airborne: track chain kills, re-enable homing if under limit
     if (!player.onGround) {
+      player.homingCount++;
       if (player.homingCount < CFG.homingChain) player.homingUsed = false;
-      player.homingCount = Math.max(0, player.homingCount - 1);
       if (player.frenzyTimer <= 0) {
         player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
         player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
