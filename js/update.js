@@ -463,7 +463,7 @@ function update(dt) {
           player.dashFrames = 0;
           player.onGround = false;
         }
-      } else if (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10)) {
+      } else if (CFG.stompKill && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
         if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
         player.vy = -6;
         player.onGround = false;

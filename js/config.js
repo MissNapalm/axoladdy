@@ -63,6 +63,7 @@ const DEFAULTS = {
   ballSize: 80,
   homingChain: 3,
   dashChain: 1,
+  stompKill: 1,
 };
 
 function loadCFG() {
