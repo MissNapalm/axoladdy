@@ -437,27 +437,10 @@ function update(dt) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !g.hitFlash) {
-        if (!g.flying && player.frenzyTimer <= 0) {
-          // Normal mode: dash into ground enemy hurts player, bounces back, goomba unharmed
-          hurtPlayer(1); player.invincible = 60;
-          player.vx = -Math.sign(player.vx) * 10;
-          player.vy = -7;
-          player.dashFrames = 0;
-          player.onGround = false;
-          playSound('hurt', 0.6);
-          if (hp <= 0) { killPlayer(); return; }
-        } else if (g.flying && player.frenzyTimer <= 0) {
-          // Normal mode: dash into bat hurts player
-          hurtPlayer(1); player.invincible = 60;
-          player.vx = -Math.sign(player.vx) * 10;
-          player.vy = -7;
-          player.dashFrames = 0;
-          player.onGround = false;
-          playSound('hurt', 0.6);
-          if (hp <= 0) { killPlayer(); return; }
-        } else {
-          // Frenzy: dash kills anything
-          if (damageEnemy(g, g.hp)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
+        {
+          // Dash deals 1 damage in normal mode, kills in frenzy
+          const dmg = player.frenzyTimer > 0 ? g.hp : 1;
+          if (damageEnemy(g, dmg)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
           player.vx = -Math.sign(player.vx) * 8;
           player.vy = -6;
           player.dashFrames = 0;
