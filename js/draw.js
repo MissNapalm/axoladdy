@@ -45,6 +45,31 @@ function drawBaddieSprite(targetCtx, frame, dw, dh, dx, dy, tint) {
   }
 }
 
+// cloud.jpg is 1200x864 — draw tiled instances scrolling at parallax speed
+const CLOUD_W = 220, CLOUD_H = 120; // display size per cloud instance
+const CLOUD_POSITIONS = [
+  {ox:0,   y:30}, {ox:280, y:18}, {ox:530, y:42},
+  {ox:760, y:22}, {ox:990, y:38}, {ox:1220,y:14},
+];
+function drawClouds(parallaxX, parallaxY) {
+  if (!cloudImg.complete || !cloudImg.naturalWidth) return;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  for (const c of CLOUD_POSITIONS) {
+    // wrap horizontally across the full level so clouds are always on screen
+    let cx2 = (c.ox - camera * parallaxX) % (W + CLOUD_W + 40);
+    if (cx2 < -CLOUD_W) cx2 += W + CLOUD_W + 40;
+    const cy2 = c.y + cameraY * parallaxY;
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(cloudImg, cx2, cy2, CLOUD_W, CLOUD_H);
+    // second tile to the right so there are no gaps when scrolling wraps
+    ctx.drawImage(cloudImg, cx2 + W + CLOUD_W + 40, cy2, CLOUD_W, CLOUD_H);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 function drawBg() {
   const t = performance.now() / 1000;
   if (currentTheme === 'city') {
@@ -138,16 +163,7 @@ function drawBg() {
       ctx.beginPath(); ctx.ellipse(tx2 - tw*0.2, ty2 - th2*0.65, tw*0.7, th2*0.4, 0, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // Clouds
-    for (let i = 0; i < 8; i++) {
-      const cx2 = ((i*680+100) - camera*0.06) % (W+300) - 80;
-      const cy2 = 45 + (i%4)*22 + cameraY*0.03, cr = 30 + (i%3)*12;
-      ctx.globalAlpha = 0.85; ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.ellipse(cx2, cy2, cr, cr*0.55, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx2+cr*0.7, cy2+4, cr*0.7, cr*0.45, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx2-cr*0.65, cy2+5, cr*0.6, cr*0.4, 0, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    drawClouds(0.06, 0.03);
 
   } else if (currentTheme === 'happy') {
     // Big cheerful sun
@@ -179,16 +195,7 @@ function drawBg() {
       ctx.beginPath(); ctx.moveTo(hx-hw,hy); ctx.quadraticCurveTo(hx, hy-hh, hx+hw, hy); ctx.fill();
     }
     ctx.globalAlpha = 1;
-    // Fluffy clouds
-    for (let i = 0; i < 10; i++) {
-      const cx2 = ((i*580+80) - camera*0.07) % (W+300) - 80;
-      const cy2 = 40+(i%5)*24 + cameraY*0.03, cr = 32+(i%3)*14;
-      ctx.globalAlpha = 0.9; ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.ellipse(cx2, cy2, cr, cr*0.55, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx2+cr*0.75, cy2+5, cr*0.7, cr*0.45, 0, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx2-cr*0.7, cy2+6, cr*0.65, cr*0.4, 0, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    drawClouds(0.07, 0.03);
     // Flowers near ground
     for (let i = 0; i < 40; i++) {
       const fx = (i*230+50) - camera*0.28;
@@ -250,29 +257,7 @@ function drawBg() {
     ctx.fillStyle = '#fff9aa';
     ctx.beginPath(); ctx.arc(sunX - 7, sunY - 7, 14, 0, Math.PI*2); ctx.fill();
 
-    // Puffy Kirby-style clouds — big rounded blobs
-    const clouds = [
-      { x:  80, y: 55, s: 1.0 }, { x: 260, y: 38, s: 1.3 }, { x: 460, y: 62, s: 0.9 },
-      { x: 620, y: 40, s: 1.1 }, { x: 820, y: 58, s: 1.2 }, { x:1020, y: 44, s: 0.85 },
-      { x:1200, y: 60, s: 1.0 }, { x:1400, y: 42, s: 1.15 },
-    ];
-    function drawKirbyCloud(cx2, cy2, s) {
-      ctx.fillStyle = '#ffffff';
-      // main blob cluster
-      for (const [ox, oy, r] of [
-        [0,0,22],[26,-6,18],[-26,-6,17],[10,-18,15],[-10,-18,14],[20,-20,12],
-      ]) {
-        ctx.beginPath(); ctx.arc(cx2 + ox*s, cy2 + oy*s, r*s, 0, Math.PI*2); ctx.fill();
-      }
-      // soft shadow underside
-      ctx.fillStyle = '#ddf0ff';
-      ctx.beginPath(); ctx.ellipse(cx2, cy2 + 8*s, 30*s, 10*s, 0, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    for (const c of clouds) {
-      const cx2 = (c.x * TILE - camera * 0.12) % (W + 300) - 150;
-      drawKirbyCloud(cx2, c.y + cameraY * 0.04, c.s);
-    }
+    drawClouds(0.12, 0.04);
 
     // Far round trees (light green, distant)
     for (let i = 0; i < 18; i++) {

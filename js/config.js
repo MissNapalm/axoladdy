@@ -12,6 +12,7 @@ const walkSheet     = new Image(); walkSheet.src     = 'assets/images/walk_sheet
 const fireballSheet = new Image(); fireballSheet.src = 'assets/images/fireball_sheet.png';
 const batSheet      = new Image(); batSheet.src      = 'assets/images/bat_sheet.png';
 const baddieSheet   = new Image(); baddieSheet.src   = 'assets/images/baddie_sheet.png';
+const cloudImg      = new Image(); cloudImg.src      = 'assets/images/cloud.jpg';
 
 const BAT_FRAMES    = 59;
 const BAT_COLS      = 10;
