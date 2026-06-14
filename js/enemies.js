@@ -567,6 +567,8 @@ const warden = {
   homingCooldown: 0,
   vulnTimer: 0,       // frames the warden is open to damage after all sentinels die
   sentinels: [],      // 3 red pulsing bats
+  homingHits: 0,      // homing hits this cycle; at 3 → homing_stun + dive
+  chargeWobble: 0,    // phase angle for vertical bob during charge
 };
 
 // ── Red Bat mini-boss (level 1 end) ──────────────────────────────────────────
@@ -1444,11 +1446,12 @@ function updateWarden() {
 
   // Gravity — stomp lands on actual ground, otherwise hover 1 tile up
   const floorY = (warden.state === 'stomp' || warden.state === 'stomp_recover') ? WARDEN_GROUND : WARDEN_HOVER;
-  if (!warden.onGround) {
+  const skipGravity = warden.state === 'homing_stun' || warden.state === 'dive' || warden.state === 'charge';
+  if (!warden.onGround && !skipGravity) {
     warden.vy += 0.5;
     if (warden.vy > 22) warden.vy = 22;
   }
-  warden.y += warden.vy;
+  if (!skipGravity || warden.state === 'dive') warden.y += warden.vy;
   if (warden.y + warden.h >= floorY) {
     warden.y = floorY - warden.h;
     const wasFalling = warden.vy > 8;
@@ -1467,6 +1470,11 @@ function updateWarden() {
   }
   warden.x += warden.vx;
   warden.x = Math.max(WARDEN_ARENA_X, Math.min(WARDEN_ARENA_R - warden.w, warden.x));
+  // Clamp warden above ground during dive
+  if (warden.y + warden.h > WARDEN_GROUND) {
+    warden.y = WARDEN_GROUND - warden.h;
+    warden.vy = 0;
+  }
 
   // Shockwaves
   for (let i = warden.shockwaves.length - 1; i >= 0; i--) {
@@ -1531,7 +1539,11 @@ function updateWarden() {
     }
 
   } else if (warden.state === 'charge') {
-    if (warden.stateTimer <= 0 || !warden.onGround ||
+    // Bob vertically so player can't just crouch on the ground
+    warden.chargeWobble += 0.18;
+    warden.y = WARDEN_HOVER - warden.h + Math.sin(warden.chargeWobble) * 38;
+    warden.onGround = false;
+    if (warden.stateTimer <= 0 ||
         warden.x <= WARDEN_ARENA_X + 4 || warden.x >= WARDEN_ARENA_R - warden.w - 4) {
       if (warden.phase === 2) {
         for (let r = 0; r < 2; r++) {
@@ -1563,6 +1575,37 @@ function updateWarden() {
       warden.onGround = false;
       warden.vy = -4; // gentle rise back to hover height
     }
+
+  } else if (warden.state === 'homing_stun') {
+    // Shake in place after 3 homing hits
+    warden.vx = 0; warden.vy = 0;
+    warden.onGround = false;
+    warden.y = WARDEN_HOVER - warden.h;
+    warden.shakeX = 10;
+    if (warden.stateTimer <= 0) {
+      // Lock onto player position and dive
+      warden.state = 'dive';
+      warden.stateTimer = 80;
+      const tx = player.x + player.w / 2 - warden.w / 2;
+      const ty = player.y + player.h / 2 - warden.h / 2;
+      const dx = tx - warden.x, dy = ty - warden.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const speed = 18;
+      warden.vx = (dx / dist) * speed;
+      warden.vy = (dy / dist) * speed;
+      warden.shakeX = 0;
+    }
+
+  } else if (warden.state === 'dive') {
+    // Fly straight at locked direction — no homing correction
+    warden.onGround = false;
+    if (warden.stateTimer <= 0 ||
+        warden.x <= WARDEN_ARENA_X || warden.x >= WARDEN_ARENA_R - warden.w) {
+      warden.vx = 0; warden.vy = 0;
+      warden.state = 'idle';
+      warden.stateTimer = 80;
+      warden.y = WARDEN_HOVER - warden.h;
+    }
   }
 
   // Direct hit detection
@@ -1583,18 +1626,18 @@ function updateWarden() {
         if (hp <= 0) { killPlayer(); return; }
       }
     } else if (player.homing && player.homingTarget === warden) {
-      if (!wardenVuln) {
-        // Shield bounce — kill the home
-        player.homing = false; player.homingTarget = null;
-        player.vx = -Math.sign(player.vx || 1) * 9; player.vy = -8;
-        hurtPlayer(1); player.invincible = 60;
-        if (hp <= 0) { killPlayer(); return; }
-      } else {
-        damageWarden(1);
-        player.homing = false; player.homingTarget = null; player.ballForm = true;
-        player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
-        player.vx = player.dir * CFG.moveSpeed * 1.5;
-        player.homingUsed = false; comboCount++; comboTimer = 120;
+      // Homing always hurts the warden regardless of vulnerability
+      damageWarden(1);
+      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
+      player.vx = player.dir * CFG.moveSpeed * 1.5;
+      player.homingUsed = false; comboCount++; comboTimer = 120;
+      warden.homingHits++;
+      if (warden.homingHits >= 3 && warden.state !== 'homing_stun' && warden.state !== 'dive' && !warden.dead) {
+        warden.homingHits = 0;
+        warden.state = 'homing_stun';
+        warden.stateTimer = 90;
+        warden.vx = 0; warden.vy = 0;
       }
     } else if (warden.state === 'charge' && player.invincible === 0) {
       // Charge attack damages player

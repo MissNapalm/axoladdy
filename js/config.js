@@ -668,7 +668,7 @@ function loadLevel(n) {
       x: 70 * TILE, y: WARDEN_HOVER - 72, vx: 0, vy: 0, dir: -1,
       hitFlash: 0, lockFlash: 0, shakeX: 0, eyePulse: 0, invulTimer: 0,
       onGround: true, shockwaves: [], rocks: [],
-      vulnTimer: 0, homingCooldown: 0,
+      vulnTimer: 0, homingCooldown: 0, homingHits: 0, chargeWobble: 0,
     });
     // Spawn 3 red sentinel bats at random x positions in the arena
     const arenaW = WARDEN_ARENA_R - WARDEN_ARENA_X;
