@@ -599,7 +599,7 @@ function drawEnemy(g) {
       _batTintCtx.globalAlpha = 1;
       ctx.drawImage(_batTintCanvas, cx - dw/2, cy - dh/2);
     } else {
-      const bFrame2 = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
+      const bFrame2 = Math.floor((performance.now() / 1000 * 10 + g.id * 7)) % BADDIE_FRAMES;
       const dw = Math.round(TILE * CFG.gnomeScale), dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
       drawBaddieSprite(ctx, bFrame2, dw, dh, cx - dw / 2, g.y + g.h - dh, '#ff6600');
     }
@@ -629,17 +629,18 @@ function drawEnemy(g) {
     drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, isRedBat);
   } else {
     // Ground goomba — sprite from baddie.mov sheet
-    const baddieFrame = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
+    const baddieFrame = Math.floor((performance.now() / 1000 * 10 + g.id * 7)) % BADDIE_FRAMES;
     const dw = Math.round(TILE * CFG.gnomeScale);
     const dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
-    // Flip sprite based on walk direction
+    const dx = cx - dw / 2, dy = g.y + g.h - dh;
     ctx.save();
-    if (g.vx > 0) {
-      ctx.translate(cx + dw / 2, 0);
+    if (g.vx < 0) {
+      // mirror: translate to right edge of sprite, flip X
+      ctx.translate(dx + dw, 0);
       ctx.scale(-1, 1);
-      drawBaddieSprite(ctx, baddieFrame, dw, dh, 0, g.y + g.h - dh, null);
+      drawBaddieSprite(ctx, baddieFrame, dw, dh, 0, dy, null);
     } else {
-      drawBaddieSprite(ctx, baddieFrame, dw, dh, cx - dw / 2, g.y + g.h - dh, null);
+      drawBaddieSprite(ctx, baddieFrame, dw, dh, dx, dy, null);
     }
     ctx.restore();
   }
