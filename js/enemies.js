@@ -1574,9 +1574,16 @@ function updateWarden() {
         warden.shockwaves.push({ cx: cx + 80, dir:  1, r: 8, maxR: 380, life: 50, maxLife: 50 });
         warden.shockwaves.push({ cx: cx - 80, dir: -1, r: 8, maxR: 380, life: 50, maxLife: 50 });
       }
-      warden.state = 'stomp_recover';
-      warden.stateTimer = 180; // 3 seconds on ground — vulnerable window
-      warden.vulnTimer = 180;
+      warden.stompCount = (warden.stompCount || 0) + 1;
+      if (warden.stompCount >= 3) {
+        warden.stompCount = 0;
+        warden.state = 'stomp_recover';
+        warden.stateTimer = 180;
+        warden.vulnTimer = 180;
+      } else {
+        warden.state = 'stomp_recover';
+        warden.stateTimer = 60; // short recover, not vulnerable
+      }
     }
   }
   warden.x += warden.vx;
@@ -1631,7 +1638,7 @@ function updateWarden() {
     if (warden.onGround) warden.vx += (warden.dir * (1.5 + warden.phase * 0.5) - warden.vx) * 0.08;
     if (warden.stateTimer <= 0) {
       warden.vx = 0;
-      if (Math.random() < 0.5) {
+      if (Math.random() < 0.25) {
         warden.state = 'stomp'; warden.stateTimer = 80;
         warden.onGround = false;
         const dx = px - wx;
@@ -1674,8 +1681,14 @@ function updateWarden() {
   } else if (warden.state === 'stomp') {
     if (warden.stateTimer <= 0 && !warden.onGround) {
       warden.y = WARDEN_GROUND - warden.h; warden.vy = 0; warden.onGround = true;
-      warden.state = 'stomp_recover'; warden.stateTimer = 180;
-      warden.vulnTimer = 180;
+      warden.stompCount = (warden.stompCount || 0) + 1;
+      if (warden.stompCount >= 3) {
+        warden.stompCount = 0;
+        warden.state = 'stomp_recover'; warden.stateTimer = 180;
+        warden.vulnTimer = 180;
+      } else {
+        warden.state = 'stomp_recover'; warden.stateTimer = 60;
+      }
     }
 
   } else if (warden.state === 'stomp_recover') {
@@ -1785,16 +1798,14 @@ function drawWarden() {
   ctx.translate(wsx + warden.w / 2 + shk, warden.y + warden.h / 2);
 
   const flash = warden.hitFlash > 0 && Math.floor(warden.hitFlash / 3) % 2 === 0;
-  const vulnPulse = warden.vulnTimer > 0 ? 0.55 + 0.45 * Math.sin(performance.now() * 0.018) : 0;
+  const vulnFlash = warden.vulnTimer > 0 && Math.floor(performance.now() / 120) % 2 === 0;
 
   const aGrad = ctx.createRadialGradient(0, 0, warden.w * 0.15, 0, 0, warden.w * 0.9);
-  const glowInner = warden.vulnTimer > 0 ? `rgba(255,0,0,${0.5 + 0.4 * vulnPulse})` : glowColor + '55';
-  const glowOuter = warden.vulnTimer > 0 ? `rgba(255,0,0,0)` : 'rgba(0,0,0,0)';
-  aGrad.addColorStop(0, glowInner);
-  aGrad.addColorStop(1, glowOuter);
+  aGrad.addColorStop(0, glowColor + '55');
+  aGrad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = aGrad;
   ctx.beginPath(); ctx.ellipse(0, 0, warden.w * 0.9, warden.h * 0.9, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = flash ? '#ffffff' : (warden.vulnTimer > 0 ? `rgba(220,${Math.round(20*vulnPulse)},${Math.round(20*vulnPulse)},1)` : (phase === 1 ? '#2a1a0a' : '#3a0a0a'));
+  ctx.fillStyle = flash ? '#ffffff' : vulnFlash ? '#cc0000' : (phase === 1 ? '#2a1a0a' : '#3a0a0a');
   const hw = warden.w / 2 - 2, hh = warden.h / 2 - 2;
   ctx.beginPath();
   ctx.moveTo(-hw + 10, -hh); ctx.lineTo(hw - 10, -hh);
@@ -1835,7 +1846,6 @@ function drawWarden() {
   ctx.fillText('THE WARDEN', 0, barY - 3);
 
   ctx.restore();
-  if (player.homingTarget === warden || warden.lockFlash > 0) drawLockOn(warden);
 
   // Draw sentinel bats
   const now2 = performance.now() / 1000;
