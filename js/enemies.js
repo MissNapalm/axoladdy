@@ -1638,14 +1638,14 @@ function updateWarden() {
     if (warden.onGround) warden.vx += (warden.dir * (1.5 + warden.phase * 0.5) - warden.vx) * 0.08;
     if (warden.stateTimer <= 0) {
       warden.vx = 0;
-      if (Math.random() < 0.25) {
+      if (Math.random() < 0.45) {
         warden.state = 'stomp'; warden.stateTimer = 80;
         warden.onGround = false;
         const dx = px - wx;
         warden.vx = Math.sign(dx) * Math.min(Math.abs(dx) * 0.06, 8) * (1 + warden.phase * 0.3);
         warden.vy = -(13 + warden.phase * 2);
       } else {
-        warden.state = 'charge_telegraph'; warden.stateTimer = 40;
+        warden.state = 'charge_telegraph'; warden.stateTimer = 70;
       }
     }
 
@@ -1653,7 +1653,7 @@ function updateWarden() {
     warden.vx = 0;
     if (warden.stateTimer <= 0) {
       warden.state = 'charge'; warden.stateTimer = 35 + Math.floor(Math.random() * 10);
-      warden.vx = warden.dir * (14 + warden.phase * 3);
+      warden.vx = warden.dir * (9 + warden.phase * 2);
     }
 
   } else if (warden.state === 'charge') {
