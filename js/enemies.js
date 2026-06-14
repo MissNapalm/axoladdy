@@ -1597,11 +1597,18 @@ function updateWarden() {
         if (hp <= 0) { killPlayer(); return; }
       }
     } else if (player.homing && player.homingTarget === warden) {
-      // Homing bounces off — no damage, not a blocked hit
       player.homing = false; player.homingTarget = null; player.ballForm = true;
-      player.vy = Math.min(player.vy, -CFG.jump1 * 0.8);
-      player.vx = -Math.sign(player.vx || 1) * CFG.moveSpeed * 2;
       player.homingUsed = false;
+      if (wardenVuln) {
+        damageWarden(1);
+        player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
+        player.vx = player.dir * CFG.moveSpeed * 1.5;
+        comboCount++; comboTimer = 120;
+      } else {
+        // Bounce off — no damage
+        player.vy = Math.min(player.vy, -CFG.jump1 * 0.8);
+        player.vx = -Math.sign(player.vx || 1) * CFG.moveSpeed * 2;
+      }
     } else if (warden.state === 'charge' && player.invincible === 0) {
       // Charge attack damages player
       hurtPlayer(1); player.invincible = 80;
@@ -1667,13 +1674,16 @@ function drawWarden() {
   ctx.translate(wsx + warden.w / 2 + shk, warden.y + warden.h / 2);
 
   const aGrad = ctx.createRadialGradient(0, 0, warden.w * 0.15, 0, 0, warden.w * 0.9);
-  aGrad.addColorStop(0, glowColor + '55');
-  aGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  const glowInner = warden.vulnTimer > 0 ? `rgba(255,0,0,${0.5 + 0.4 * vulnPulse})` : glowColor + '55';
+  const glowOuter = warden.vulnTimer > 0 ? `rgba(255,0,0,0)` : 'rgba(0,0,0,0)';
+  aGrad.addColorStop(0, glowInner);
+  aGrad.addColorStop(1, glowOuter);
   ctx.fillStyle = aGrad;
   ctx.beginPath(); ctx.ellipse(0, 0, warden.w * 0.9, warden.h * 0.9, 0, 0, Math.PI * 2); ctx.fill();
 
   const flash = warden.hitFlash > 0 && Math.floor(warden.hitFlash / 3) % 2 === 0;
-  ctx.fillStyle = flash ? '#ffffff' : (phase === 1 ? '#2a1a0a' : '#3a0a0a');
+  const vulnPulse = warden.vulnTimer > 0 ? 0.55 + 0.45 * Math.sin(performance.now() * 0.018) : 0;
+  ctx.fillStyle = flash ? '#ffffff' : (warden.vulnTimer > 0 ? `rgba(220,${Math.round(20*vulnPulse)},${Math.round(20*vulnPulse)},1)` : (phase === 1 ? '#2a1a0a' : '#3a0a0a'));
   const hw = warden.w / 2 - 2, hh = warden.h / 2 - 2;
   ctx.beginPath();
   ctx.moveTo(-hw + 10, -hh); ctx.lineTo(hw - 10, -hh);
