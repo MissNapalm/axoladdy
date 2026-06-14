@@ -372,17 +372,17 @@ function playTrack(audio) {
   const vid    = document.getElementById('intro-vid');
   const prompt = document.getElementById('press-enter');
   let dismissed = false;
-  let musicStarted = false;
 
-  function startIntroMusic() {
-    if (musicStarted) return;
-    musicStarted = true;
-    playTrack(introMusic);
-  }
-
-  // Start on first user interaction (bypasses autoplay block)
-  document.addEventListener('keydown', startIntroMusic, { once: true });
-  document.addEventListener('click',   startIntroMusic, { once: true });
+  // Try to play immediately; if blocked, retry on first interaction
+  introMusic.play().catch(() => {
+    function startOnInteraction() {
+      introMusic.play().catch(() => {});
+      document.removeEventListener('keydown', startOnInteraction);
+      document.removeEventListener('click',   startOnInteraction);
+    }
+    document.addEventListener('keydown', startOnInteraction);
+    document.addEventListener('click',   startOnInteraction);
+  });
 
   vid.addEventListener('ended', () => { prompt.style.display = 'block'; });
   vid.addEventListener('error', () => { prompt.style.display = 'block'; });
@@ -391,7 +391,9 @@ function playTrack(audio) {
     if (dismissed) return;
     dismissed = true;
     vid.pause();
-    playTrack(null);
+    introMusic.pause();
+    introMusic.currentTime = 0;
+    currentTrack = null;
     screen.style.display = 'none';
     loadLevel(currentLevel);
     hp = MAX_HP;
