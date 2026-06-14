@@ -111,12 +111,8 @@ function updateChaser() {
     }
 
   } else if (chaser.state === 'cooldown') {
-    // Resume hovering
-    const tx = player.x + chaser.targetOffX;
-    const ty = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 10;
-    const dx = tx - chaser.x, dy = ty - chaser.y;
-    chaser.vx += dx * 0.1; chaser.vy += dy * 0.1;
-    chaser.vx *= 0.75;     chaser.vy *= 0.75;
+    // Hold position after firing — drift to a stop, don't chase
+    chaser.vx *= 0.88; chaser.vy *= 0.88;
     chaser.x += chaser.vx; chaser.y += chaser.vy;
     if (chaser.stateTimer <= 0) {
       chaser.state = 'hover';

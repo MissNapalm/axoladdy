@@ -561,14 +561,14 @@ function getSolidsNear(px, py, pw, ph) {
 }
 
 // ── Chaser (test enemy) — defined here so initLevel can reset it ──────────────
-const CHASER_R = 24; // smaller than before
+const CHASER_R = 16;
 const chaser = {
   active: false, triggered: false, descending: false,
   dead: false, deadTimer: 0,
   x: 0, y: 0, vx: 0, vy: 0,
   w: CHASER_R * 2, h: CHASER_R * 2,
   hp: 10, maxHp: 10, hitFlash: 0, wobble: 0,
-  targetOffX: 130, targetOffY: -80, // further away
+  targetOffX: 180, targetOffY: -100,
   // attack state machine
   state: 'hover',   // hover | aiming | telegraph | cooldown
   stateTimer: 0,
