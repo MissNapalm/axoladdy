@@ -30,7 +30,10 @@ function updateChaser() {
     const b = chaser.bolt;
     b.x += b.vx; b.y += b.vy;
     b.life--;
-    if (b.reflected) {
+    // Kill bolt on ground/ceiling contact or expiry (mark dead so homing cancels)
+    if (b.y >= groundY * TILE || b.y < 0 || b.life <= 0) {
+      b.dead = true; chaser.bolt = null;
+    } else if (b.reflected) {
       // Reflected bolt — check if it hits the chaser
       const cr = { x: chaser.x, y: chaser.y, w: chaser.w, h: chaser.h };
       const br2 = { x: b.x - 8, y: b.y - 8, w: 16, h: 16 };
@@ -38,13 +41,11 @@ function updateChaser() {
         chaser.hp--;
         chaser.hitFlash = 14;
         spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, false);
-        chaser.bolt = null;
+        b.dead = true; chaser.bolt = null;
         if (chaser.hp <= 0) {
           chaser.dead = true; chaser.deadTimer = 60;
           spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, true);
         }
-      } else if (b.life <= 0) {
-        chaser.bolt = null;
       }
     } else {
       // Normal bolt — hits player
@@ -54,9 +55,7 @@ function updateChaser() {
         hurtPlayer(1); player.invincible = 60;
         player.vy = -6; player.vx = (player.x < b.x ? -1 : 1) * 8;
         if (hp <= 0) { killPlayer(); return; }
-        chaser.bolt = null;
-      } else if (b.life <= 0) {
-        chaser.bolt = null;
+        b.dead = true; chaser.bolt = null;
       }
     }
   }
@@ -80,9 +79,9 @@ function updateChaser() {
   chaser.stateTimer--;
 
   if (chaser.state === 'hover') {
-    // Float beside player, flip side based on movement
-    if (player.vx < -0.5) chaser.targetOffX = -Math.abs(chaser.targetOffX);
-    else if (player.vx > 0.5) chaser.targetOffX = Math.abs(chaser.targetOffX);
+    // Float beside player, lerp to opposite side based on movement direction
+    const wantOffX = player.vx < -0.5 ? -180 : player.vx > 0.5 ? 180 : chaser.targetOffX;
+    chaser.targetOffX += (wantOffX - chaser.targetOffX) * 0.04;
     const tx = player.x + chaser.targetOffX;
     const ty = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 10;
     const dx = tx - chaser.x, dy = ty - chaser.y;
@@ -121,7 +120,7 @@ function updateChaser() {
         x: cx, y: cy,
         vx: Math.cos(chaser.laserAngle) * speed,
         vy: Math.sin(chaser.laserAngle) * speed,
-        life: 120, reflected: false,
+        life: 120, reflected: false, dead: false,
         w: 16, h: 16, // needed for homing distance calc (treated as center)
       };
       chaser.hitFlash = 0;
