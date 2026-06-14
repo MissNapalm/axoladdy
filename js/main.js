@@ -583,6 +583,11 @@ const abilityMenu = {
 
 // Apply purchased abilities to CFG on load
 (function applyPurchased() {
+  // Reset all ability-controlled keys to locked defaults first
+  // so stale localStorage values don't grant abilities
+  CFG.dashCount    = 1;
+  CFG.homingChain  = 0;
+  CFG.stompKill    = 0;
   for (const grp of ABILITY_DEFS) {
     let best = null;
     for (const item of grp.items) { if (abilityMenu.purchased.has(item.id)) best = item; }
