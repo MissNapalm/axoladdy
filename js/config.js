@@ -265,8 +265,11 @@ const LEVELS = [
     platforms: [{x:10,y:8,w:5,t:'brick'},{x:30,y:5,w:4,t:'qblock'},{x:70,y:3,w:8,t:'brick'},{x:100,y:7,w:5,t:'qblock'},{x:130,y:4,w:6,t:'brick'},{x:165,y:2,w:8,t:'qblock'},{x:200,y:6,w:5,t:'brick'},{x:230,y:3,w:7,t:'qblock'},{x:270,y:5,w:6,t:'brick'},{x:300,y:2,w:9,t:'qblock'},{x:360,y:4,w:7,t:'brick'},{x:400,y:7,w:5,t:'qblock'},{x:430,y:3,w:8,t:'brick'},{x:460,y:6,w:6,t:'qblock'},{x:500,y:2,w:7,t:'brick'},{x:530,y:5,w:5,t:'qblock'},{x:570,y:3,w:8,t:'brick'},{x:610,y:7,w:5,t:'qblock'},{x:640,y:4,w:6,t:'brick'},{x:670,y:2,w:8,t:'qblock'},{x:710,y:6,w:5,t:'brick'},{x:740,y:3,w:7,t:'qblock'},{x:780,y:5,w:6,t:'brick'},{x:820,y:2,w:8,t:'qblock'},{x:870,y:4,w:7,t:'brick'},{x:910,y:7,w:5,t:'qblock'},{x:940,y:3,w:6,t:'brick'},{x:970,y:6,w:7,t:'qblock'},{x:1010,y:2,w:8,t:'brick'},{x:1050,y:5,w:5,t:'qblock'},{x:1080,y:3,w:7,t:'brick'},{x:1120,y:7,w:5,t:'qblock'},{x:1160,y:4,w:8,t:'brick'},{x:45,y:6,w:1,t:'hblock'},{x:195,y:5,w:1,t:'hblock'},{x:395,y:6,w:1,t:'hblock'},{x:595,y:6,w:1,t:'hblock'},{x:795,y:5,w:1,t:'hblock'},{x:995,y:6,w:1,t:'hblock'}],
     pipes: [{x:15,h:3},{x:55,h:2},{x:108,h:4},{x:180,h:3},{x:240,h:2},{x:320,h:4},{x:410,h:3},{x:480,h:2},{x:545,h:4},{x:625,h:3},{x:690,h:2},{x:755,h:4},{x:830,h:3},{x:900,h:2},{x:975,h:4},{x:1035,h:3},{x:1100,h:2},{x:1165,h:3}],
     coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,55,8);ca(75,6,6,8);cl(110,145,4);ca(170,5,5,7);cl(205,255,6);ca(280,4,6,8);cl(310,345,5);ca(375,3,5,7);cl(410,445,6);ca(470,5,6,8);cl(510,555,4);ca(580,6,5,7);cl(615,655,5);ca(680,4,6,8);cl(715,755,6);ca(775,5,5,7);cl(810,855,4);ca(875,3,6,8);cl(912,955,5);ca(980,6,5,7);cl(1015,1055,4);ca(1075,5,6,8);cl(1115,1145,6);cl(1160,1188,5); }),
-    goombas: [{x:12,pl:5,pr:25},{x:35,pl:25,pr:55},{x:75,pl:65,pr:100},{x:108,pl:100,pr:128},{x:138,pl:128,pr:160},{x:175,pl:165,pr:200},{x:210,pl:200,pr:230},{x:240,pl:230,pr:265},{x:280,pl:270,pr:305},{x:315,pl:305,pr:345},{x:365,pl:355,pr:400},{x:412,pl:400,pr:445},{x:462,pl:450,pr:495},{x:512,pl:500,pr:545},{x:562,pl:550,pr:605},{x:618,pl:605,pr:655},{x:665,pl:655,pr:705},{x:715,pl:705,pr:755},{x:768,pl:755,pr:808},{x:822,pl:808,pr:858},{x:868,pl:858,pr:908},{x:915,pl:905,pr:955},{x:968,pl:955,pr:1005},{x:1015,pl:1005,pr:1048},{x:1058,pl:1048,pr:1095},{x:1108,pl:1095,pr:1148},{x:1158,pl:1148,pr:1190}],
-    flyers: [{x:25,fy:4*TILE,pw:7},{x:80,fy:3*TILE,pw:8},{x:145,fy:5*TILE,pw:7},{x:215,fy:4*TILE,pw:6},{x:275,fy:3*TILE,pw:8},{x:360,fy:5*TILE,pw:7},{x:420,fy:4*TILE,pw:6},{x:490,fy:3*TILE,pw:8},{x:560,fy:5*TILE,pw:7},{x:630,fy:4*TILE,pw:6},{x:700,fy:3*TILE,pw:8},{x:775,fy:5*TILE,pw:7},{x:840,fy:4*TILE,pw:6},{x:915,fy:3*TILE,pw:8},{x:975,fy:5*TILE,pw:7},{x:1045,fy:4*TILE,pw:6},{x:1115,fy:3*TILE,pw:8},{x:1165,fy:5*TILE,pw:7}],
+    goombas: [{x:12,pl:5,pr:25},{x:35,pl:25,pr:55},{x:75,pl:65,pr:100},{x:108,pl:100,pr:128},{x:138,pl:128,pr:150},{x:210,pl:200,pr:230},{x:240,pl:230,pr:265},{x:280,pl:270,pr:305},{x:315,pl:305,pr:345},{x:365,pl:355,pr:400},{x:412,pl:400,pr:445},{x:462,pl:450,pr:495},{x:512,pl:500,pr:545},{x:562,pl:550,pr:605},{x:618,pl:605,pr:655},{x:665,pl:655,pr:705},{x:715,pl:705,pr:755},{x:768,pl:755,pr:808},{x:822,pl:808,pr:858},{x:868,pl:858,pr:908},{x:915,pl:905,pr:955},{x:968,pl:955,pr:1005},{x:1015,pl:1005,pr:1048},{x:1058,pl:1048,pr:1095},{x:1108,pl:1095,pr:1148},{x:1158,pl:1148,pr:1190}],
+    flyers: [{x:25,fy:4*TILE,pw:7},{x:80,fy:3*TILE,pw:8},{x:215,fy:4*TILE,pw:6},{x:275,fy:3*TILE,pw:8},{x:360,fy:5*TILE,pw:7},{x:420,fy:4*TILE,pw:6},{x:490,fy:3*TILE,pw:8},{x:560,fy:5*TILE,pw:7},{x:630,fy:4*TILE,pw:6},{x:700,fy:3*TILE,pw:8},{x:775,fy:5*TILE,pw:7},{x:840,fy:4*TILE,pw:6},{x:915,fy:3*TILE,pw:8},{x:975,fy:5*TILE,pw:7},{x:1045,fy:4*TILE,pw:6},{x:1115,fy:3*TILE,pw:8},{x:1165,fy:5*TILE,pw:7}],
+    hasChaserEncounter: true,
+    chaserTriggerX: 150 * TILE,
+    chaserExitX: 200 * TILE,
   },
   // Level 3 — staircase theme
   {
@@ -568,7 +571,7 @@ const chaser = {
   x: 0, y: 0, vx: 0, vy: 0,
   w: CHASER_R * 2, h: CHASER_R * 2,
   hp: 3, maxHp: 3, hitFlash: 0, wobble: 0,
-  targetOffX: 110, targetOffY: -200,
+  targetOffX: 80, targetOffY: -200,
   // attack state machine
   state: 'hover',   // hover | aiming | telegraph | cooldown
   stateTimer: 0,

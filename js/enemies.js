@@ -1,7 +1,7 @@
 
 function updateChaser() {
   const lv = LEVELS[currentLevel];
-  if (!lv?.isTestLevel) return;
+  if (!lv?.isTestLevel && !lv?.hasChaserEncounter) return;
 
   if (!chaser.triggered && !chaser.active && player.x >= (lv.chaserTriggerX || 12 * TILE)) {
     chaser.triggered = true;
@@ -11,6 +11,14 @@ function updateChaser() {
     chaser.y = player.y - 600;
     chaser.vx = 0; chaser.vy = 0;
     chaser.state = 'hover'; chaser.stateTimer = 180;
+  }
+
+  // Exit zone — flee upward and deactivate
+  if (lv.chaserExitX && chaser.active && !chaser.dead && player.x >= lv.chaserExitX) {
+    chaser.vy -= 3;
+    chaser.y += chaser.vy;
+    if (chaser.y < -200) { chaser.active = false; chaser.triggered = false; }
+    return;
   }
 
   if (!chaser.active) return;
@@ -148,7 +156,7 @@ function updateChaser() {
 
 function drawChaser() {
   const lv = LEVELS[currentLevel];
-  if (!lv?.isTestLevel || !chaser.active) return;
+  if ((!lv?.isTestLevel && !lv?.hasChaserEncounter) || !chaser.active) return;
 
   const scx = Math.round(chaser.x - camera + chaser.w / 2);
   const scy = Math.round(chaser.y - cameraY + chaser.h / 2);
