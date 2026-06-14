@@ -15,7 +15,7 @@ function drawBatSprite(targetCtx, frame, dw, dh, dx, dy, tintColor) {
     _batTintCtx.clearRect(0, 0, dw, dh);
     _batTintCtx.drawImage(batSheet, col * BAT_FW, row * BAT_FH, BAT_FW, BAT_FH, 0, 0, dw, dh);
     _batTintCtx.globalCompositeOperation = 'source-atop';
-    _batTintCtx.globalAlpha = 0.55;
+    _batTintCtx.globalAlpha = 0.35;
     _batTintCtx.fillStyle = color;
     _batTintCtx.fillRect(0, 0, dw, dh);
     _batTintCtx.globalCompositeOperation = 'source-over';
@@ -34,7 +34,7 @@ function drawBaddieSprite(targetCtx, frame, dw, dh, dx, dy, tint) {
     _baddieTintCtx.clearRect(0, 0, dw, dh);
     _baddieTintCtx.drawImage(baddieSheet, col * BADDIE_FW, row * BADDIE_FH, BADDIE_FW, BADDIE_FH, 0, 0, dw, dh);
     _baddieTintCtx.globalCompositeOperation = 'source-atop';
-    _baddieTintCtx.globalAlpha = 0.8;
+    _baddieTintCtx.globalAlpha = 0.45;
     _baddieTintCtx.fillStyle = tint;
     _baddieTintCtx.fillRect(0, 0, dw, dh);
     _baddieTintCtx.globalCompositeOperation = 'source-over';
