@@ -84,9 +84,8 @@ function update(dt) {
     const wantH = goLeft || goRight || (!goingUp);
     const wantUp = goingUp;
     const frenzy = player.frenzyTimer > 0;
-    const maxDash = frenzy ? 4 : 1;
-    const canUp = wantUp && player.dashUsedUp < maxDash;
-    const canH  = wantH  && player.dashUsedH  < maxDash;
+    const canUp = wantUp && (frenzy || player.dashUsedUp < 1);
+    const canH  = wantH  && (frenzy || player.dashUsedH  < 1);
 
     if (wantUp && wantH && (canUp || canH)) {
       // diagonal — only allowed if both directions still available
