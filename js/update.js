@@ -65,7 +65,7 @@ function update(dt) {
   // Space/jump while airborne — homing attack if enemy nearby
   // Frenzy: 3 homes per jump freely; normal: 3 total but need kill to re-enable per use
   const frenzyActive = player.frenzyTimer > 0;
-  const homingAllowed = player.homingCount < 3 && (frenzyActive || !player.homingUsed);
+  const homingAllowed = player.homingCount < CFG.homingChain && (frenzyActive || !player.homingUsed);
   if (jumpJustPressed && !player.onGround && !player.homing && homingAllowed) {
     const target = nearestLiveGoomba(frenzyActive ? HOMING_RANGE : 169);
     if (target) {
