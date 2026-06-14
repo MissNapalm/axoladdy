@@ -41,6 +41,7 @@ function loop(ts) {
   drawWarden();
   drawRedBat();
   drawSnipers();
+  drawChaser();
   drawParticlesAll();
   if (!dead) drawPlayer();
   else drawDeathAnimation();

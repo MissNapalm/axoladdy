@@ -650,7 +650,7 @@ function drawGoombas() {
 }
 
 function drawFlagPole() {
-  if (LEVELS[currentLevel]?.isTutorial || currentLevel === 1) return;
+  if (LEVELS[currentLevel]?.isTutorial || LEVELS[currentLevel]?.isTestLevel || currentLevel === 1) return;
   const sx = FLAG_X * TILE - camera;
   const t = performance.now() / 500;
   // Beacon pillar

@@ -400,6 +400,18 @@ const LEVELS = [
     goombas: [],
     flyers: [],
   },
+  // Level 15 — ENEMY TEST ROOM
+  {
+    isTestLevel: true,
+    gaps: [],
+    platforms: [],
+    pipes: [],
+    coinDefs: [],
+    goombas: [],
+    flyers: [],
+    // Trigger zone: walking past tile 12 spawns the chaser
+    chaserTriggerX: 12 * TILE,
+  },
 ];
 
 let currentLevel = parseInt(localStorage.getItem('axo_level') || '0');
@@ -683,6 +695,13 @@ function loadLevel(n) {
   lvlComplete.active = false; lvlComplete.timer = 0;
   redBat.active = false; redBat.dead = false; redBat.hp = RB_MAX_HP;
   redBat.hitFlash = 0; redBat.phase2 = false; redBat.state = 'idle'; redBat.stateTimer = 0;
+  // Reset chaser
+  chaser.active = false; chaser.triggered = false; chaser.dead = false;
+  chaser.hp = chaser.maxHp; chaser.hitFlash = 0;
+  chaser.x = 30 * TILE; chaser.y = -6 * TILE; chaser.vx = 0; chaser.vy = 0;
+  if (lv.isTestLevel) {
+    chaser.triggered = false;
+  }
   // Spawn red bat mini-boss for level 1 only
   if (currentLevel === 1) {
     const rbX = 480 * TILE;

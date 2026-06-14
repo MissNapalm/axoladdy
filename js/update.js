@@ -488,6 +488,7 @@ function update(dt) {
   updateWarden();
   updateRedBat();
   updateSnipers();
+  updateChaser();
 
   // Flag — level complete on non-boss, non-tutorial levels (not level 1 which ends with red bat)
   if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial && currentLevel !== 1) {

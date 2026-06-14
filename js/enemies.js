@@ -1,3 +1,137 @@
+// ── Chaser (test enemy) ───────────────────────────────────────────────────────
+const CHASER_R = 40; // radius — roughly 2× axo
+const chaser = {
+  active: false,
+  triggered: false, // has trigger been walked through
+  descending: false,
+  dead: false, deadTimer: 0,
+  x: 0, y: 0,
+  vx: 0, vy: 0,
+  w: CHASER_R * 2, h: CHASER_R * 2,
+  hp: 10, maxHp: 10,
+  hitFlash: 0,
+  wobble: 0,
+  // hover offset from player (stays slightly ahead/beside, not on top)
+  targetOffX: 80,  // pixels to the right of player
+  targetOffY: -60, // pixels above player
+};
+
+function updateChaser() {
+  const lv = LEVELS[currentLevel];
+  if (!lv?.isTestLevel) return;
+
+  // Trigger: player crosses chaserTriggerX and chaser not yet active
+  if (!chaser.triggered && !chaser.active && player.x >= (lv.chaserTriggerX || 12 * TILE)) {
+    chaser.triggered = true;
+    chaser.active = true;
+    chaser.descending = true;
+    // spawn above screen, above player x
+    chaser.x = player.x;
+    chaser.y = player.y - 600;
+    chaser.vx = 0; chaser.vy = 0;
+  }
+
+  if (!chaser.active) return;
+  chaser.wobble += 0.06;
+
+  if (chaser.dead) {
+    chaser.deadTimer--;
+    chaser.y += 2;
+    if (chaser.deadTimer <= 0) chaser.active = false;
+    return;
+  }
+
+  if (chaser.hitFlash > 0) chaser.hitFlash--;
+
+  if (chaser.descending) {
+    // Fast descent toward hover position
+    const targetX = player.x + chaser.targetOffX;
+    const targetY = player.y + chaser.targetOffY;
+    const dx = targetX - chaser.x;
+    const dy = targetY - chaser.y;
+    chaser.vx += dx * 0.04;
+    chaser.vy += dy * 0.04;
+    chaser.vx *= 0.7;
+    chaser.vy *= 0.7;
+    chaser.x += chaser.vx;
+    chaser.y += chaser.vy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 20 && Math.abs(chaser.vy) < 3) chaser.descending = false;
+    return;
+  }
+
+  // Hovering phase: follow player with a spring, offset to one side
+  // Flip offset side based on which direction player is moving
+  if (player.vx < -0.5) chaser.targetOffX = -80;
+  else if (player.vx > 0.5) chaser.targetOffX = 80;
+
+  const targetX = player.x + chaser.targetOffX;
+  const targetY = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 8;
+  const dx = targetX - chaser.x;
+  const dy = targetY - chaser.y;
+  // Tight spring follow — feels "stuck" to player but still floaty
+  chaser.vx += dx * 0.12;
+  chaser.vy += dy * 0.12;
+  chaser.vx *= 0.72;
+  chaser.vy *= 0.72;
+  chaser.x += chaser.vx;
+  chaser.y += chaser.vy;
+}
+
+function drawChaser() {
+  const lv = LEVELS[currentLevel];
+  if (!lv?.isTestLevel || !chaser.active) return;
+  const cx = Math.round(chaser.x - camera + chaser.w / 2);
+  const cy = Math.round(chaser.y - cameraY + chaser.h / 2);
+  const r = CHASER_R;
+
+  ctx.save();
+
+  // Death fade
+  if (chaser.dead) {
+    ctx.globalAlpha = Math.max(0, chaser.deadTimer / 60);
+  }
+
+  // Outer glow
+  const glowR = r + 10 + 4 * Math.sin(chaser.wobble);
+  const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, glowR);
+  grad.addColorStop(0, 'rgba(40,120,255,0.35)');
+  grad.addColorStop(1, 'rgba(40,120,255,0)');
+  ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Body
+  const flash = chaser.hitFlash > 0;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = flash ? '#ffffff' : '#2255ee';
+  ctx.fill();
+  ctx.strokeStyle = flash ? '#aaddff' : '#88bbff';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Inner highlight
+  ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.35, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(180,220,255,0.35)'; ctx.fill();
+
+  // Eyes (two white dots with dark pupils)
+  const eyeOff = r * 0.3;
+  for (const ex of [-eyeOff, eyeOff]) {
+    ctx.beginPath(); ctx.arc(cx + ex, cy - r * 0.15, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#ddeeff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + ex + 2, cy - r * 0.15 + 2, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#001133'; ctx.fill();
+  }
+
+  // HP bar
+  const barW = r * 2.2, barH = 5;
+  const barX = cx - barW / 2, barY = cy - r - 16;
+  ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#3388ff';
+  ctx.fillRect(barX, barY, barW * (chaser.hp / chaser.maxHp), barH);
+
+  ctx.restore();
+}
+
 // ── Boss ──────────────────────────────────────────────────────────────────────
 const BOSS_MAX_HP  = 18;
 const BOSS_ARENA_X = 15 * TILE;   // left wall of arena
@@ -590,7 +724,7 @@ function updateRedBat() {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !redBat.hitFlash) {
-        damageRedBatou(player.frenzyTimer > 0 ? redBat.hp : 1);
+        damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
         player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -6; player.dashFrames = 0;
       } else if (player.homing) {
         // homing handled in nearestLiveGoomba redirect — handled below
