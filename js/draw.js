@@ -48,8 +48,7 @@ function drawBaddieSprite(targetCtx, frame, dw, dh, dx, dy, tint) {
 // cloud.jpg is 1200x864 — draw tiled instances scrolling at parallax speed
 const CLOUD_W = 220, CLOUD_H = 120; // display size per cloud instance
 const CLOUD_POSITIONS = [
-  {ox:0,   y:30}, {ox:280, y:18}, {ox:530, y:42},
-  {ox:760, y:22}, {ox:990, y:38}, {ox:1220,y:14},
+  {ox:0, y:28}, {ox:380, y:14}, {ox:720, y:38},
 ];
 function drawClouds(parallaxX, parallaxY) {
   if (!cloudImg.complete || !cloudImg.naturalWidth) return;
