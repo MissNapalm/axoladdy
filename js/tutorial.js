@@ -32,6 +32,10 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
   if (redBat.active && !redBat.dead && (redBat.state === 'idle' || redBat.state === 'freeze')) {
     candidates.push(redBat);
   }
+  // Snipers — homing target only during reload
+  for (const sn of snipers) {
+    if (!sn.dead && sn.state === 'reload') candidates.push(sn);
+  }
   for (const g of candidates) {
     if (g.dead) continue;
     const gx = g.x + g.w / 2, gy = g.y + g.h / 2;

@@ -1,14 +1,27 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
+// HiDPI: render at device pixel ratio so sprites are sharp on retina screens
+const DPR = Math.min(window.devicePixelRatio || 1, 3);
+canvas.style.width  = canvas.width  + 'px';
+canvas.style.height = canvas.height + 'px';
+canvas.width  *= DPR;
+canvas.height *= DPR;
+
 const walkSheet     = new Image(); walkSheet.src     = 'assets/images/walk_sheet.png';
 const fireballSheet = new Image(); fireballSheet.src = 'assets/images/fireball_sheet.png';
+const batSheet      = new Image(); batSheet.src      = 'assets/images/bat_sheet.png';
+
+const BAT_FRAMES = 59;
+const BAT_COLS   = 10;
+const BAT_FW     = 128;
+const BAT_FH     = 135;
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 function playSound() {}
 const WALK_FRAMES   = 27;
-const WALK_FW       = 177;
-const WALK_FH       = 128;
+const WALK_FW       = 354;
+const WALK_FH       = 256;
 let   walkFrame     = 0;
 let   walkTick      = 0;
 const WALK_SPEED    = 4;
@@ -34,6 +47,7 @@ const DEFAULTS = {
   moveSpeed: 3.5,
   axoSize: 44,
   enemySize: 32,
+  batScale: 1.8,
   smoothing: 1,
   spriteRot: 20,
   spriteOffset: 4,
@@ -115,13 +129,13 @@ const THEMES = {
     hpBlock:'#880022', hpBlockInner:'#cc0033', hpGlow:'#ff6688', hpText:'#ffaacc',
   },
   woods: {
-    skyTop:'#1a3a0a', skyBot:'#2d5c18',
-    ground:'#3a2208', groundSub:'#2a1804', groundEdge:'#88cc44', groundTrace:'#4a3010', groundNode:'#aaee55',
-    brick:'#4a3010', brickInner:'#5a3c18', brickEdge:'#88cc44', brickCross:'#3a2208',
-    qOuter:'#3a2800', qInner:'#5a4010', qGlow:'#aaee44', qBorder:'#88cc33', qHi:'#ddff99', qChar:'🍃',
-    pipe:'#1a4a08', pipeRail:'#33aa22', pipeFlow:'#aaffaa', pipeCap:'#228811', pipeCapDk:'#114400', pipeCore:'#66dd44',
-    orb:'#ffee44', orbHi:'#ffffaa',
-    hpBlock:'#0a2200', hpBlockInner:'#1a4400', hpGlow:'#55ff22', hpText:'#aaffaa',
+    skyTop:'#4a9ec8', skyBot:'#7ac4e8',
+    ground:'#6b4423', groundSub:'#4a2e14', groundEdge:'#8a5c30', groundTrace:'#5a3818', groundNode:'#a06a38',
+    brick:'#d4703a', brickInner:'#e8884a', brickEdge:'#f0a060', brickCross:'#b85a28',
+    qOuter:'#f5c542', qInner:'#ffe066', qGlow:'#ff9900', qBorder:'#cc8800', qHi:'#fff5aa', qChar:'⭐',
+    pipe:'#44aa22', pipeRail:'#66cc44', pipeFlow:'#aaff55', pipeCap:'#2a8810', pipeCapDk:'#1a5c08', pipeCore:'#88ee44',
+    orb:'#ffdd44', orbHi:'#ffffaa',
+    hpBlock:'#cc3366', hpBlockInner:'#ee5588', hpGlow:'#ff88aa', hpText:'#ffe0ee',
   },
 };
 // alias for legacy references
@@ -213,6 +227,7 @@ const LEVELS = [
       {x:60,y:7,w:1,t:'hblock'},{x:285,y:7,w:1,t:'hblock'},{x:468,y:6,w:1,t:'hblock'},
     ],
     pipes: [{x:20,h:2},{x:40,h:3},{x:72,h:2},{x:106,h:4},{x:245,h:3},{x:265,h:2},{x:370,h:3},{x:385,h:4},{x:480,h:2},{x:540,h:3},{x:562,h:2}],
+
     coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,14,10);cl(18,50,8);ca(60,9,5,7);cl(88,112,5);ca(130,7,4,6);cl(148,165,5);ca(200,9,5,7);cl(230,258,4);cl(268,298,5);ca(312,6,5,7);cl(338,378,5);cl(390,412,4);ca(425,6,5,7);cl(455,490,5);ca(505,6,4,7);cl(530,556,5); }),
     goombas: [
       {x:10,pl:5,pr:28},{x:35,pl:28,pr:55},
@@ -254,6 +269,7 @@ const LEVELS = [
     coinDefs: makeCoinDefs((cl,ca)=>{ for(let s=0;s<10;s++){const base=s*120+5;cl(base,base+10,10-s%3);cl(base+20,base+35,8-s%4);ca(base+55,7,5,7);cl(base+70,base+90,5+s%3);} }),
     goombas: Array.from({length:30},(_,i)=>({x:35+i*38,pl:28+i*38,pr:68+i*38})),
     flyers: Array.from({length:22},(_,i)=>({x:30+i*52,fy:(3+i%4)*TILE,pw:6+i%3})),
+    snipers: [{x:120,pl:90,pr:155},{x:400,pl:365,pr:440},{x:700,pl:660,pr:740},{x:1000,pl:960,pr:1040}],
   },
   // Level 4 — platformer gauntlet (few ground sections, mostly aerial)
   {
@@ -492,9 +508,11 @@ function buildSolids() {
   for (const pipe of lv.pipes) {
     for (let j = 0; j < pipe.h; j++) {
       const ty = groundY - j;
-      solids.push({ x: pipe.x * TILE, y: ty * TILE, w: TILE * 2, h: TILE, type: j === 0 ? 'pipetop' : 'pipe', tx: pipe.x, ty });
+      const pkey = `pipe_${pipe.x}_${ty}`;
+      solids.push({ x: pipe.x * TILE, y: ty * TILE, w: TILE * 2, h: TILE, type: j === 0 ? 'pipetop' : 'pipe', tx: pipe.x, ty, key: pkey });
     }
   }
+
   return solids;
 }
 let solids = buildSolids();
@@ -522,10 +540,15 @@ function loadLevel(n) {
   coins = lv.coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
   // Every 3rd enemy in level 2+ is a 'shocker'
   const lvl = n; // 0-indexed
-  goombas = lv.goombas.map((g, i) => {
+  goombas = lv.goombas.flatMap((g, i) => {
     const type = 'normal';
     const h = 1; // goombas always 1 hit
-    return { id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
+    const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
+    const companion = { ...base, id: i * 2 + 1, x: (g.x + 3) * TILE, y: groundY * TILE - TILE, vx: -1.4, pl: (g.pl + 3) * TILE, pr: (g.pr + 3) * TILE };
+    return [
+      { ...base, id: i * 2, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, pl: g.pl * TILE, pr: g.pr * TILE },
+      companion,
+    ];
   });
   const halfwayX = 140 * TILE; // black bats before tile 140, red from tile 140
   flyers = lv.flyers.map((f, i) => {
@@ -553,6 +576,9 @@ function loadLevel(n) {
   heartPickups = [];
   projectiles  = [];
   powerBoxes   = [];
+
+  // Snipers (level 3 only)
+  initSnipers(lv.snipers || []);
 
   // Boss setup
   boss.active = false;
@@ -740,10 +766,12 @@ function damageEnemy(g, dmg) {
       const killVal = g.red ? 3 : 1;
       player.frenzyKills = Math.min(player.frenzyKills + killVal, 12);
     }
-    // Any kill while airborne unlocks one more home
+    // Any kill while airborne unlocks one more home and one more dash
     if (!player.onGround) {
       player.homingUsed = false;
       player.homingCount = Math.max(0, player.homingCount - 1);
+      player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+      player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
     }
     return true; // killed
   }

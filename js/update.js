@@ -67,7 +67,7 @@ function update(dt) {
   const frenzyActive = player.frenzyTimer > 0;
   const homingAllowed = player.homingCount < 3 && (frenzyActive || !player.homingUsed);
   if (jumpJustPressed && !player.onGround && !player.homing && homingAllowed) {
-    const target = nearestLiveGoomba(frenzyActive ? HOMING_RANGE : 130);
+    const target = nearestLiveGoomba(frenzyActive ? HOMING_RANGE : 169);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
@@ -145,6 +145,9 @@ function update(dt) {
         if (tg === redBat) {
           damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
           comboCount++; comboTimer = 120;
+        } else if (snipers.includes(tg)) {
+          damageSniperById(tg.id, 1);
+          comboCount++; comboTimer = 120;
         } else {
           const killed = damageEnemy(tg, 1);
           if (killed) { comboCount++; comboTimer = 120; }
@@ -204,23 +207,7 @@ function update(dt) {
   if (player.homing || player.dashFrames > 0) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
-      if (s.key && !blockHit[s.key] && rectsOverlap(pr, s)) hitBlock(s);
-    }
-  }
-
-  // In frenzy, destroy ground/wall tiles on contact too
-  if (player.frenzyTimer > 0) {
-    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
-    for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
-      if (!rectsOverlap(pr, s)) continue;
-      if (!s.key) s.key = `g_${s.tx}_${s.ty}`;
-      if (blockHit[s.key]) continue;
-      blockHit[s.key] = true;
-      score += 50; updateHUD();
-      spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, 'brick');
-      playSound('hit', 0.5);
-      const idx = solids.indexOf(s);
-      if (idx !== -1) solids.splice(idx, 1);
+      if (s.key && s.type !== 'wall' && !blockHit[s.key] && rectsOverlap(pr, s)) hitBlock(s);
     }
   }
 
@@ -228,7 +215,18 @@ function update(dt) {
   if (!player.homing) {
     const nearX = getSolidsNear(player.x, player.y, player.w, player.h);
     for (const s of nearX) {
-      if (!blockHit[s.key] && rectsOverlap({ x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 }, s)) {
+      if (blockHit[s.key]) continue;
+      const hitBox = { x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 };
+      // Touching check (>=) so frenzy fires even when flush against the tile
+      if (!(hitBox.x <= s.x + s.w && hitBox.x + hitBox.w >= s.x && hitBox.y < s.y + s.h && hitBox.y + hitBox.h > s.y)) continue;
+      if ((s.type === 'pipe' || s.type === 'pipetop') && player.frenzyTimer > 0) {
+        blockHit[s.key] = true;
+        score += 50; updateHUD();
+        spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, 'brick');
+        playSound('hit', 0.5);
+        const idx = solids.indexOf(s);
+        if (idx !== -1) solids.splice(idx, 1);
+      } else if (hitBox.x < s.x + s.w && hitBox.x + hitBox.w > s.x) {
         if (player.vx > 0) player.x = s.x - player.w;
         else if (player.vx < 0) player.x = s.x + s.w;
         player.vx = 0;
@@ -245,29 +243,38 @@ function update(dt) {
   if (!player.homing) {
     const nearY = getSolidsNear(player.x, player.y, player.w, player.h);
     for (const s of nearY) {
-      if (!blockHit[s.key] && rectsOverlap({ x: player.x + 2, y: player.y, w: player.w - 4, h: player.h }, s)) {
-        if (player.vy > 0) {
-          player.y = s.y - player.h;
-          player.vy = 0;
-          if (!wasOnGround) {
-            player.lastLandTime = now;
-            spawnDust(player.x + player.w / 2, player.y + player.h);
-            playSound('land', 0.3);
-            player.spinning = false;
-            if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
-            player.ballForm = false;
-            player.dashingUp = false;
-            player.dashFrames = 0;
-            comboCount = 0; comboTimer = 0;
-          }
-          player.onGround = true;
-          player.homingUsed = false; player.homingCount = 0;
-          player.dashUsedUp = 0; player.dashUsedH = 0;
-        } else if (player.vy < 0) {
-          player.y = s.y + s.h;
-          player.vy = 1;
-          hitBlock(s);
+      if (blockHit[s.key]) continue;
+      if (!rectsOverlap({ x: player.x + 2, y: player.y, w: player.w - 4, h: player.h }, s)) continue;
+      if ((s.type === 'pipe' || s.type === 'pipetop') && player.frenzyTimer > 0) {
+        blockHit[s.key] = true;
+        score += 50; updateHUD();
+        spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, 'brick');
+        playSound('hit', 0.5);
+        const idx = solids.indexOf(s);
+        if (idx !== -1) solids.splice(idx, 1);
+        continue;
+      }
+      if (player.vy > 0) {
+        player.y = s.y - player.h;
+        player.vy = 0;
+        if (!wasOnGround) {
+          player.lastLandTime = now;
+          spawnDust(player.x + player.w / 2, player.y + player.h);
+          playSound('land', 0.3);
+          player.spinning = false;
+          if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
+          player.ballForm = false;
+          player.dashingUp = false;
+          player.dashFrames = 0;
+          comboCount = 0; comboTimer = 0;
         }
+        player.onGround = true;
+        player.homingUsed = false; player.homingCount = 0;
+        player.dashUsedUp = 0; player.dashUsedH = 0;
+      } else if (player.vy < 0) {
+        player.y = s.y + s.h;
+        player.vy = 1;
+        hitBlock(s);
       }
     }
   }
@@ -432,7 +439,7 @@ function update(dt) {
           player.onGround = false;
         }
       } else if (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10)) {
-        damageEnemy(g, 1);
+        if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; }
         player.vy = -6;
         player.onGround = false;
       } else if (player.homing) {
@@ -473,6 +480,7 @@ function update(dt) {
   updateWraith();
   updateWarden();
   updateRedBat();
+  updateSnipers();
 
   // Flag — level complete on non-boss, non-tutorial levels (not level 1 which ends with red bat)
   if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial && currentLevel !== 1) {
@@ -559,11 +567,16 @@ function killPlayer() {
   }, 1200);
 }
 
-document.getElementById('go-restart').addEventListener('click', () => {
+function doRestart() {
   document.getElementById('gameover').classList.remove('show');
   loadLevel(currentLevel);
-  player.hp = player.maxHp;
+  hp = MAX_HP;
   updateHPBar();
+}
+
+document.getElementById('go-restart').addEventListener('click', doRestart);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && dead) doRestart();
 });
 
 let frenzyKeyPressed = false, frenzyKeyDev = false;

@@ -6,6 +6,7 @@ function loop(ts) {
 
   // Draw with zoom
   ctx.save();
+  ctx.scale(DPR, DPR);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   // Sky gradient — theme-driven
@@ -31,6 +32,7 @@ function loop(ts) {
   drawPipes();
   drawGround();
   drawPlatforms();
+
   drawCoins();
   drawHeartPickups();
   drawGoombas();
@@ -38,12 +40,17 @@ function loop(ts) {
   drawWraith();
   drawWarden();
   drawRedBat();
+  drawSnipers();
   drawParticlesAll();
   if (!dead) drawPlayer();
   else drawDeathAnimation();
 
   ctx.restore();
   ctx.restore();
+
+  // All screen-space overlays drawn in logical coords (DPR scaled)
+  ctx.save();
+  ctx.scale(DPR, DPR);
 
   // Turbo activation freeze flash
   if (turboFlash > 0) {
@@ -305,6 +312,8 @@ function loop(ts) {
     }
   }
 
+  ctx.restore(); // end overlay DPR scale
+
   updateHUD();
   requestAnimationFrame(loop);
 }
@@ -325,7 +334,7 @@ function loop(ts) {
     vid.pause();
     screen.style.display = 'none';
     loadLevel(currentLevel);
-    player.hp = player.maxHp;
+    hp = MAX_HP;
     updateHPBar();
     requestAnimationFrame(loop);
   }
@@ -338,7 +347,7 @@ function loop(ts) {
 // ── Level button ─────────────────────────────────────────────────────────────
 document.getElementById('level-btn').addEventListener('change', (e) => {
   loadLevel(parseInt(e.target.value));
-  player.hp = player.maxHp;
+  hp = MAX_HP;
   updateHPBar();
 });
 
@@ -370,6 +379,7 @@ const sliders = [
   { id: 's-speed',        vid: 'v-speed',        key: 'moveSpeed',    fmt: v => v.toFixed(1) },
   { id: 's-size',         vid: 'v-size',         key: 'axoSize',      fmt: v => v + 'px'     },
   { id: 's-enemySize',   vid: 'v-enemySize',   key: 'enemySize',    fmt: v => v + 'px'     },
+  { id: 's-batScale',    vid: 'v-batScale',    key: 'batScale',     fmt: v => v.toFixed(1) + '×' },
   { id: 's-smoothing',  vid: 'v-smoothing',   key: 'smoothing',    fmt: v => v > 0 ? 'smooth' : 'pixel' },
   { id: 's-spriteRot',    vid: 'v-spriteRot',    key: 'spriteRot',    fmt: v => Math.round(v) + '°' },
   { id: 's-spriteOffset', vid: 'v-spriteOffset', key: 'spriteOffset', fmt: v => Math.round(v) + 'px' },

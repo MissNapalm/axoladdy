@@ -1,4 +1,27 @@
 // ── Drawing ───────────────────────────────────────────────────────────────────
+// Persistent offscreen canvas for bat red-tint compositing (avoids per-frame alloc)
+const _batTintCanvas = document.createElement('canvas');
+const _batTintCtx    = _batTintCanvas.getContext('2d');
+
+function drawBatSprite(targetCtx, frame, dw, dh, dx, dy, redTint) {
+  const col = frame % BAT_COLS, row = Math.floor(frame / BAT_COLS);
+  if (redTint) {
+    if (_batTintCanvas.width !== dw || _batTintCanvas.height !== dh) {
+      _batTintCanvas.width = dw; _batTintCanvas.height = dh;
+    }
+    _batTintCtx.clearRect(0, 0, dw, dh);
+    _batTintCtx.drawImage(batSheet, col * BAT_FW, row * BAT_FH, BAT_FW, BAT_FH, 0, 0, dw, dh);
+    _batTintCtx.globalCompositeOperation = 'source-atop';
+    _batTintCtx.globalAlpha = 0.45;
+    _batTintCtx.fillStyle = '#cc1100';
+    _batTintCtx.fillRect(0, 0, dw, dh);
+    _batTintCtx.globalCompositeOperation = 'source-over';
+    _batTintCtx.globalAlpha = 1;
+    targetCtx.drawImage(_batTintCanvas, dx, dy);
+  } else {
+    targetCtx.drawImage(batSheet, col * BAT_FW, row * BAT_FH, BAT_FW, BAT_FH, dx, dy, dw, dh);
+  }
+}
 function drawBg() {
   const t = performance.now() / 1000;
   if (currentTheme === 'city') {
@@ -190,56 +213,90 @@ function drawBg() {
     ctx.globalAlpha = 1;
 
   } else if (currentTheme === 'woods') {
-    // Sun rays through canopy
-    const sunX = W * 0.5 - camera * 0.004, sunY = -20 + cameraY * 0.01;
-    for (let r = 0; r < 6; r++) {
-      const ang = -Math.PI*0.5 + (r - 2.5) * 0.18;
-      const rayLen = 420 + r * 30;
-      ctx.save();
-      ctx.globalAlpha = 0.07 + 0.03 * Math.sin(t * 0.4 + r);
-      ctx.fillStyle = '#ddff88';
-      ctx.beginPath();
-      ctx.moveTo(sunX, sunY);
-      ctx.lineTo(sunX + Math.cos(ang - 0.05) * rayLen, sunY + Math.sin(ang - 0.05) * rayLen);
-      ctx.lineTo(sunX + Math.cos(ang + 0.05) * rayLen, sunY + Math.sin(ang + 0.05) * rayLen);
-      ctx.fill();
-      ctx.restore();
+    // Sun
+    const sunX = W * 0.82 - camera * 0.003;
+    const sunY = 52 + cameraY * 0.005;
+    for (let r = 80; r > 0; r -= 16) {
+      ctx.globalAlpha = 0.07;
+      ctx.fillStyle = '#fff176';
+      ctx.beginPath(); ctx.arc(sunX, sunY, r, 0, Math.PI*2); ctx.fill();
     }
-    // Far trees (dark)
-    for (let i = 0; i < 20; i++) {
-      const tx2 = (i * 480 + 80) - camera * 0.08;
-      const ty2 = H * 0.78 + cameraY * 0.1;
-      const th2 = 90 + (i%4)*35, tw = 28 + (i%3)*12;
-      ctx.fillStyle = '#0e2a06'; ctx.globalAlpha = 0.7;
-      ctx.fillRect(tx2 - 3, ty2 - th2 * 0.5, 6, th2 * 0.5);
-      ctx.beginPath(); ctx.ellipse(tx2, ty2 - th2 * 0.55, tw, th2 * 0.6, 0, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ffee44';
+    ctx.beginPath(); ctx.arc(sunX, sunY, 28, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff9aa';
+    ctx.beginPath(); ctx.arc(sunX - 7, sunY - 7, 14, 0, Math.PI*2); ctx.fill();
+
+    // Puffy Kirby-style clouds — big rounded blobs
+    const clouds = [
+      { x:  80, y: 55, s: 1.0 }, { x: 260, y: 38, s: 1.3 }, { x: 460, y: 62, s: 0.9 },
+      { x: 620, y: 40, s: 1.1 }, { x: 820, y: 58, s: 1.2 }, { x:1020, y: 44, s: 0.85 },
+      { x:1200, y: 60, s: 1.0 }, { x:1400, y: 42, s: 1.15 },
+    ];
+    function drawKirbyCloud(cx2, cy2, s) {
+      ctx.fillStyle = '#ffffff';
+      // main blob cluster
+      for (const [ox, oy, r] of [
+        [0,0,22],[26,-6,18],[-26,-6,17],[10,-18,15],[-10,-18,14],[20,-20,12],
+      ]) {
+        ctx.beginPath(); ctx.arc(cx2 + ox*s, cy2 + oy*s, r*s, 0, Math.PI*2); ctx.fill();
+      }
+      // soft shadow underside
+      ctx.fillStyle = '#ddf0ff';
+      ctx.beginPath(); ctx.ellipse(cx2, cy2 + 8*s, 30*s, 10*s, 0, 0, Math.PI*2); ctx.fill();
     }
-    // Mid trees
-    for (let i = 0; i < 26; i++) {
-      const tx2 = (i * 340 + 40) - camera * 0.18;
-      const ty2 = H * 0.84 + cameraY * 0.15;
-      const th2 = 70 + (i%5)*25, tw = 22 + (i%4)*10;
-      ctx.fillStyle = '#1a4a08'; ctx.globalAlpha = 0.8;
-      ctx.fillRect(tx2 - 4, ty2 - th2 * 0.45, 8, th2 * 0.45);
-      ctx.beginPath(); ctx.ellipse(tx2, ty2 - th2 * 0.5, tw, th2 * 0.55, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#2a6610'; ctx.globalAlpha = 0.5;
-      ctx.beginPath(); ctx.ellipse(tx2 - tw*0.25, ty2 - th2*0.65, tw*0.65, th2*0.38, 0, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    for (const c of clouds) {
+      const cx2 = (c.x * TILE - camera * 0.12) % (W + 300) - 150;
+      drawKirbyCloud(cx2, c.y + cameraY * 0.04, c.s);
     }
-    // Close foliage fringe along top
-    for (let i = 0; i < 40; i++) {
-      const fx = (i * 180 + 20) - camera * 0.35;
-      const fy = 8 + (i%3)*14 + cameraY * 0.02;
-      const fw = 55 + (i%4)*22, fh = 38 + (i%3)*18;
-      ctx.fillStyle = i%2===0 ? '#1e5c0a' : '#143d06'; ctx.globalAlpha = 0.9;
-      ctx.beginPath(); ctx.ellipse(fx, fy, fw, fh, 0, 0, Math.PI*2); ctx.fill();
-    }
-    // Fireflies
+
+    // Far round trees (light green, distant)
     for (let i = 0; i < 18; i++) {
-      const fx = ((i*530+70) - camera*0.22) % (W+100) - 30;
-      const fy = 80 + (i%5)*55 + Math.sin(t*1.1+i*1.7)*12 + cameraY*0.1;
-      ctx.globalAlpha = (0.4+0.5*Math.sin(t*2.3+i*2.1)) * 0.8;
-      ctx.fillStyle = '#ccff44';
-      ctx.beginPath(); ctx.arc(fx, fy, 2, 0, Math.PI*2); ctx.fill();
+      const tx2 = (i * 580 + 120) - camera * 0.07;
+      const baseY = H * 0.80 + cameraY * 0.09;
+      const r = 34 + (i%4)*12;
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = '#88cc44';
+      ctx.fillRect(tx2 - 5, baseY - r * 0.9, 10, r * 0.9);
+      ctx.fillStyle = '#99dd55';
+      ctx.beginPath(); ctx.arc(tx2, baseY - r * 0.9, r, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#bbee77';
+      ctx.beginPath(); ctx.arc(tx2 - r*0.2, baseY - r * 1.1, r * 0.55, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Near round trees (bright Kirby greens)
+    for (let i = 0; i < 26; i++) {
+      const tx2 = (i * 390 + 40) - camera * 0.18;
+      const baseY = H * 0.86 + cameraY * 0.14;
+      const r = 28 + (i%5)*10;
+      // trunk
+      ctx.fillStyle = '#8b5c2a';
+      ctx.fillRect(tx2 - 5, baseY - r * 0.7, 10, r * 0.7);
+      // main canopy
+      ctx.fillStyle = i%3===0 ? '#44cc22' : i%3===1 ? '#55dd33' : '#33bb11';
+      ctx.beginPath(); ctx.arc(tx2, baseY - r * 0.75, r, 0, Math.PI*2); ctx.fill();
+      // highlight blob
+      ctx.fillStyle = '#88ee55';
+      ctx.beginPath(); ctx.arc(tx2 - r*0.25, baseY - r * 1.0, r * 0.5, 0, Math.PI*2); ctx.fill();
+      // tiny highlight dot
+      ctx.fillStyle = '#ccff99';
+      ctx.beginPath(); ctx.arc(tx2 - r*0.3, baseY - r * 1.1, r * 0.18, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Flowers along the ground horizon
+    for (let i = 0; i < 40; i++) {
+      const fx = (i * 310 + 55) - camera * 0.35;
+      const fy = H * 0.91 + cameraY * 0.18 - 6;
+      const fc = ['#ff88cc','#ffcc44','#ff6688','#ff99dd','#ffee66'][i%5];
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#55cc22';
+      ctx.fillRect(fx - 1, fy, 2, 10);
+      ctx.fillStyle = fc;
+      ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff9cc';
+      ctx.beginPath(); ctx.arc(fx, fy, 1.5, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
@@ -304,6 +361,7 @@ function drawPlatforms() {
   }
 }
 
+
 function drawBlock(sx, sy, type) {
   const th = THEMES[currentTheme];
   if (type === 'brick') {
@@ -348,7 +406,11 @@ function drawPipes() {
   for (const pipe of LEVELS[currentLevel].pipes) {
     const sx = pipe.x * TILE - camera;
     if (sx < -64 || sx > W + 64) continue;
-    for (let j = 0; j < pipe.h; j++) drawPipeTile(sx, (groundY - j) * TILE, j === 0);
+    for (let j = 0; j < pipe.h; j++) {
+      const ty = groundY - j;
+      if (blockHit[`pipe_${pipe.x}_${ty}`]) continue;
+      drawPipeTile(sx, ty * TILE, j === 0);
+    }
   }
 }
 
@@ -498,11 +560,31 @@ function drawEnemy(g) {
   const es = CFG.enemySize;
   const er = es / 2;
   if (g.hitFlash > 0 && Math.floor(g.hitFlash / 3) % 2 === 0) {
-    ctx.save();
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.ellipse(cx, cy, er, er, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    if (g.flying) {
+      // Orange hit-flash: draw tinted sprite via offscreen canvas
+      const batFrame2 = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BAT_FRAMES;
+      const scale = g.red ? 1.5 : 1;
+      const dw = Math.round(TILE * CFG.batScale * scale), dh = Math.round(dw * BAT_FH / BAT_FW);
+      const col2 = batFrame2 % BAT_COLS, row2 = Math.floor(batFrame2 / BAT_COLS);
+      if (_batTintCanvas.width !== dw || _batTintCanvas.height !== dh) {
+        _batTintCanvas.width = dw; _batTintCanvas.height = dh;
+      }
+      _batTintCtx.clearRect(0, 0, dw, dh);
+      _batTintCtx.drawImage(batSheet, col2 * BAT_FW, row2 * BAT_FH, BAT_FW, BAT_FH, 0, 0, dw, dh);
+      _batTintCtx.globalCompositeOperation = 'source-atop';
+      _batTintCtx.globalAlpha = 0.8;
+      _batTintCtx.fillStyle = '#ff6600';
+      _batTintCtx.fillRect(0, 0, dw, dh);
+      _batTintCtx.globalCompositeOperation = 'source-over';
+      _batTintCtx.globalAlpha = 1;
+      ctx.drawImage(_batTintCanvas, cx - dw/2, cy - dh/2);
+    } else {
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#ff8844';
+      ctx.beginPath(); ctx.ellipse(cx, cy, er, er, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
     return;
   }
 
@@ -524,47 +606,11 @@ function drawEnemy(g) {
 
   if (g.flying) {
     const isRedBat = g.red;
-    const scale = isRedBat ? 1.35 : 1;
-    const wingSpan = (30 + Math.sin(t * 3 + g.wobble) * 10) * scale;
-    const flapOff = Math.abs(Math.sin(t * 3 + g.wobble)) * 14 * scale;
-    ctx.save();
-    // Wings
-    ctx.fillStyle = isRedBat ? '#5a0000' : '#111111';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 2);
-    ctx.lineTo(cx - wingSpan, cy - 5 - flapOff);
-    ctx.lineTo(cx - wingSpan + 12 * scale, cy + 7);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 2);
-    ctx.lineTo(cx + wingSpan, cy - 5 - flapOff);
-    ctx.lineTo(cx + wingSpan - 12 * scale, cy + 7);
-    ctx.fill();
-    // Wing membrane highlight
-    ctx.fillStyle = isRedBat ? '#8b1010' : '#2a2a2a';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 1);
-    ctx.lineTo(cx - wingSpan * 0.6, cy - 2 - flapOff * 0.5);
-    ctx.lineTo(cx - wingSpan * 0.55, cy + 3);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 1);
-    ctx.lineTo(cx + wingSpan * 0.6, cy - 2 - flapOff * 0.5);
-    ctx.lineTo(cx + wingSpan * 0.55, cy + 3);
-    ctx.fill();
-    // Body
-    ctx.fillStyle = isRedBat ? '#3a0000' : '#0a0a0a';
-    ctx.beginPath(); ctx.ellipse(cx, cy, 12 * scale, 10 * scale, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = isRedBat ? '#660000' : '#1c1c1c';
-    ctx.beginPath(); ctx.ellipse(cx, cy - 1, 8 * scale, 7 * scale, 0, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-    // Eyes — red bats have orange-yellow eyes
-    ctx.fillStyle = isRedBat ? '#ff6600' : '#ff2244';
-    ctx.beginPath(); ctx.arc(cx - 4 * scale, cy - 2, 4 * scale, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 4 * scale, cy - 2, 4 * scale, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = isRedBat ? '#ffcc00' : '#ffee00';
-    ctx.beginPath(); ctx.arc(cx - 4 * scale, cy - 2, 1.8 * scale, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 4 * scale, cy - 2, 1.8 * scale, 0, Math.PI*2); ctx.fill();
+    const scale = isRedBat ? 1.5 : 1;
+    const batFrame = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BAT_FRAMES;
+    const dw = Math.round(TILE * CFG.batScale * scale);
+    const dh = Math.round(dw * (BAT_FH / BAT_FW));
+    drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, isRedBat);
   } else {
     // Ground blob — pink (tough enemies are darker red)
     const squish = wf ? 1.1 : 0.95;
@@ -574,7 +620,7 @@ function drawEnemy(g) {
     ctx.beginPath(); ctx.ellipse(0, -g.h/2, g.w/2 - 2, g.h/2 - 1, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = toughTint ? '#bb3344' : '#ee5a9a';
     ctx.beginPath(); ctx.ellipse(-2, -g.h/2 - 1, g.w/2 - 6, g.h/2 - 5, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#ffccdd';
     ctx.beginPath(); ctx.arc(-5, -g.h * 0.65, 4, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(5, -g.h * 0.65, 4, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#ff2266';

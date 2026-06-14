@@ -590,7 +590,7 @@ function updateRedBat() {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !redBat.hitFlash) {
-        damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
+        damageRedBatou(player.frenzyTimer > 0 ? redBat.hp : 1);
         player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -6; player.dashFrames = 0;
       } else if (player.homing) {
         // homing handled in nearestLiveGoomba redirect — handled below
@@ -613,34 +613,36 @@ function drawRedBat() {
   const isFreezing = redBat.state === 'freeze';
   const isCharging = redBat.state === 'charge' || redBat.state === 'return';
 
-  if (redBat.dead) {
-    // Spin and fade out
+  // Sprite sheet frame — same 24fps loop as regular bats, offset by id
+  const batFrame = Math.floor((t * 24 + 31)) % BAT_FRAMES;
+  const dw = Math.round(TILE * CFG.batScale * sc);
+  const dh = Math.round(dw * (BAT_FH / BAT_FW));
+
+  function drawRbSprite(alpha, rotateAngle) {
     ctx.save();
-    ctx.globalAlpha = Math.max(0, redBat.deadTimer / 180);
-    ctx.translate(cx, cy);
-    ctx.rotate(redBat.wobble * 3);
-    ctx.scale(sc, sc);
-    _drawBatShape(0, 0, t, redBat.wobble, true, false, true);
+    if (rotateAngle) { ctx.translate(cx, cy); ctx.rotate(rotateAngle); ctx.translate(-cx, -cy); }
+    ctx.globalAlpha = alpha;
+    drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, true);
     ctx.restore();
+  }
+
+  if (redBat.dead) {
+    drawRbSprite(Math.max(0, redBat.deadTimer / 180), redBat.wobble * 3);
     return;
   }
 
-  ctx.save();
-  if (redBat.hitFlash > 0 && Math.floor(redBat.hitFlash / 3) % 2 === 0) {
-    ctx.globalAlpha = 0.4;
-  }
-
-  // Freeze warning — white pulse
+  // Freeze warning — orange pulse ring (no white)
   if (isFreezing) {
     const pulse = 0.3 + 0.7 * Math.abs(Math.sin(t * 12));
     ctx.save();
-    ctx.globalAlpha = pulse * 0.7;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.arc(cx, cy, redBat.w * 0.7, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = pulse * 0.8;
+    ctx.strokeStyle = '#ff6600';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, redBat.w * 0.75, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
   }
 
-  // Charge — draw motion blur streaks
+  // Charge — motion blur streaks
   if (isCharging) {
     ctx.save();
     ctx.globalAlpha = 0.18;
@@ -656,15 +658,13 @@ function drawRedBat() {
   // HP bar above bat
   const barW = redBat.w * 1.4;
   const barX = cx - barW / 2;
-  const barY = cy - redBat.h / 2 - 14;
+  const barY = cy - dh / 2 - 14;
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(barX - 1, barY - 1, barW + 2, 9);
   ctx.fillStyle = redBat.hp > 3 ? '#ff4444' : '#ff8800';
   ctx.fillRect(barX, barY, barW * (redBat.hp / RB_MAX_HP), 7);
 
-  ctx.translate(cx, cy);
-  ctx.scale(sc, sc);
-  _drawBatShape(0, 0, t, redBat.wobble, true, isCharging, true);
-  ctx.restore();
+  const hitFading = redBat.hitFlash > 0 && Math.floor(redBat.hitFlash / 3) % 2 === 0;
+  drawRbSprite(hitFading ? 0.35 : 1, 0);
 }
 
 function _drawBatShape(cx, cy, t, wobble, isRed, fast, isGreen) {
@@ -1633,6 +1633,258 @@ function drawWarden() {
     ctx.fillRect(wsx - 8, warden.y - 8, warden.w + 16, warden.h + 16);
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+}
+
+// ── Sniper ────────────────────────────────────────────────────────────────────
+// Ground-walking mini-boss for level 3.
+// States: patrol → lock (beam drawn) → fire (bullet) → reload (blue, homing-able)
+// 3 homing hits to kill; only homing-able during reload.
+
+let snipers = [];
+
+function initSnipers(defs) {
+  snipers = defs.map((d, i) => ({
+    id: 9000 + i,
+    x: d.x * TILE, y: (groundY - 1) * TILE,
+    w: TILE, h: TILE,
+    pl: d.pl * TILE, pr: d.pr * TILE,
+    vx: -1.2,
+    dir: -1,
+    hp: 3, maxHp: 3,
+    dead: false, deadTimer: 0,
+    hitFlash: 0, lockFlash: 0,
+    flying: false,
+    state: 'patrol',   // patrol | lock | fire | reload
+    stateTimer: 140,   // first shot delay
+    // laser tracking: current aim position
+    aimX: 0, aimY: 0,
+    // bullet ref (null or { x,y,vx,vy,life,sniper:true })
+    bullet: null,
+    frame: 0,
+  }));
+}
+
+function damageSniperById(id, dmg) {
+  const s = snipers.find(s => s.id === id);
+  if (!s || s.dead || s.hitFlash > 0) return false;
+  // Only homing hits land during reload; all else bounce off
+  s.hp -= dmg;
+  s.hitFlash = 18;
+  spawnExplosion(s.x + s.w / 2, s.y + s.h / 2, false);
+  playSound('hit', 0.6);
+  if (s.hp <= 0) {
+    s.dead = true; s.deadTimer = 40;
+    score += 1500; updateHUD();
+    comboCount += 3; comboTimer = 160;
+    if (!player.onGround) {
+      player.homingUsed = false;
+      player.homingCount = Math.max(0, player.homingCount - 1);
+      player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+      player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
+    }
+    return true;
+  }
+  // After a homing hit survive → go back to patrol/lock cycle
+  s.state = 'patrol';
+  s.stateTimer = 90;
+  return false;
+}
+
+function updateSnipers() {
+  for (const s of snipers) {
+    if (s.dead) { if (s.deadTimer > 0) s.deadTimer--; continue; }
+    if (s.hitFlash > 0) s.hitFlash--;
+    s.frame += 0.12;
+    s.stateTimer--;
+
+    const px = player.x + player.w / 2;
+    const py = player.y + player.h / 2;
+    const sx = s.x + s.w / 2;
+    const sy = s.y + s.h / 2;
+
+    if (s.state === 'patrol') {
+      // Walk left-right within patrol bounds
+      s.x += s.vx;
+      if (s.x <= s.pl) { s.x = s.pl; s.vx = Math.abs(s.vx); s.dir = 1; }
+      if (s.x + s.w >= s.pr) { s.x = s.pr - s.w; s.vx = -Math.abs(s.vx); s.dir = -1; }
+      // Face player
+      s.dir = px < sx ? -1 : 1;
+
+      // Only lock on when player is airborne
+      if (!player.onGround && s.stateTimer <= 0) {
+        s.state = 'lock';
+        s.stateTimer = 90; // ~1.5s lock-on before shot
+        s.aimX = px; s.aimY = py;
+      }
+
+    } else if (s.state === 'lock') {
+      // Track player smoothly while locking
+      s.aimX += (px - s.aimX) * 0.08;
+      s.aimY += (py - s.aimY) * 0.08;
+      s.dir = s.aimX < sx ? -1 : 1;
+
+      if (!player.onGround) {
+        // Reset timer as long as player stays airborne — only fires when locked
+        if (s.stateTimer <= 0) {
+          // Snap aim to current player pos and fire
+          s.aimX = px; s.aimY = py;
+          const dx = s.aimX - sx, dy = s.aimY - sy;
+          const dist = Math.hypot(dx, dy) || 1;
+          const spd = 7;
+          s.bullet = { x: sx, y: sy, vx: (dx / dist) * spd, vy: (dy / dist) * spd, life: 180, sniperId: s.id };
+          projectiles.push(s.bullet);
+          s.state = 'reload';
+          s.stateTimer = 70; // reload window — blue & homing-able
+        }
+      } else {
+        // Player landed — abort lock, go back to patrol
+        s.state = 'patrol';
+        s.stateTimer = 80;
+      }
+
+    } else if (s.state === 'reload') {
+      // Stand still while reloading; homing/dash can hit here
+      if (s.stateTimer <= 0) {
+        s.state = 'patrol';
+        s.stateTimer = 100 + Math.floor(Math.random() * 60);
+      }
+
+      // Contact damage during reload (homing handled by main loop)
+      const gr = { x: s.x + 2, y: s.y + 2, w: s.w - 4, h: s.h - 4 };
+      const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+      if (rectsOverlap(gr, pr) && !player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
+        hurtPlayer(1); player.invincible = 80;
+        player.vx = (player.x < sx ? -1 : 1) * 9; player.vy = -7;
+        player.onGround = false;
+        playSound('hurt', 0.6);
+        if (hp <= 0) killPlayer();
+      }
+    }
+
+    // During patrol/lock, touching player hurts them (not homing-targetable)
+    if (s.state === 'patrol' || s.state === 'lock') {
+      const gr = { x: s.x + 2, y: s.y + 2, w: s.w - 4, h: s.h - 4 };
+      const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+      if (rectsOverlap(gr, pr) && player.invincible === 0 && !player.homing && !player.ballForm && !player.dashFrames) {
+        hurtPlayer(1); player.invincible = 80;
+        player.vx = (player.x < sx ? -1 : 1) * 9; player.vy = -7;
+        player.onGround = false;
+        playSound('hurt', 0.6);
+        if (hp <= 0) killPlayer();
+      }
+    }
+  }
+}
+
+function drawSnipers() {
+  const t = performance.now() / 1000;
+  for (const s of snipers) {
+    const ssx = s.x - camera;
+    if (ssx < -TILE * 3 || ssx > W + TILE * 3) continue;
+    const cx = ssx + s.w / 2, cy = s.y + s.h / 2;
+
+    if (s.dead) {
+      if (s.deadTimer > 0) {
+        ctx.globalAlpha = s.deadTimer / 40;
+        ctx.fillStyle = '#446688';
+        ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      continue;
+    }
+
+    const isReload = s.state === 'reload';
+    const isLock   = s.state === 'lock';
+
+    // ── Draw lock-on laser beam ──────────────────────────────────────────────
+    if (isLock) {
+      const lockFrac = 1 - s.stateTimer / 90; // 0→1 as lock progresses
+      const aimSx = s.aimX - camera;
+      ctx.save();
+      // Outer glow
+      ctx.globalAlpha = 0.18 + 0.12 * Math.sin(t * 20);
+      ctx.strokeStyle = '#ff4400';
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(aimSx, s.aimY); ctx.stroke();
+      // Core beam — thickens as lock increases
+      ctx.globalAlpha = 0.5 + 0.4 * lockFrac;
+      ctx.strokeStyle = `hsl(${20 + lockFrac * 30}, 100%, 65%)`;
+      ctx.lineWidth = 1.5 + lockFrac * 3;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(aimSx, s.aimY); ctx.stroke();
+      // Pulsing dot at aim point
+      ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 18);
+      ctx.fillStyle = '#ff8800';
+      ctx.beginPath(); ctx.arc(aimSx, s.aimY, 4 + lockFrac * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // ── Body ─────────────────────────────────────────────────────────────────
+    if (s.hitFlash > 0 && Math.floor(s.hitFlash / 3) % 2 === 0) {
+      ctx.save(); ctx.globalAlpha = 0.7;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(cx, cy, s.w / 2 - 2, s.h / 2 - 1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // Still draw HP bar
+    } else {
+      const bodyColor  = isReload ? '#1a4a88' : '#223344';
+      const bodyHilit  = isReload ? '#2266cc' : '#334455';
+      const wf = Math.floor(s.frame) % 2;
+      const squish = wf ? 1.05 : 0.97;
+      ctx.save();
+      ctx.translate(cx, s.y + s.h);
+      ctx.scale(s.dir, squish); // flip horizontally by dir
+      ctx.scale(1 / squish, 1);
+      // Torso
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath(); ctx.ellipse(0, -s.h / 2, s.w / 2 - 2, s.h / 2 - 1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = bodyHilit;
+      ctx.beginPath(); ctx.ellipse(-2, -s.h / 2 - 1, s.w / 2 - 6, s.h / 2 - 5, 0, 0, Math.PI * 2); ctx.fill();
+      // Eyes — red during patrol/lock, blue during reload
+      ctx.fillStyle = isReload ? '#0088ff' : '#ff2244';
+      ctx.beginPath(); ctx.arc(-5, -s.h * 0.65, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(5, -s.h * 0.65, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = isReload ? '#88ccff' : '#ffee00';
+      ctx.beginPath(); ctx.arc(-5, -s.h * 0.65, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(5, -s.h * 0.65, 2, 0, Math.PI * 2); ctx.fill();
+      // Cannon arm — stub pointing toward aim
+      ctx.fillStyle = isReload ? '#112255' : '#111a22';
+      ctx.fillRect(4, -s.h * 0.55, 10, 5);
+      // Legs
+      ctx.strokeStyle = bodyColor; ctx.lineWidth = 3;
+      const legOff = wf ? 4 : -4;
+      ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-8 + legOff, 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6, -4); ctx.lineTo(8 - legOff, 2); ctx.stroke();
+      ctx.restore();
+
+      // Reload glow aura
+      if (isReload) {
+        const pulse = 0.4 + 0.3 * Math.sin(t * 8);
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.strokeStyle = '#2266cc';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx, cy, s.w * 0.7, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = pulse * 0.2;
+        ctx.fillStyle = '#4488ff';
+        ctx.beginPath(); ctx.arc(cx, cy, s.w * 0.65, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+
+      // Lock-on brackets (like drawLockOn but tighter / orange)
+      if (isLock && player.homingTarget === s) drawLockOn(s);
+    }
+
+    // HP pips above
+    const pipW = 8, pipGap = 3;
+    const totalW = s.maxHp * pipW + (s.maxHp - 1) * pipGap;
+    let pipX = cx - totalW / 2;
+    const pipY = s.y - 10;
+    for (let i = 0; i < s.maxHp; i++) {
+      ctx.fillStyle = i < s.hp ? '#ff4444' : '#333';
+      ctx.fillRect(pipX, pipY, pipW, 5);
+      pipX += pipW + pipGap;
+    }
   }
 }
 
