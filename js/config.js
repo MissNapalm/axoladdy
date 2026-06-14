@@ -20,8 +20,8 @@ const BAT_FH        = 135;
 
 const BADDIE_FRAMES = 65;
 const BADDIE_COLS   = 10;
-const BADDIE_FW     = 154;
-const BADDIE_FH     = 200;
+const BADDIE_FW     = 122;
+const BADDIE_FH     = 160;
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 function playSound() {}
