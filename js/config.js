@@ -787,9 +787,6 @@ function damageEnemy(g, dmg) {
     score += g.flying ? 200 : 100; updateHUD();
     spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
     playSound('hit', 0.6);
-    if (Math.random() < 0.28) {
-      heartPickups.push({ x: g.x + g.w / 2 - 10, y: g.y, vx: (Math.random() - 0.5) * 3, vy: -5, collected: false, bobTimer: 0 });
-    }
     // Frenzy kill counter — fills meter, R to activate; red bats count as 3 kills
     if (player.frenzyTimer <= 0) {
       const killVal = g.red ? 3 : 1;
