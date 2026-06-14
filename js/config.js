@@ -451,6 +451,30 @@ const LVC_TOTAL     = LVC_FADE_IN + LVC_ZOOM + LVC_TEXT + LVC_HOLD + LVC_RUN;
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
 let comboCount = 0, comboTimer = 0;
+
+// ── Achievements ─────────────────────────────────────────────────────────────
+const achievements = {
+  earned: new Set(JSON.parse(localStorage.getItem('axo_achievements') || '[]')),
+  toasts: [],  // { id, label, desc, timer }
+};
+const ACHIEVEMENT_DEFS = {
+  combo4:    { label: 'DEATH FROM ABOVE', desc: '4-kill chain without frenzy' },
+  frenzy10:  { label: 'ABSOLUTE FRENZY',  desc: '10-kill chain in frenzy mode' },
+};
+function triggerAchievement(id) {
+  if (achievements.earned.has(id)) return;
+  achievements.earned.add(id);
+  localStorage.setItem('axo_achievements', JSON.stringify([...achievements.earned]));
+  const def = ACHIEVEMENT_DEFS[id];
+  achievements.toasts.push({ id, label: def.label, desc: def.desc, timer: 240 });
+}
+function checkComboAchievements() {
+  if (player.frenzyTimer > 0) {
+    if (comboCount >= 10) triggerAchievement('frenzy10');
+  } else {
+    if (comboCount >= 4) triggerAchievement('combo4');
+  }
+}
 let turboFlash = 0; // frames of turbo activation freeze (60 = 1s)
 const MAX_HP = 4;
 let hp = MAX_HP;

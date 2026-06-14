@@ -116,6 +116,37 @@ function loop(ts) {
     ctx.restore();
   }
 
+  // Achievement toasts
+  for (let i = achievements.toasts.length - 1; i >= 0; i--) {
+    const toast = achievements.toasts[i];
+    toast.timer--;
+    if (toast.timer <= 0) { achievements.toasts.splice(i, 1); continue; }
+    const alpha = toast.timer < 40 ? toast.timer / 40 : toast.timer > 200 ? (240 - toast.timer) / 40 : 1;
+    const yOff = (achievements.toasts.length - 1 - i) * 54;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'right';
+    const tx = W - 12, ty = H - 60 - yOff;
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.beginPath();
+    ctx.roundRect(tx - 230, ty - 10, 234, 46, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.textBaseline = 'top';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText('🏆 ACHIEVEMENT UNLOCKED', tx, ty - 2);
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(toast.label, tx, ty + 12);
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillText(toast.desc, tx, ty + 29);
+    ctx.restore();
+  }
+
   // Frenzy kill counter / active bar
   {
     const bw = 120, bh = 8, bx = W / 2 - bw / 2, by = H - 22;

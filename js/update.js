@@ -152,6 +152,7 @@ function update(dt) {
           const killed = damageEnemy(tg, 1);
           if (killed) { comboCount++; comboTimer = 120; }
         }
+        checkComboAchievements();
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
         player.vy = -6;
@@ -439,7 +440,7 @@ function update(dt) {
           player.onGround = false;
         }
       } else if (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10)) {
-        if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; }
+        if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
         player.vy = -6;
         player.onGround = false;
       } else if (player.homing) {
