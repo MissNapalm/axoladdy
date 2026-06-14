@@ -588,7 +588,7 @@ function drawEnemy(g) {
     } else {
       const bFrame2 = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
       const dw = Math.round(TILE * CFG.gnomeScale), dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
-      drawBaddieSprite(ctx, bFrame2, dw, dh, cx - dw / 2, g.y + g.h - dh, '#ff6600');
+      drawBaddieSprite(ctx, bFrame2, dw, dh, cx - dw / 2, g.y + g.h - dh + CFG.spriteOffset, '#ff6600');
     }
     return;
   }
@@ -619,7 +619,7 @@ function drawEnemy(g) {
     const baddieFrame = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
     const dw = Math.round(TILE * CFG.gnomeScale);
     const dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
-    const dx = cx - dw / 2, dy = g.y + g.h - dh;
+    const dx = cx - dw / 2, dy = g.y + g.h - dh + CFG.spriteOffset;
     const shooterTint = g.type === 'shooter' ? '#cc1100' : null;
     ctx.save();
     if (g.vx < 0) {
