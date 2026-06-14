@@ -111,7 +111,7 @@ const THEMES = {
   },
   forest: {
     skyTop:'#1a0a3a', skyBot:'#2a1858',
-    ground:'#2a1048', groundSub:'#1e0a3a', groundEdge:'#cc88ff', groundTrace:'#3a1868', groundNode:'#cc44ff',
+    ground:'#6b4423', groundSub:'#4a2e14', groundEdge:'#8a5c30', groundTrace:'#7a5228', groundNode:'#a06c3a',
     brick:'#3a1858', brickInner:'#2a1048', brickEdge:'#aa66dd', brickCross:'#4a2278',
     qOuter:'#1a0838', qInner:'#2a1050', qGlow:'#cc44ff', qBorder:'#aa66dd', qHi:'#eeccff', qChar:'❀',
     pipe:'#1e0a3a', pipeRail:'#7744aa', pipeFlow:'#eeccff', pipeCap:'#7744aa', pipeCapDk:'#3a1858', pipeCore:'#cc44ff',
