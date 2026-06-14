@@ -795,12 +795,14 @@ function damageEnemy(g, dmg) {
       const killVal = g.red ? 3 : 1;
       player.frenzyKills = Math.min(player.frenzyKills + killVal, 12);
     }
-    // Any kill while airborne unlocks one more home and one more dash
+    // Any kill while airborne unlocks one more home and one more dash (normal mode only)
     if (!player.onGround) {
       player.homingUsed = false;
       player.homingCount = Math.max(0, player.homingCount - 1);
-      player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-      player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
+      if (player.frenzyTimer <= 0) {
+        player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+        player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
+      }
     }
     return true; // killed
   }
