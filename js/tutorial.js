@@ -21,12 +21,8 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
   }
   if (warden.active && !warden.dead) {
     for (const rk of warden.rocks) { if (!rk.dead) candidates.push(rk); }
-    const liveSentinels = warden.sentinels.filter(s => !s.dead);
-    if (liveSentinels.length > 0) {
-      for (const s of liveSentinels) candidates.push(s);
-    } else {
-      candidates.push(warden);
-    }
+    for (const s of warden.sentinels) { if (!s.dead) candidates.push(s); }
+    candidates.push(warden); // always targetable; homing bounces unless red
   }
   // Red bat mini-boss — homing target during idle/freeze only
   if (redBat.active && !redBat.dead && (redBat.state === 'idle' || redBat.state === 'freeze')) {

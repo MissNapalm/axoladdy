@@ -390,11 +390,7 @@ const LEVELS = [
     isBossLevel: true,
     bossType: 'warden',
     gaps: [],
-    platforms: [
-      {x:5,y:10,w:6,t:'brick'}, {x:20,y:7,w:6,t:'brick'}, {x:38,y:4,w:6,t:'qblock'},
-      {x:55,y:8,w:6,t:'brick'}, {x:72,y:5,w:6,t:'brick'}, {x:90,y:3,w:6,t:'qblock'},
-      {x:108,y:7,w:6,t:'brick'},{x:122,y:4,w:6,t:'brick'},
-    ],
+    platforms: [],
     pipes: [],
     coinDefs: [],
     goombas: [],

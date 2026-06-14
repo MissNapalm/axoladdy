@@ -1429,10 +1429,7 @@ function updateWarden() {
         if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -6; }
         else if (player.dashFrames > 0) { player.vx = -Math.sign(player.vx||1)*8; player.vy = -6; player.dashFrames = 0; }
         else { player.vy = Math.min(player.vy, -6); }
-        // If this was the last sentinel, open warden for 5s
-        if (warden.sentinels.filter(x => !x.dead).length === 0) {
-          warden.vulnTimer = 300;
-        }
+        // (vulnerability now only opens after ground pound)
       } else if (!canKill && player.invincible === 0) {
         hurtPlayer(1); player.invincible = 60;
         player.vy = -8; player.vx = (player.x < s.x ? -1 : 1) * 9;
@@ -1564,7 +1561,8 @@ function updateWarden() {
   } else if (warden.state === 'stomp') {
     if (warden.stateTimer <= 0 && !warden.onGround) {
       warden.y = WARDEN_GROUND - warden.h; warden.vy = 0; warden.onGround = true;
-      warden.state = 'stomp_recover'; warden.stateTimer = 120;
+      warden.state = 'stomp_recover'; warden.stateTimer = 180;
+      warden.vulnTimer = 180;
     }
 
   } else if (warden.state === 'stomp_recover') {
@@ -1673,6 +1671,9 @@ function drawWarden() {
   ctx.save();
   ctx.translate(wsx + warden.w / 2 + shk, warden.y + warden.h / 2);
 
+  const flash = warden.hitFlash > 0 && Math.floor(warden.hitFlash / 3) % 2 === 0;
+  const vulnPulse = warden.vulnTimer > 0 ? 0.55 + 0.45 * Math.sin(performance.now() * 0.018) : 0;
+
   const aGrad = ctx.createRadialGradient(0, 0, warden.w * 0.15, 0, 0, warden.w * 0.9);
   const glowInner = warden.vulnTimer > 0 ? `rgba(255,0,0,${0.5 + 0.4 * vulnPulse})` : glowColor + '55';
   const glowOuter = warden.vulnTimer > 0 ? `rgba(255,0,0,0)` : 'rgba(0,0,0,0)';
@@ -1680,9 +1681,6 @@ function drawWarden() {
   aGrad.addColorStop(1, glowOuter);
   ctx.fillStyle = aGrad;
   ctx.beginPath(); ctx.ellipse(0, 0, warden.w * 0.9, warden.h * 0.9, 0, 0, Math.PI * 2); ctx.fill();
-
-  const flash = warden.hitFlash > 0 && Math.floor(warden.hitFlash / 3) % 2 === 0;
-  const vulnPulse = warden.vulnTimer > 0 ? 0.55 + 0.45 * Math.sin(performance.now() * 0.018) : 0;
   ctx.fillStyle = flash ? '#ffffff' : (warden.vulnTimer > 0 ? `rgba(220,${Math.round(20*vulnPulse)},${Math.round(20*vulnPulse)},1)` : (phase === 1 ? '#2a1a0a' : '#3a0a0a'));
   const hw = warden.w / 2 - 2, hh = warden.h / 2 - 2;
   ctx.beginPath();
