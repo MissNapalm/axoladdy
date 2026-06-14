@@ -212,7 +212,6 @@ const LEVELS = [
     ],
     platforms: [
       // Opening
-      {x:5,y:9,w:5,t:'qblock'},{x:30,y:7,w:4,t:'brick'},
       {x:62,y:9,w:4,t:'qblock'},{x:88,y:6,w:5,t:'brick'},
       // Bridge over pit 1
       {x:130,y:6,w:5,t:'brick'},{x:142,y:5,w:10,t:'qblock'},{x:160,y:7,w:5,t:'qblock'},
