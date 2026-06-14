@@ -315,6 +315,7 @@ function update(dt) {
     coin.bobTimer += 0.05;
     if (rectsOverlap({ x: coin.x + 4, y: coin.y + 4, w: TILE - 8, h: TILE - 8 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       coin.collected = true; coinCount++; score += 200; updateHUD(); playSound('coin', 0.5);
+      if (typeof totalCoins !== 'undefined') { totalCoins++; saveAbilities(); }
       // Coins nudge frenzy meter (every 3 coins = 1 kill)
       if (player.frenzyTimer <= 0) {
         player.coinFrenzyAcc = (player.coinFrenzyAcc || 0) + 1;

@@ -61,10 +61,10 @@ const DEFAULTS = {
   spriteRot: 20,
   spriteOffset: 4,
   ballSize: 80,
-  homingChain: 3,
+  homingChain: 1,
   dashCount: 1,
   dashChain: 1,
-  stompKill: 1,
+  stompKill: 0,
 };
 
 function loadCFG() {

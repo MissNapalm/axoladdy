@@ -344,6 +344,8 @@ function loop(ts) {
 
   ctx.restore(); // end overlay DPR scale
 
+  if (abilityMenu.open) drawAbilityMenu();
+
   updateHUD();
   requestAnimationFrame(loop);
 }
@@ -537,3 +539,173 @@ document.getElementById('s-reset-keys').addEventListener('click', () => {
 });
 
 syncKeyButtons();
+
+// ── Ability Menu ──────────────────────────────────────────────────────────────
+let totalCoins = parseInt(localStorage.getItem('axo_totalCoins') || '0');
+
+function saveAbilities() {
+  localStorage.setItem('axo_totalCoins', totalCoins);
+  localStorage.setItem('axo_abilities', JSON.stringify([...abilityMenu.purchased]));
+}
+
+const ABILITY_COST = 30;
+const ABILITY_DEFS = [
+  {
+    group: 'DASH',
+    items: [
+      { id: 'dash1', label: '1 Dash',   desc: 'Dash once in mid-air',        cfgKey: 'dashCount', cfgVal: 1 },
+      { id: 'dash2', label: '2 Dashes', desc: 'Dash twice in mid-air',       cfgKey: 'dashCount', cfgVal: 2 },
+      { id: 'dash3', label: '3 Dashes', desc: 'Dash three times in mid-air', cfgKey: 'dashCount', cfgVal: 3 },
+    ],
+  },
+  {
+    group: 'HOMING',
+    items: [
+      { id: 'home1', label: '1-Kill Chain', desc: '1 homing kill per jump',       cfgKey: 'homingChain', cfgVal: 1 },
+      { id: 'home2', label: '2-Kill Chain', desc: 'Chain 2 kills before landing', cfgKey: 'homingChain', cfgVal: 2 },
+      { id: 'home3', label: '3-Kill Chain', desc: 'Chain 3 kills before landing', cfgKey: 'homingChain', cfgVal: 3 },
+    ],
+  },
+  {
+    group: 'STOMP',
+    items: [
+      { id: 'stomp', label: 'Down Pound', desc: 'Jump on enemy heads to damage and kill', cfgKey: 'stompKill', cfgVal: 1 },
+    ],
+  },
+];
+
+const abilityMenu = {
+  open: false,
+  purchased: new Set(JSON.parse(localStorage.getItem('axo_abilities') || '[]')),
+  cursor: { group: 0, item: 0 },
+};
+
+// Apply purchased abilities to CFG on load
+(function applyPurchased() {
+  for (const grp of ABILITY_DEFS) {
+    let best = null;
+    for (const item of grp.items) { if (abilityMenu.purchased.has(item.id)) best = item; }
+    if (best) CFG[best.cfgKey] = best.cfgVal;
+  }
+})();
+
+function canBuyAbility(grp, item) {
+  if (abilityMenu.purchased.has(item.id)) return false;
+  if (totalCoins < ABILITY_COST) return false;
+  const idx = grp.items.indexOf(item);
+  if (idx > 0 && !abilityMenu.purchased.has(grp.items[idx - 1].id)) return false;
+  return true;
+}
+
+function drawAbilityMenu() {
+  ctx.save();
+  ctx.scale(DPR, DPR);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.80)';
+  ctx.fillRect(0, 0, W, H);
+
+  const pw = 560, ph = 330, px = (W - pw) / 2, py = (H - ph) / 2;
+  ctx.fillStyle = '#0d0d0d';
+  ctx.strokeStyle = '#c87840'; ctx.lineWidth = 2;
+  ctx.fillRect(px, py, pw, ph);
+  ctx.strokeRect(px, py, pw, ph);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#d4a855'; ctx.font = 'bold 18px monospace';
+  ctx.fillText('ABILITIES', W / 2, py + 28);
+
+  ctx.fillStyle = '#ffcc44'; ctx.font = '13px monospace'; ctx.textAlign = 'right';
+  ctx.fillText('ORBS: ' + totalCoins, px + pw - 14, py + 28);
+
+  ctx.fillStyle = '#555'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('ARROW KEYS  ·  ENTER to buy (30 orbs)  ·  TAB to close', W / 2, py + 44);
+
+  const colW = pw / ABILITY_DEFS.length;
+
+  for (let gi = 0; gi < ABILITY_DEFS.length; gi++) {
+    const grp = ABILITY_DEFS[gi];
+    const colX = px + gi * colW + colW / 2;
+    let rowY = py + 62;
+
+    ctx.fillStyle = '#c87840'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(grp.group, colX, rowY);
+    rowY += 20;
+
+    for (let ii = 0; ii < grp.items.length; ii++) {
+      const item = grp.items[ii];
+      const owned    = abilityMenu.purchased.has(item.id);
+      const buyable  = canBuyAbility(grp, item);
+      const locked   = !owned && !buyable;
+      const selected = abilityMenu.cursor.group === gi && abilityMenu.cursor.item === ii;
+
+      const bw = colW - 20, bh = 66, bx = colX - bw / 2, by = rowY;
+
+      ctx.fillStyle = owned ? '#0f2a0f' : selected ? '#1e1006' : '#111';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = owned ? '#44aa44' : selected ? '#e88030' : locked ? '#2a2a2a' : '#554433';
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.strokeRect(bx, by, bw, bh);
+
+      ctx.fillStyle = owned ? '#44ee44' : locked ? '#444' : '#d4a855';
+      ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(item.label, colX, by + 18);
+
+      // Wrap desc
+      const words = item.desc.split(' ');
+      let line = '', lines = [];
+      for (const w of words) {
+        const t = line ? line + ' ' + w : w;
+        if (t.length > 20) { lines.push(line); line = w; } else line = t;
+      }
+      if (line) lines.push(line);
+      ctx.fillStyle = owned ? '#66bb66' : locked ? '#333' : '#a09080';
+      ctx.font = '10px monospace';
+      lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, colX, by + 32 + i * 12));
+
+      if (owned) {
+        ctx.fillStyle = '#44ee44'; ctx.font = 'bold 10px monospace';
+        ctx.fillText('✓ OWNED', colX, by + 58);
+      } else if (selected && buyable) {
+        ctx.fillStyle = '#ffcc44'; ctx.font = 'bold 10px monospace';
+        ctx.fillText('ENTER to buy', colX, by + 58);
+      } else if (locked) {
+        ctx.fillStyle = '#444'; ctx.font = '10px monospace';
+        ctx.fillText(totalCoins < ABILITY_COST ? 'need 30 orbs' : 'unlock previous', colX, by + 58);
+      }
+
+      rowY += bh + 6;
+    }
+  }
+
+  ctx.restore();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Tab') {
+    e.preventDefault();
+    abilityMenu.open = !abilityMenu.open;
+    return;
+  }
+  if (!abilityMenu.open) return;
+  e.preventDefault();
+
+  const { cursor } = abilityMenu;
+  if (e.code === 'ArrowRight') { cursor.group = Math.min(ABILITY_DEFS.length - 1, cursor.group + 1); }
+  if (e.code === 'ArrowLeft')  { cursor.group = Math.max(0, cursor.group - 1); }
+  if (e.code === 'ArrowDown')  { cursor.item  = Math.min(ABILITY_DEFS[cursor.group].items.length - 1, cursor.item + 1); }
+  if (e.code === 'ArrowUp')    { cursor.item  = Math.max(0, cursor.item - 1); }
+  cursor.item = Math.min(cursor.item, ABILITY_DEFS[cursor.group].items.length - 1);
+
+  if (e.code === 'Enter') {
+    const grp  = ABILITY_DEFS[cursor.group];
+    const item = grp.items[cursor.item];
+    if (canBuyAbility(grp, item)) {
+      totalCoins -= ABILITY_COST;
+      abilityMenu.purchased.add(item.id);
+      CFG[item.cfgKey] = item.cfgVal;
+      saveCFG();
+      saveAbilities();
+    }
+  }
+  if (e.code === 'Escape') abilityMenu.open = false;
+});
