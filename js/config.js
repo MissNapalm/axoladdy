@@ -18,10 +18,10 @@ const BAT_COLS      = 10;
 const BAT_FW        = 128;
 const BAT_FH        = 135;
 
-const BADDIE_FRAMES = 59;
+const BADDIE_FRAMES = 65;
 const BADDIE_COLS   = 10;
 const BADDIE_FW     = 128;
-const BADDIE_FH     = 142;
+const BADDIE_FH     = 183;
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 function playSound() {}
