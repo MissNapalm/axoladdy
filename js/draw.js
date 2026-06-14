@@ -5,17 +5,18 @@ const _batTintCtx       = _batTintCanvas.getContext('2d');
 const _baddieTintCanvas = document.createElement('canvas');
 const _baddieTintCtx    = _baddieTintCanvas.getContext('2d');
 
-function drawBatSprite(targetCtx, frame, dw, dh, dx, dy, redTint) {
+function drawBatSprite(targetCtx, frame, dw, dh, dx, dy, tintColor) {
   const col = frame % BAT_COLS, row = Math.floor(frame / BAT_COLS);
-  if (redTint) {
+  if (tintColor) {
+    const color = tintColor === true ? '#cc1100' : tintColor;
     if (_batTintCanvas.width !== dw || _batTintCanvas.height !== dh) {
       _batTintCanvas.width = dw; _batTintCanvas.height = dh;
     }
     _batTintCtx.clearRect(0, 0, dw, dh);
     _batTintCtx.drawImage(batSheet, col * BAT_FW, row * BAT_FH, BAT_FW, BAT_FH, 0, 0, dw, dh);
     _batTintCtx.globalCompositeOperation = 'source-atop';
-    _batTintCtx.globalAlpha = 0.45;
-    _batTintCtx.fillStyle = '#cc1100';
+    _batTintCtx.globalAlpha = 0.55;
+    _batTintCtx.fillStyle = color;
     _batTintCtx.fillRect(0, 0, dw, dh);
     _batTintCtx.globalCompositeOperation = 'source-over';
     _batTintCtx.globalAlpha = 1;
@@ -325,7 +326,9 @@ function drawBg() {
 }
 
 function drawGround() {
-  for (let tx = 0; tx < LEVEL_W_TILES; tx++) {
+  const lv = LEVELS[currentLevel];
+  const groundEnd = lv.groundEnd != null ? lv.groundEnd : LEVEL_W_TILES;
+  for (let tx = 0; tx < groundEnd; tx++) {
     if (groundInGap(tx)) continue;
     const sx = tx * TILE - camera;
     if (sx < -TILE || sx > W + TILE) continue;

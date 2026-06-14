@@ -622,7 +622,7 @@ function drawRedBat() {
     ctx.save();
     if (rotateAngle) { ctx.translate(cx, cy); ctx.rotate(rotateAngle); ctx.translate(-cx, -cy); }
     ctx.globalAlpha = alpha;
-    drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, true);
+    drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, '#00bb44');
     ctx.restore();
   }
 
@@ -647,7 +647,7 @@ function drawRedBat() {
     ctx.save();
     ctx.globalAlpha = 0.18;
     for (let i = 1; i <= 3; i++) {
-      ctx.fillStyle = '#ff2200';
+      ctx.fillStyle = '#00cc44';
       ctx.beginPath();
       ctx.arc(cx - redBat.chargeVx * i * 0.08, cy - redBat.chargeVy * i * 0.08, redBat.w * 0.4, 0, Math.PI * 2);
       ctx.fill();
@@ -660,7 +660,7 @@ function drawRedBat() {
   const barX = cx - barW / 2;
   const barY = cy - dh / 2 - 14;
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(barX - 1, barY - 1, barW + 2, 9);
-  ctx.fillStyle = redBat.hp > 3 ? '#ff4444' : '#ff8800';
+  ctx.fillStyle = redBat.hp > 3 ? '#22cc55' : '#aaff00';
   ctx.fillRect(barX, barY, barW * (redBat.hp / RB_MAX_HP), 7);
 
   const hitFading = redBat.hitFlash > 0 && Math.floor(redBat.hitFlash / 3) % 2 === 0;
