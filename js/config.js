@@ -561,14 +561,19 @@ function getSolidsNear(px, py, pw, ph) {
 }
 
 // ── Chaser (test enemy) — defined here so initLevel can reset it ──────────────
-const CHASER_R = 40;
+const CHASER_R = 24; // smaller than before
 const chaser = {
   active: false, triggered: false, descending: false,
   dead: false, deadTimer: 0,
   x: 0, y: 0, vx: 0, vy: 0,
   w: CHASER_R * 2, h: CHASER_R * 2,
   hp: 10, maxHp: 10, hitFlash: 0, wobble: 0,
-  targetOffX: 80, targetOffY: -60,
+  targetOffX: 130, targetOffY: -80, // further away
+  // attack state machine
+  state: 'hover',   // hover | aiming | telegraph | cooldown
+  stateTimer: 0,
+  laserAngle: 0,    // current laser aim angle
+  bolt: null,       // active fire bolt {x,y,vx,vy,life}
 };
 
 function loadLevel(n) {
@@ -706,6 +711,7 @@ function loadLevel(n) {
   chaser.active = false; chaser.triggered = false; chaser.dead = false;
   chaser.hp = chaser.maxHp; chaser.hitFlash = 0;
   chaser.x = 30 * TILE; chaser.y = -6 * TILE; chaser.vx = 0; chaser.vy = 0;
+  chaser.state = 'hover'; chaser.stateTimer = 180; chaser.bolt = null; chaser.wobble = 0;
   if (lv.isTestLevel) {
     chaser.triggered = false;
   }

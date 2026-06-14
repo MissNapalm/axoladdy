@@ -3,15 +3,14 @@ function updateChaser() {
   const lv = LEVELS[currentLevel];
   if (!lv?.isTestLevel) return;
 
-  // Trigger: player crosses chaserTriggerX and chaser not yet active
   if (!chaser.triggered && !chaser.active && player.x >= (lv.chaserTriggerX || 12 * TILE)) {
     chaser.triggered = true;
     chaser.active = true;
     chaser.descending = true;
-    // spawn above screen, above player x
     chaser.x = player.x;
     chaser.y = player.y - 600;
     chaser.vx = 0; chaser.vy = 0;
+    chaser.state = 'hover'; chaser.stateTimer = 180;
   }
 
   if (!chaser.active) return;
@@ -26,91 +25,205 @@ function updateChaser() {
 
   if (chaser.hitFlash > 0) chaser.hitFlash--;
 
+  // Update active bolt
+  if (chaser.bolt) {
+    const b = chaser.bolt;
+    b.x += b.vx; b.y += b.vy;
+    b.life--;
+    // hit player
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    const br = { x: b.x - 8, y: b.y - 8, w: 16, h: 16 };
+    if (rectsOverlap(br, pr) && player.invincible === 0) {
+      hurtPlayer(1); player.invincible = 60;
+      player.vy = -6; player.vx = (player.x < b.x ? -1 : 1) * 8;
+      if (hp <= 0) { killPlayer(); return; }
+      chaser.bolt = null;
+    } else if (b.life <= 0) {
+      chaser.bolt = null;
+    }
+  }
+
   if (chaser.descending) {
-    // Fast descent toward hover position
     const targetX = player.x + chaser.targetOffX;
     const targetY = player.y + chaser.targetOffY;
-    const dx = targetX - chaser.x;
-    const dy = targetY - chaser.y;
-    chaser.vx += dx * 0.04;
-    chaser.vy += dy * 0.04;
-    chaser.vx *= 0.7;
-    chaser.vy *= 0.7;
-    chaser.x += chaser.vx;
-    chaser.y += chaser.vy;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 20 && Math.abs(chaser.vy) < 3) chaser.descending = false;
+    const dx = targetX - chaser.x, dy = targetY - chaser.y;
+    chaser.vx += dx * 0.04; chaser.vy += dy * 0.04;
+    chaser.vx *= 0.7;       chaser.vy *= 0.7;
+    chaser.x += chaser.vx;  chaser.y += chaser.vy;
+    if (Math.sqrt(dx*dx+dy*dy) < 20 && Math.abs(chaser.vy) < 3) chaser.descending = false;
     return;
   }
 
-  // Hovering phase: follow player with a spring, offset to one side
-  // Flip offset side based on which direction player is moving
-  if (player.vx < -0.5) chaser.targetOffX = -80;
-  else if (player.vx > 0.5) chaser.targetOffX = 80;
+  const px = player.x + player.w / 2;
+  const py = player.y + player.h / 2;
+  const cx = chaser.x + chaser.w / 2;
+  const cy = chaser.y + chaser.h / 2;
 
-  const targetX = player.x + chaser.targetOffX;
-  const targetY = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 8;
-  const dx = targetX - chaser.x;
-  const dy = targetY - chaser.y;
-  // Tight spring follow — feels "stuck" to player but still floaty
-  chaser.vx += dx * 0.12;
-  chaser.vy += dy * 0.12;
-  chaser.vx *= 0.72;
-  chaser.vy *= 0.72;
-  chaser.x += chaser.vx;
-  chaser.y += chaser.vy;
+  chaser.stateTimer--;
+
+  if (chaser.state === 'hover') {
+    // Float beside player, flip side based on movement
+    if (player.vx < -0.5) chaser.targetOffX = -Math.abs(chaser.targetOffX);
+    else if (player.vx > 0.5) chaser.targetOffX = Math.abs(chaser.targetOffX);
+    const tx = player.x + chaser.targetOffX;
+    const ty = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 10;
+    const dx = tx - chaser.x, dy = ty - chaser.y;
+    chaser.vx += dx * 0.1; chaser.vy += dy * 0.1;
+    chaser.vx *= 0.75;     chaser.vy *= 0.75;
+    chaser.x += chaser.vx; chaser.y += chaser.vy;
+    if (chaser.stateTimer <= 0) {
+      chaser.state = 'aiming';
+      chaser.stateTimer = 120; // 2s of laser tracking
+      chaser.laserAngle = Math.atan2(py - cy, px - cx);
+    }
+
+  } else if (chaser.state === 'aiming') {
+    // Freeze in place, slowly rotate laser toward player
+    chaser.vx *= 0.85; chaser.vy *= 0.85;
+    chaser.x += chaser.vx; chaser.y += chaser.vy;
+    const targetAngle = Math.atan2(py - cy, px - cx);
+    // Wrap angle diff
+    let diff = targetAngle - chaser.laserAngle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    chaser.laserAngle += diff * 0.06; // smooth track
+    if (chaser.stateTimer <= 0) {
+      chaser.state = 'telegraph';
+      chaser.stateTimer = 22; // short white flash freeze
+    }
+
+  } else if (chaser.state === 'telegraph') {
+    // Completely frozen, flashing white
+    chaser.vx = 0; chaser.vy = 0;
+    chaser.hitFlash = 4; // keep flash on
+    if (chaser.stateTimer <= 0) {
+      // Fire bolt along laserAngle
+      const speed = 14;
+      chaser.bolt = {
+        x: cx, y: cy,
+        vx: Math.cos(chaser.laserAngle) * speed,
+        vy: Math.sin(chaser.laserAngle) * speed,
+        life: 120,
+      };
+      chaser.hitFlash = 0;
+      chaser.state = 'cooldown';
+      chaser.stateTimer = 150; // pause before next aim cycle
+    }
+
+  } else if (chaser.state === 'cooldown') {
+    // Resume hovering
+    const tx = player.x + chaser.targetOffX;
+    const ty = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 10;
+    const dx = tx - chaser.x, dy = ty - chaser.y;
+    chaser.vx += dx * 0.1; chaser.vy += dy * 0.1;
+    chaser.vx *= 0.75;     chaser.vy *= 0.75;
+    chaser.x += chaser.vx; chaser.y += chaser.vy;
+    if (chaser.stateTimer <= 0) {
+      chaser.state = 'hover';
+      chaser.stateTimer = 60;
+    }
+  }
 }
 
 function drawChaser() {
   const lv = LEVELS[currentLevel];
   if (!lv?.isTestLevel || !chaser.active) return;
-  const cx = Math.round(chaser.x - camera + chaser.w / 2);
-  const cy = Math.round(chaser.y - cameraY + chaser.h / 2);
+
+  const scx = Math.round(chaser.x - camera + chaser.w / 2);
+  const scy = Math.round(chaser.y - cameraY + chaser.h / 2);
   const r = CHASER_R;
+  const t = performance.now() / 1000;
+
+  // Draw active bolt
+  if (chaser.bolt) {
+    const b = chaser.bolt;
+    const bx = b.x - camera, by = b.y - cameraY;
+    const fade = b.life / 120;
+    ctx.save();
+    // Fire streak — elongated along velocity
+    const ang = Math.atan2(b.vy, b.vx);
+    ctx.translate(bx, by);
+    ctx.rotate(ang);
+    const grad = ctx.createLinearGradient(-24, 0, 8, 0);
+    grad.addColorStop(0, 'rgba(255,80,0,0)');
+    grad.addColorStop(0.4, `rgba(255,180,40,${fade})`);
+    grad.addColorStop(1, `rgba(255,255,200,${fade})`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 24, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Bright core
+    ctx.fillStyle = `rgba(255,255,255,${fade * 0.9})`;
+    ctx.beginPath(); ctx.ellipse(4, 0, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
 
   ctx.save();
+  if (chaser.dead) ctx.globalAlpha = Math.max(0, chaser.deadTimer / 60);
 
-  // Death fade
-  if (chaser.dead) {
-    ctx.globalAlpha = Math.max(0, chaser.deadTimer / 60);
+  // Draw laser beam during aiming
+  if (chaser.state === 'aiming' || chaser.state === 'telegraph') {
+    // Compute beam end along laserAngle, extend past player
+    const beamLen = 800;
+    const ex = scx + Math.cos(chaser.laserAngle) * beamLen;
+    const ey = scy + Math.sin(chaser.laserAngle) * beamLen;
+    const flicker = 0.4 + 0.35 * Math.sin(t * 40);
+    const isTeleg = chaser.state === 'telegraph';
+
+    ctx.save();
+    // Outer glow beam
+    ctx.globalAlpha = (isTeleg ? 0.9 : 0.35) * flicker;
+    ctx.strokeStyle = isTeleg ? '#ff4400' : '#ff2200';
+    ctx.lineWidth = isTeleg ? 8 : 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+    // Bright core
+    ctx.globalAlpha = (isTeleg ? 1 : 0.7) * flicker;
+    ctx.strokeStyle = isTeleg ? '#ffcc44' : '#ff8844';
+    ctx.lineWidth = isTeleg ? 3 : 1.5;
+    ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.restore();
   }
 
   // Outer glow
-  const glowR = r + 10 + 4 * Math.sin(chaser.wobble);
-  const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, glowR);
-  grad.addColorStop(0, 'rgba(40,120,255,0.35)');
+  const glowR = r + 8 + 3 * Math.sin(chaser.wobble);
+  const grad = ctx.createRadialGradient(scx, scy, r * 0.3, scx, scy, glowR);
+  grad.addColorStop(0, 'rgba(40,120,255,0.4)');
   grad.addColorStop(1, 'rgba(40,120,255,0)');
-  ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(scx, scy, glowR, 0, Math.PI * 2);
   ctx.fillStyle = grad; ctx.fill();
 
   // Body
-  const flash = chaser.hitFlash > 0;
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = flash ? '#ffffff' : '#2255ee';
+  const isTelegraph = chaser.state === 'telegraph';
+  const flashWhite = isTelegraph || chaser.hitFlash > 0;
+  ctx.beginPath(); ctx.arc(scx, scy, r, 0, Math.PI * 2);
+  ctx.fillStyle = flashWhite ? '#ffffff' : '#2255ee';
   ctx.fill();
-  ctx.strokeStyle = flash ? '#aaddff' : '#88bbff';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = flashWhite ? '#ffffff' : '#88bbff';
+  ctx.lineWidth = 2;
   ctx.stroke();
 
   // Inner highlight
-  ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.35, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(scx - r * 0.3, scy - r * 0.3, r * 0.3, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(180,220,255,0.35)'; ctx.fill();
 
-  // Eyes (two white dots with dark pupils)
-  const eyeOff = r * 0.3;
-  for (const ex of [-eyeOff, eyeOff]) {
-    ctx.beginPath(); ctx.arc(cx + ex, cy - r * 0.15, 7, 0, Math.PI * 2);
-    ctx.fillStyle = '#ddeeff'; ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + ex + 2, cy - r * 0.15 + 2, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#001133'; ctx.fill();
-  }
+  // Single eye that points toward player / laser angle
+  const eyeAng = chaser.state === 'aiming' || chaser.state === 'telegraph'
+    ? chaser.laserAngle
+    : Math.atan2((player.y + player.h / 2) - (chaser.y - cameraY + chaser.h / 2),
+                 (player.x + player.w / 2) - (chaser.x - camera  + chaser.w / 2));
+  const ex2 = scx + Math.cos(eyeAng) * r * 0.38;
+  const ey2 = scy + Math.sin(eyeAng) * r * 0.38;
+  ctx.beginPath(); ctx.arc(ex2, ey2, 5, 0, Math.PI * 2);
+  ctx.fillStyle = flashWhite ? '#ff2200' : '#ddeeff'; ctx.fill();
+  ctx.beginPath(); ctx.arc(ex2 + Math.cos(eyeAng) * 1.5, ey2 + Math.sin(eyeAng) * 1.5, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#001133'; ctx.fill();
 
   // HP bar
-  const barW = r * 2.2, barH = 5;
-  const barX = cx - barW / 2, barY = cy - r - 16;
+  const barW = r * 2.5, barH = 4;
+  const barX = scx - barW / 2, barY = scy - r - 12;
   ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
-  ctx.fillStyle = '#3388ff';
-  ctx.fillRect(barX, barY, barW * (chaser.hp / chaser.maxHp), barH);
+  ctx.fillStyle = '#3388ff'; ctx.fillRect(barX, barY, barW * (chaser.hp / chaser.maxHp), barH);
 
   ctx.restore();
 }
