@@ -128,12 +128,10 @@ function loop(ts) {
     ctx.textAlign = 'right';
     const tx = W - 12, ty = H - 60 - yOff;
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
-    ctx.beginPath();
-    ctx.roundRect(tx - 230, ty - 10, 234, 46, 6);
-    ctx.fill();
+    ctx.fillRect(tx - 230, ty - 10, 234, 46);
     ctx.strokeStyle = '#ffcc00';
     ctx.lineWidth = 1.5;
-    ctx.stroke();
+    ctx.strokeRect(tx - 230, ty - 10, 234, 46);
     ctx.textBaseline = 'top';
     ctx.font = 'bold 10px monospace';
     ctx.fillStyle = '#ffcc00';

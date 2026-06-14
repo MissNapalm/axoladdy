@@ -433,7 +433,7 @@ function update(dt) {
           if (hp <= 0) { killPlayer(); return; }
         } else {
           // Frenzy: dash kills anything
-          damageEnemy(g, g.hp);
+          if (damageEnemy(g, g.hp)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
           player.vx = -Math.sign(player.vx) * 8;
           player.vy = -6;
           player.dashFrames = 0;
