@@ -62,6 +62,7 @@ const DEFAULTS = {
   spriteOffset: 4,
   ballSize: 80,
   homingChain: 3,
+  dashCount: 1,
   dashChain: 1,
   stompKill: 1,
 };

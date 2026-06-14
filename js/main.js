@@ -445,6 +445,7 @@ const sliders = [
   { id: 's-gnomeScale',  vid: 'v-gnomeScale',  key: 'gnomeScale',   fmt: v => v.toFixed(1) + '×' },
   { id: 's-dashFrenzyMult', vid: 'v-dashFrenzyMult', key: 'dashFrenzyMult', fmt: v => (v * 100).toFixed(0) + '%' },
   { id: 's-homingChain',   vid: 'v-homingChain',   key: 'homingChain',   fmt: v => Math.round(v) },
+  { id: 's-dashCount',     vid: 'v-dashCount',     key: 'dashCount',     fmt: v => Math.round(v) },
   { id: 's-dashChain',     vid: 'v-dashChain',     key: 'dashChain',     fmt: v => Math.round(v) },
   { id: 's-stompKill',    vid: 'v-stompKill',    key: 'stompKill',    fmt: v => v > 0 ? 'on' : 'off' },
   { id: 's-batScale',    vid: 'v-batScale',    key: 'batScale',     fmt: v => v.toFixed(1) + '×' },

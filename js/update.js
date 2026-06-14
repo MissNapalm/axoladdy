@@ -83,7 +83,7 @@ function update(dt) {
     const wantH = goLeft || goRight || (!goingUp);
     const wantUp = goingUp;
     const frenzy = player.frenzyTimer > 0;
-    const maxDash = frenzy ? 3 : CFG.dashChain;
+    const maxDash = frenzy ? 3 : CFG.dashCount;
     const canUp = wantUp && player.dashUsedUp < maxDash;
     const canH  = wantH  && player.dashUsedH  < maxDash;
 
