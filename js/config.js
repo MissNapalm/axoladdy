@@ -573,7 +573,7 @@ const chaser = {
   x: 0, y: 0, vx: 0, vy: 0,
   w: CHASER_R * 2, h: CHASER_R * 2,
   hp: 3, maxHp: 3, hitFlash: 0, wobble: 0,
-  targetOffX: 120, targetOffY: -200,
+  targetOffX: 75, targetOffY: -200,
   // attack state machine
   state: 'hover',   // hover | aiming | telegraph | cooldown
   stateTimer: 0,
