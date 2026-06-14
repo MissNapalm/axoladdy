@@ -49,7 +49,7 @@ const DEFAULTS = {
   jump1: 6.4,
   dashH: 26,
   dashV: 14,
-  dashLen: 10,
+  dashLen: 15,
   dashLenFrenzy: 14,
   dashFrenzyMult: 0.6,
   moveSpeed: 3.5,

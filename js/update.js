@@ -438,7 +438,8 @@ function update(dt) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !g.hitFlash) {
-        {
+        const dashingFromBelow = g.flying && player.y > g.y + g.h * 0.5;
+        if (!dashingFromBelow) {
           // Dash deals 1 damage in normal mode, kills in frenzy
           const dmg = player.frenzyTimer > 0 ? g.hp : 1;
           if (damageEnemy(g, dmg)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
