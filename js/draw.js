@@ -620,14 +620,14 @@ function drawEnemy(g) {
     const dw = Math.round(TILE * CFG.gnomeScale);
     const dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
     const dx = cx - dw / 2, dy = g.y + g.h - dh;
+    const shooterTint = g.type === 'shooter' ? '#cc1100' : null;
     ctx.save();
     if (g.vx < 0) {
-      // mirror: translate to right edge of sprite, flip X
       ctx.translate(dx + dw, 0);
       ctx.scale(-1, 1);
-      drawBaddieSprite(ctx, baddieFrame, dw, dh, 0, dy, null);
+      drawBaddieSprite(ctx, baddieFrame, dw, dh, 0, dy, shooterTint);
     } else {
-      drawBaddieSprite(ctx, baddieFrame, dw, dh, dx, dy, null);
+      drawBaddieSprite(ctx, baddieFrame, dw, dh, dx, dy, shooterTint);
     }
     ctx.restore();
   }

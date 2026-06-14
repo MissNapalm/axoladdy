@@ -243,9 +243,10 @@ const LEVELS = [
       {x:130,pl:122,pr:148},{x:155,pl:148,pr:170},
       {x:210,pl:200,pr:228},{x:232,pl:222,pr:250},
       {x:262,pl:252,pr:278},{x:288,pl:278,pr:302},
-      {x:340,pl:330,pr:358},{x:362,pl:352,pr:378},
-      {x:395,pl:385,pr:408},{x:415,pl:405,pr:428},
-      {x:455,pl:445,pr:470},
+      // red shooter gnomes from here on
+      {x:340,pl:330,pr:358,shooter:true},{x:362,pl:352,pr:378,shooter:true},
+      {x:395,pl:385,pr:408,shooter:true},{x:415,pl:405,pr:428,shooter:true},
+      {x:455,pl:445,pr:470,shooter:true},
     ],
     flyers: [
       {x:18,fy:6*TILE,pw:7},{x:31,fy:7*TILE,pw:7},{x:45,fy:6*TILE,pw:7},
@@ -570,9 +571,10 @@ function loadLevel(n) {
   // Every 3rd enemy in level 2+ is a 'shocker'
   const lvl = n; // 0-indexed
   goombas = lv.goombas.flatMap((g, i) => {
-    const type = 'normal';
-    const h = 1; // goombas always 1 hit
-    const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
+    const isShooter = !!g.shooter;
+    const type = isShooter ? 'shooter' : 'normal';
+    const h = isShooter ? 2 : 1;
+    const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
     const companion = { ...base, id: i * 2 + 1, x: (g.x + 7) * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: (g.pl + 7) * TILE, pr: (g.pr + 7) * TILE };
     return [
       { ...base, id: i * 2, x: g.x * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: g.pl * TILE, pr: g.pr * TILE },

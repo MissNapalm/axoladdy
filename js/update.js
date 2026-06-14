@@ -387,8 +387,8 @@ function update(dt) {
     }
 
     {
-      // Shocker shoot logic — flying enemies only
-      if (g.flying) {
+      // Shoot logic — flying bats and ground shooters
+      if (g.flying || g.type === 'shooter') {
         if (!g.shootCooldown) g.shootCooldown = 180 + Math.floor(Math.random() * 120);
         g.shootCooldown--;
         if (g.shootCooldown <= 0) {
@@ -397,7 +397,7 @@ function update(dt) {
           const dist = Math.hypot(dx, dy);
           if (dist < 380) {
             const spd = 4.5, ang = Math.atan2(dy, dx);
-            const spreads = g.red ? [-0.25, 0, 0.25] : [0];
+            const spreads = (g.flying && g.red) ? [-0.25, 0, 0.25] : [0];
             for (const spread of spreads) {
               projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2,
                 vx: Math.cos(ang + spread) * spd, vy: Math.sin(ang + spread) * spd, life: 130, flying: true });
