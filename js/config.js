@@ -564,6 +564,17 @@ function getSolidsNear(px, py, pw, ph) {
   return solids.filter(s => s.x < px + pw + 96 && s.x + s.w > px - 96 && s.y < py + ph + 96 && s.y + s.h > py - 96);
 }
 
+// ── Chaser (test enemy) — defined here so initLevel can reset it ──────────────
+const CHASER_R = 40;
+const chaser = {
+  active: false, triggered: false, descending: false,
+  dead: false, deadTimer: 0,
+  x: 0, y: 0, vx: 0, vy: 0,
+  w: CHASER_R * 2, h: CHASER_R * 2,
+  hp: 10, maxHp: 10, hitFlash: 0, wobble: 0,
+  targetOffX: 80, targetOffY: -60,
+};
+
 function loadLevel(n) {
   currentLevel = ((n % LEVELS.length) + LEVELS.length) % LEVELS.length;
   localStorage.setItem('axo_level', currentLevel);

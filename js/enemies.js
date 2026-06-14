@@ -1,20 +1,3 @@
-// ── Chaser (test enemy) ───────────────────────────────────────────────────────
-const CHASER_R = 40; // radius — roughly 2× axo
-const chaser = {
-  active: false,
-  triggered: false, // has trigger been walked through
-  descending: false,
-  dead: false, deadTimer: 0,
-  x: 0, y: 0,
-  vx: 0, vy: 0,
-  w: CHASER_R * 2, h: CHASER_R * 2,
-  hp: 10, maxHp: 10,
-  hitFlash: 0,
-  wobble: 0,
-  // hover offset from player (stays slightly ahead/beside, not on top)
-  targetOffX: 80,  // pixels to the right of player
-  targetOffY: -60, // pixels above player
-};
 
 function updateChaser() {
   const lv = LEVELS[currentLevel];

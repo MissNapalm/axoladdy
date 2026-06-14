@@ -379,6 +379,7 @@ document.getElementById('level-btn').addEventListener('change', (e) => {
   loadLevel(parseInt(e.target.value));
   hp = MAX_HP;
   updateHPBar();
+  e.target.blur();
 });
 
 // ── Zoom slider ──────────────────────────────────────────────────────────────
