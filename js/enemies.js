@@ -51,7 +51,7 @@ function updateChaser() {
       // Normal bolt — hits player
       const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
       const br = { x: b.x - 8, y: b.y - 8, w: 16, h: 16 };
-      if (rectsOverlap(br, pr) && player.invincible === 0) {
+      if (rectsOverlap(br, pr) && player.invincible === 0 && !player.homing) {
         hurtPlayer(1); player.invincible = 60;
         player.vy = -6; player.vx = (player.x < b.x ? -1 : 1) * 8;
         if (hp <= 0) { killPlayer(); return; }
@@ -81,7 +81,7 @@ function updateChaser() {
   if (chaser.state === 'hover') {
     // Float beside player, lerp to opposite side based on movement direction
     const wantOffX = player.vx < -0.5 ? -180 : player.vx > 0.5 ? 180 : chaser.targetOffX;
-    chaser.targetOffX += (wantOffX - chaser.targetOffX) * 0.04;
+    chaser.targetOffX += (wantOffX - chaser.targetOffX) * 0.08;
     const tx = player.x + chaser.targetOffX;
     const ty = player.y + chaser.targetOffY + Math.sin(chaser.wobble) * 10;
     const dx = tx - chaser.x, dy = ty - chaser.y;

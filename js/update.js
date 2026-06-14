@@ -140,7 +140,8 @@ function update(dt) {
       const px = player.x + player.w / 2, py = player.y + player.h / 2;
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
-      if (dist < 12) {
+      const hitDist = (tg === chaser.bolt) ? 40 : 12;
+      if (dist < hitDist) {
         // Chaser bolt — reflect back at chaser
         if (tg === chaser.bolt) {
           const bx = chaser.bolt.x, by = chaser.bolt.y;
