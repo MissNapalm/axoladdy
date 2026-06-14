@@ -141,8 +141,23 @@ function update(dt) {
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
+        // Chaser bolt — reflect back at chaser
+        if (tg === chaser.bolt) {
+          const bx = chaser.bolt.x, by = chaser.bolt.y;
+          const cx2 = chaser.x + chaser.w / 2, cy2 = chaser.y + chaser.h / 2;
+          const dx2 = cx2 - bx, dy2 = cy2 - by;
+          const d2 = Math.hypot(dx2, dy2) || 1;
+          const spd = Math.hypot(chaser.bolt.vx, chaser.bolt.vy) * 1.3;
+          chaser.bolt.vx = (dx2 / d2) * spd;
+          chaser.bolt.vy = (dy2 / d2) * spd;
+          chaser.bolt.reflected = true;
+          chaser.bolt.life = 180;
+          player.homing = false; player.homingTarget = null;
+          player.ballForm = true; player.vy = -6;
+          player.vx = player.dir * CFG.moveSpeed * 1.5;
+          player.spinning = false;
         // Red bat mini-boss homing hit
-        if (tg === redBat) {
+        } else if (tg === redBat) {
           damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
           comboCount++; comboTimer = 120;
         } else if (snipers.includes(tg)) {
@@ -152,12 +167,14 @@ function update(dt) {
           const killed = damageEnemy(tg, 1);
           if (killed) { comboCount++; comboTimer = 120; }
         }
-        checkComboAchievements();
-        player.homing = false; player.homingTarget = null;
-        player.ballForm = true;
-        player.vy = -6;
-        player.vx = player.dir * CFG.moveSpeed * 1.5;
-        player.spinning = false;
+        if (tg !== chaser.bolt) {
+          checkComboAchievements();
+          player.homing = false; player.homingTarget = null;
+          player.ballForm = true;
+          player.vy = -6;
+          player.vx = player.dir * CFG.moveSpeed * 1.5;
+          player.spinning = false;
+        }
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
         player.vy = (dy / dist) * HOMING_SPEED;

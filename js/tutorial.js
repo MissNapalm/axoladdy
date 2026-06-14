@@ -24,6 +24,10 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
     for (const s of warden.sentinels) { if (!s.dead) candidates.push(s); }
     candidates.push(warden); // always targetable; homing bounces unless red
   }
+  // Chaser bolt — only targetable when not yet reflected
+  if (chaser.active && !chaser.dead && chaser.bolt && !chaser.bolt.reflected) {
+    candidates.push(chaser.bolt);
+  }
   // Red bat mini-boss — homing target during idle/freeze only
   if (redBat.active && !redBat.dead && (redBat.state === 'idle' || redBat.state === 'freeze')) {
     candidates.push(redBat);

@@ -30,16 +30,34 @@ function updateChaser() {
     const b = chaser.bolt;
     b.x += b.vx; b.y += b.vy;
     b.life--;
-    // hit player
-    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
-    const br = { x: b.x - 8, y: b.y - 8, w: 16, h: 16 };
-    if (rectsOverlap(br, pr) && player.invincible === 0) {
-      hurtPlayer(1); player.invincible = 60;
-      player.vy = -6; player.vx = (player.x < b.x ? -1 : 1) * 8;
-      if (hp <= 0) { killPlayer(); return; }
-      chaser.bolt = null;
-    } else if (b.life <= 0) {
-      chaser.bolt = null;
+    if (b.reflected) {
+      // Reflected bolt — check if it hits the chaser
+      const cr = { x: chaser.x, y: chaser.y, w: chaser.w, h: chaser.h };
+      const br2 = { x: b.x - 8, y: b.y - 8, w: 16, h: 16 };
+      if (rectsOverlap(br2, cr)) {
+        chaser.hp--;
+        chaser.hitFlash = 14;
+        spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, false);
+        chaser.bolt = null;
+        if (chaser.hp <= 0) {
+          chaser.dead = true; chaser.deadTimer = 60;
+          spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, true);
+        }
+      } else if (b.life <= 0) {
+        chaser.bolt = null;
+      }
+    } else {
+      // Normal bolt — hits player
+      const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+      const br = { x: b.x - 8, y: b.y - 8, w: 16, h: 16 };
+      if (rectsOverlap(br, pr) && player.invincible === 0) {
+        hurtPlayer(1); player.invincible = 60;
+        player.vy = -6; player.vx = (player.x < b.x ? -1 : 1) * 8;
+        if (hp <= 0) { killPlayer(); return; }
+        chaser.bolt = null;
+      } else if (b.life <= 0) {
+        chaser.bolt = null;
+      }
     }
   }
 
@@ -103,7 +121,8 @@ function updateChaser() {
         x: cx, y: cy,
         vx: Math.cos(chaser.laserAngle) * speed,
         vy: Math.sin(chaser.laserAngle) * speed,
-        life: 120,
+        life: 120, reflected: false,
+        w: 16, h: 16, // needed for homing distance calc (treated as center)
       };
       chaser.hitFlash = 0;
       chaser.state = 'cooldown';
