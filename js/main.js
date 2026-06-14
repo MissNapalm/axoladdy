@@ -355,6 +355,11 @@ function loop(ts) {
   const prompt = document.getElementById('press-enter');
   let dismissed = false;
 
+  const introMusic = new Audio('intro.mp3');
+  introMusic.loop = true;
+  introMusic.volume = 0.7;
+  introMusic.play().catch(() => {});
+
   vid.addEventListener('ended', () => { prompt.style.display = 'block'; });
   vid.addEventListener('error', () => { prompt.style.display = 'block'; });
 
@@ -362,6 +367,8 @@ function loop(ts) {
     if (dismissed) return;
     dismissed = true;
     vid.pause();
+    introMusic.pause();
+    introMusic.currentTime = 0;
     screen.style.display = 'none';
     loadLevel(currentLevel);
     hp = MAX_HP;
