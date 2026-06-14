@@ -83,7 +83,7 @@ function update(dt) {
     const wantH = goLeft || goRight || (!goingUp);
     const wantUp = goingUp;
     const frenzy = player.frenzyTimer > 0;
-    const maxDash = frenzy ? 3 : 1;
+    const maxDash = frenzy ? 3 : CFG.dashChain;
     const canUp = wantUp && player.dashUsedUp < maxDash;
     const canH  = wantH  && player.dashUsedH  < maxDash;
 
@@ -198,6 +198,7 @@ function update(dt) {
     player.onGround = false;
     player.homingUsed = false;
     player.homingCount = 0;
+    player.dashKills = 0;
     playSound('jump', 0.5);
   }
 
@@ -288,7 +289,7 @@ function update(dt) {
         }
         player.onGround = true;
         player.homingUsed = false; player.homingCount = 0;
-        player.dashUsedUp = 0; player.dashUsedH = 0;
+        player.dashUsedUp = 0; player.dashUsedH = 0; player.dashKills = 0;
       } else if (player.vy < 0) {
         player.y = s.y + s.h;
         player.vy = 1;

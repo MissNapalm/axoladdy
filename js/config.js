@@ -62,6 +62,7 @@ const DEFAULTS = {
   spriteOffset: 4,
   ballSize: 80,
   homingChain: 3,
+  dashChain: 1,
 };
 
 function loadCFG() {
@@ -833,13 +834,16 @@ function damageEnemy(g, dmg) {
       const killVal = g.red ? 3 : 1;
       player.frenzyKills = Math.min(player.frenzyKills + killVal, 12);
     }
-    // Kill while airborne: track chain kills, re-enable homing if under limit
+    // Kill while airborne: track chain kills, re-enable homing/dash if under limits
     if (!player.onGround) {
       player.homingCount++;
       if (player.homingCount < CFG.homingChain) player.homingUsed = false;
       if (player.frenzyTimer <= 0) {
-        player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-        player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
+        player.dashKills = (player.dashKills || 0) + 1;
+        if (player.dashKills < CFG.dashChain) {
+          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
+        }
       }
     }
     return true; // killed
