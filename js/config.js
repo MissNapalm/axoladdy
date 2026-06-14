@@ -51,6 +51,7 @@ const DEFAULTS = {
   dashV: 14,
   dashLen: 10,
   dashLenFrenzy: 14,
+  dashFrenzyMult: 0.75,
   moveSpeed: 3.5,
   axoSize: 44,
   enemySize: 32,

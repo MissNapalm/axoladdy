@@ -409,6 +409,7 @@ const sliders = [
   { id: 's-size',         vid: 'v-size',         key: 'axoSize',      fmt: v => v + 'px'     },
   { id: 's-enemySize',   vid: 'v-enemySize',   key: 'enemySize',    fmt: v => v + 'px'     },
   { id: 's-gnomeScale',  vid: 'v-gnomeScale',  key: 'gnomeScale',   fmt: v => v.toFixed(1) + '×' },
+  { id: 's-dashFrenzyMult', vid: 'v-dashFrenzyMult', key: 'dashFrenzyMult', fmt: v => (v * 100).toFixed(0) + '%' },
   { id: 's-batScale',    vid: 'v-batScale',    key: 'batScale',     fmt: v => v.toFixed(1) + '×' },
   { id: 's-smoothing',  vid: 'v-smoothing',   key: 'smoothing',    fmt: v => v > 0 ? 'smooth' : 'pixel' },
   { id: 's-spriteRot',    vid: 'v-spriteRot',    key: 'spriteRot',    fmt: v => Math.round(v) + '°' },

@@ -91,7 +91,7 @@ function update(dt) {
     if (wantUp && wantH && (canUp || canH)) {
       // diagonal — only allowed if both directions still available
       if (canUp && canH) {
-        const spd = frenzy ? 1 : 0.5;
+        const spd = frenzy ? CFG.dashFrenzyMult : 0.5;
         const diagH = CFG.dashH * 0.707 * spd;
         const diagV = CFG.dashV * 0.707 * spd;
         player.vx = horizDir * diagH;
@@ -104,14 +104,14 @@ function update(dt) {
       }
     } else if (wantUp && canUp) {
       player.vx = 0;
-      player.vy = -(CFG.dashV * (frenzy ? 1 : 0.5));
+      player.vy = -(CFG.dashV * (frenzy ? CFG.dashFrenzyMult : 0.5));
       player.dashUsedUp++;
       player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
       player.dashingUp = true;
       player.ballForm = true;
       player.spinning = false;
     } else if (canH) {
-      player.vx = horizDir * CFG.dashH * (frenzy ? 1 : 0.5);
+      player.vx = horizDir * CFG.dashH * (frenzy ? CFG.dashFrenzyMult : 0.5);
       player.vy = 0;
       player.dashUsedH++;
       player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
@@ -317,6 +317,12 @@ function update(dt) {
       hp = MAX_HP; updateHPBar();
       spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
     }
+  }
+
+  // Cancel frenzy when entering the boss arena
+  if (player.frenzyTimer > 0 && redBat.active && !redBat.dead) {
+    player.frenzyTimer = 0;
+    player.frenzyKills = 0;
   }
 
   // Frenzy tick + trail
