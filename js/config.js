@@ -551,9 +551,9 @@ function loadLevel(n) {
     const type = 'normal';
     const h = 1; // goombas always 1 hit
     const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
-    const companion = { ...base, id: i * 2 + 1, x: (g.x + 3) * TILE, y: groundY * TILE - TILE, vx: -1.4, pl: (g.pl + 3) * TILE, pr: (g.pr + 3) * TILE };
+    const companion = { ...base, id: i * 2 + 1, x: (g.x + 3) * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: (g.pl + 3) * TILE, pr: (g.pr + 3) * TILE };
     return [
-      { ...base, id: i * 2, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, pl: g.pl * TILE, pr: g.pr * TILE },
+      { ...base, id: i * 2, x: g.x * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: g.pl * TILE, pr: g.pr * TILE },
       companion,
     ];
   });

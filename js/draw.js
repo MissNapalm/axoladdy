@@ -599,7 +599,7 @@ function drawEnemy(g) {
       _batTintCtx.globalAlpha = 1;
       ctx.drawImage(_batTintCanvas, cx - dw/2, cy - dh/2);
     } else {
-      const bFrame2 = Math.floor((performance.now() / 1000 * 10 + g.id * 7)) % BADDIE_FRAMES;
+      const bFrame2 = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
       const dw = Math.round(TILE * CFG.gnomeScale), dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
       drawBaddieSprite(ctx, bFrame2, dw, dh, cx - dw / 2, g.y + g.h - dh, '#ff6600');
     }
@@ -629,7 +629,7 @@ function drawEnemy(g) {
     drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, isRedBat);
   } else {
     // Ground goomba — sprite from baddie.mov sheet
-    const baddieFrame = Math.floor((performance.now() / 1000 * 10 + g.id * 7)) % BADDIE_FRAMES;
+    const baddieFrame = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
     const dw = Math.round(TILE * CFG.gnomeScale);
     const dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
     const dx = cx - dw / 2, dy = g.y + g.h - dh;
