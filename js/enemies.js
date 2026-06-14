@@ -67,7 +67,8 @@ function updateChaser() {
     chaser.vx += dx * 0.04; chaser.vy += dy * 0.04;
     chaser.vx *= 0.7;       chaser.vy *= 0.7;
     chaser.x += chaser.vx;  chaser.y += chaser.vy;
-    if (Math.sqrt(dx*dx+dy*dy) < 20 && Math.abs(chaser.vy) < 3) chaser.descending = false;
+    chaser.stateTimer--;
+    if (Math.sqrt(dx*dx+dy*dy) < 20 || chaser.stateTimer <= 120) chaser.descending = false;
     return;
   }
 
