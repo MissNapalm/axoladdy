@@ -1,7 +1,6 @@
 function update(dt) {
   if (won && !player.wonSlide) return;
   if (dead) return;
-  if (turboFlash > 0) { turboFlash--; return; } // freeze during turbo activation
   if (LEVELS[currentLevel].isTutorial && tut.frozen) {
     // Run only essential ticks while frozen (particles, timers) but skip gameplay
     if (tut.anyKeyTimer > 0) tut.anyKeyTimer--;
@@ -14,6 +13,17 @@ function update(dt) {
   if (player.ballExitFlash > 0) player.ballExitFlash--;
 
   const now = performance.now();
+
+  // Dash tutorial — freeze player until dash1 is purchased, but show game normally
+  if (dashTutorial) {
+    if (abilityMenu.purchased.size > 0) {
+      dashTutorial = false;
+      abilityMenu.open = false;
+    } else {
+      return; // frozen — game draws normally but no input processed
+    }
+  }
+
   const goLeft  = keys[KEYS.left]  || false;
   const goRight = keys[KEYS.right] || false;
   const jumpKey = keys[KEYS.jump] || false;
@@ -22,9 +32,12 @@ function update(dt) {
   prevJumpKey = jumpKey;
   prevUpKey   = upKey;
 
-  const eKey = keys[KEYS.dash] || false;
-  const eJustPressed = eKey && !prevEKey;
-  prevEKey = eKey;
+  const eKey    = keys[KEYS.dash] || false;
+  const downKey = keys[KEYS.down] || false;
+  const eJustPressed    = eKey    && !prevEKey;
+  const downJustPressed = downKey && !prevDownKey;
+  prevEKey    = eKey;
+  prevDownKey = downKey;
 
   if (lvlComplete.active) {
     lvlComplete.timer++;
@@ -63,15 +76,13 @@ function update(dt) {
   }
 
   // Space/jump while airborne — homing attack if enemy nearby
-  // Frenzy: 3 homes per jump freely; normal: 3 total but need kill to re-enable per use
-  const frenzyActive = player.frenzyTimer > 0;
-  const homingAllowed = CFG.homingChain > 0 && (frenzyActive || (!player.homingUsed && player.homingCount < CFG.homingChain));
+  const homingAllowed = CFG.homingChain > 0 && player.homingCount < CFG.homingChain;
   if (jumpJustPressed && !player.onGround && !player.homing && homingAllowed) {
-    const target = nearestLiveGoomba(frenzyActive ? HOMING_RANGE : 169);
+    const target = nearestLiveGoomba(169);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
-      player.homingUsed = !frenzyActive;
+      player.homingCount++;
       target.lockFlash = 10;
     }
   }
@@ -80,44 +91,69 @@ function update(dt) {
   if (eJustPressed && !player.homing) {
     const goingUp = keys[KEYS.up] || false;
     const horizDir = goLeft ? -1 : goRight ? 1 : player.dir;
-    const wantH = goLeft || goRight || (!goingUp);
-    const wantUp = goingUp;
-    const frenzy = player.frenzyTimer > 0;
-    const maxDash = frenzy ? 3 : CFG.dashCount;
-    const canUp = wantUp && player.dashUsedUp < maxDash;
-    const canH  = wantH  && player.dashUsedH  < maxDash;
+    const wantDown = downKey && !player.onGround;
+    const wantH = !wantDown && (goLeft || goRight || (!goingUp));
+    const wantUp = !wantDown && goingUp;
+    const dashesUsed = Math.max(player.dashUsedUp, player.dashUsedH);
+    const canDash = dashesUsed < CFG.dashCount;
 
-    if (wantUp && wantH && (canUp || canH)) {
-      // diagonal — only allowed if both directions still available
-      if (canUp && canH) {
-        const spd = frenzy ? CFG.dashFrenzyMult : 0.5;
-        const diagH = CFG.dashH * 0.707 * spd;
-        const diagV = CFG.dashV * 0.707 * spd;
-        player.vx = horizDir * diagH;
-        player.vy = -diagV;
-        player.dashUsedUp++;
-        player.dashUsedH++;
-        player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
-        player.ballForm = true;
-        player.spinning = false;
-      }
-    } else if (wantUp && canUp) {
+    if (wantDown && canDash && !CFG.slamUnlocked) {
       player.vx = 0;
-      player.vy = -(CFG.dashV * (frenzy ? CFG.dashFrenzyMult : 0.5));
-      player.dashUsedUp++;
-      player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
+      player.vy = CFG.dashV * 0.5;
+      player.dashUsedUp = dashesUsed + 1;
+      player.dashUsedH  = dashesUsed + 1;
+      player.dashFrames = CFG.dashLen;
+      player.ballForm = true;
+      player.spinning = false;
+      playSound('dash', 0.45);
+    } else if (wantUp && wantH && canDash) {
+      const diagH = CFG.dashH * 0.707 * 0.5;
+      const diagV = CFG.dashV * 0.707 * 0.5;
+      player.vx = horizDir * diagH;
+      player.vy = -diagV;
+      player.dashUsedUp = dashesUsed + 1;
+      player.dashUsedH  = dashesUsed + 1;
+      player.dashFrames = CFG.dashLen;
+      player.ballForm = true;
+      player.spinning = false;
+    } else if (wantUp && canDash) {
+      player.vx = 0;
+      player.vy = -(CFG.dashV * 0.5);
+      player.dashUsedUp = dashesUsed + 1;
+      player.dashUsedH  = dashesUsed + 1;
+      player.dashFrames = CFG.dashLen;
       player.dashingUp = true;
       player.ballForm = true;
       player.spinning = false;
-    } else if (canH) {
-      player.vx = horizDir * CFG.dashH * (frenzy ? CFG.dashFrenzyMult : 0.5);
+    } else if (!wantUp && !wantDown && canDash) {
+      player.vx = horizDir * CFG.dashH * 0.5;
       player.vy = 0;
-      player.dashUsedH++;
-      player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
+      player.dashUsedUp = dashesUsed + 1;
+      player.dashUsedH  = dashesUsed + 1;
+      player.dashFrames = CFG.dashLen;
       player.ballForm = true;
       player.spinning = false;
     }
     if (player.dashFrames > 0) playSound('dash', 0.45);
+  }
+
+  // X+F — slam dash downward (independent of dash count, 1 use per airtime)
+  if (CFG.slamUnlocked && eJustPressed && downKey && !player.onGround && !player.homing && !player.dashingDown && player.slamFreezeTimer === 0 && !player.slamUsed) {
+    player.slamFreezeTimer = 12;
+    player.slamUsed = true;
+    player.ballForm = true;
+    player.spinning = false;
+  }
+  // Tick slam freeze — float up then launch downward
+  if (player.slamFreezeTimer > 0) {
+    player.slamFreezeTimer--;
+    player.vx = 0;
+    player.vy = -3; // drift upward during freeze
+    if (player.slamFreezeTimer === 0) {
+      player.vy = CFG.dashV * 0.6;
+      player.dashingDown = true;
+      playSound('dash', 0.45);
+    }
   }
 
   // Tick dash frames and spawn afterimage trail
@@ -139,26 +175,17 @@ function update(dt) {
       const px = player.x + player.w / 2, py = player.y + player.h / 2;
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
-      const hitDist = (tg === chaser.bolt) ? 40 : 12;
-      if (dist < hitDist) {
-        // Chaser bolt — reflect back at chaser
-        if (tg === chaser.bolt) {
-          const bx = chaser.bolt.x, by = chaser.bolt.y;
-          const cx2 = chaser.x + chaser.w / 2, cy2 = chaser.y + chaser.h / 2;
-          const dx2 = cx2 - bx, dy2 = cy2 - by;
-          const d2 = Math.hypot(dx2, dy2) || 1;
-          const spd = Math.hypot(chaser.bolt.vx, chaser.bolt.vy) * 1.3;
-          chaser.bolt.vx = (dx2 / d2) * spd;
-          chaser.bolt.vy = (dy2 / d2) * spd;
-          chaser.bolt.reflected = true;
-          chaser.bolt.life = 180;
-          player.homing = false; player.homingTarget = null;
-          player.ballForm = true; player.vy = -6;
-          player.vx = player.dir * CFG.moveSpeed * 1.5;
-          player.spinning = false;
-        // Red bat mini-boss homing hit
+      if (dist < 12) {
+        if (tg === chaser) {
+          // Home into chaser eye — only damages if still in telegraph state
+          if (chaser.state === 'telegraph' && chaser.hitFlash === 0) {
+            chaser.hp--;
+            chaser.hitFlash = 18;
+            spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, false);
+            if (chaser.hp <= 0) { chaser.dead = true; chaser.deadTimer = 60; spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, true); }
+          }
         } else if (tg === redBat) {
-          damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
+          damageRedBat(1);
           comboCount++; comboTimer = 120;
         } else if (snipers.includes(tg)) {
           damageSniperById(tg.id, 1);
@@ -167,14 +194,13 @@ function update(dt) {
           const killed = damageEnemy(tg, 1);
           if (killed) { comboCount++; comboTimer = 120; }
         }
-        if (tg !== chaser.bolt) {
-          checkComboAchievements();
-          player.homing = false; player.homingTarget = null;
-          player.ballForm = true;
-          player.vy = -6;
-          player.vx = player.dir * CFG.moveSpeed * 1.5;
-          player.spinning = false;
-        }
+        checkComboAchievements();
+        player.homing = false; player.homingTarget = null;
+        player.ballForm = true;
+        player.vy = -6;
+        player.vx = player.dir * CFG.moveSpeed * 1.5;
+        player.spinning = false;
+        player.onGround = false;
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
         player.vy = (dy / dist) * HOMING_SPEED;
@@ -185,8 +211,9 @@ function update(dt) {
     }
   }
 
-  // Normal movement (not homing, not dashing)
-  if (!player.homing && player.dashFrames <= 0) {
+  // Normal movement (not homing, not dashing, not in knockback)
+  if (player.knockbackTimer > 0) { player.knockbackTimer--; player.vx *= 0.82; }
+  else if (!player.homing && player.dashFrames <= 0) {
     if (goRight) { player.vx = CFG.moveSpeed; player.dir = 1; }
     else if (goLeft) { player.vx = -CFG.moveSpeed; player.dir = -1; }
     else player.vx *= 0.75;
@@ -196,7 +223,6 @@ function update(dt) {
   if (jumpJustPressed && player.onGround) {
     player.vy = -CFG.jump1;
     player.onGround = false;
-    player.homingUsed = false;
     player.homingCount = 0;
     player.dashKills = 0;
     playSound('jump', 0.5);
@@ -215,6 +241,15 @@ function update(dt) {
     if (player.vy > 20) player.vy = 20;
   }
 
+  // Reset wall bubble each frame — stays true only if collision fires this frame
+  chaserWallBubble = false;
+  // Remove chaser wall from solids once homing is unlocked
+  if (CFG.homingChain > 0 && solids.some(s => s.type === 'chaserwall')) {
+    for (let i = solids.length - 1; i >= 0; i--) {
+      if (solids[i].type === 'chaserwall') solids.splice(i, 1);
+    }
+  }
+
   // Move X
   player.x += player.vx;
   player.x = Math.max(0, player.x);
@@ -226,7 +261,10 @@ function update(dt) {
   if (player.homing || player.dashFrames > 0) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
-      if (s.key && s.type !== 'wall' && !blockHit[s.key] && rectsOverlap(pr, s)) hitBlock(s);
+      if (s.key && s.type !== 'wall' && !blockHit[s.key] && rectsOverlap(pr, s)) {
+        const sideHit = player.vy === 0 || Math.abs(player.vx) > Math.abs(player.vy) * 1.5;
+        hitBlock(s, sideHit ? Math.sign(player.vx) : 0);
+      }
     }
   }
 
@@ -238,17 +276,11 @@ function update(dt) {
       const hitBox = { x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 };
       // Touching check (>=) so frenzy fires even when flush against the tile
       if (!(hitBox.x <= s.x + s.w && hitBox.x + hitBox.w >= s.x && hitBox.y < s.y + s.h && hitBox.y + hitBox.h > s.y)) continue;
-      if ((s.type === 'pipe' || s.type === 'pipetop') && player.frenzyTimer > 0) {
-        blockHit[s.key] = true;
-        score += 50; updateHUD();
-        spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, 'brick');
-        playSound('hit', 0.5);
-        const idx = solids.indexOf(s);
-        if (idx !== -1) solids.splice(idx, 1);
-      } else if (hitBox.x < s.x + s.w && hitBox.x + hitBox.w > s.x) {
+      if (hitBox.x < s.x + s.w && hitBox.x + hitBox.w > s.x) {
         if (player.vx > 0) player.x = s.x - player.w;
         else if (player.vx < 0) player.x = s.x + s.w;
         player.vx = 0;
+        if (s.type === 'chaserwall') chaserWallBubble = true;
       }
     }
   }
@@ -264,32 +296,53 @@ function update(dt) {
     for (const s of nearY) {
       if (blockHit[s.key]) continue;
       if (!rectsOverlap({ x: player.x + 2, y: player.y, w: player.w - 4, h: player.h }, s)) continue;
-      if ((s.type === 'pipe' || s.type === 'pipetop') && player.frenzyTimer > 0) {
-        blockHit[s.key] = true;
-        score += 50; updateHUD();
-        spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, 'brick');
-        playSound('hit', 0.5);
-        const idx = solids.indexOf(s);
-        if (idx !== -1) solids.splice(idx, 1);
-        continue;
-      }
       if (player.vy > 0) {
         player.y = s.y - player.h;
         player.vy = 0;
         if (!wasOnGround) {
           player.lastLandTime = now;
           spawnDust(player.x + player.w / 2, player.y + player.h);
-          playSound('land', 0.3);
-          player.spinning = false;
-          if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
-          player.ballForm = false;
-          player.dashingUp = false;
-          player.dashFrames = 0;
-          comboCount = 0; comboTimer = 0;
+          if (player.dashingDown) {
+            // Ground slam
+            screenShake = 18;
+            player.vy = -7; // half-jump bounce
+            player.dashingDown = false;
+            if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
+            player.ballForm = false;
+            player.dashFrames = 0;
+            playSound('hit', 0.8);
+            // Kill all enemies within 3 tiles either side
+            const slamX = player.x + player.w / 2;
+            const slamRange = 3 * TILE;
+            for (const g of [...goombas, ...flyers]) {
+              if (g.dead) continue;
+              const gx = g.x + g.w / 2;
+              if (Math.abs(gx - slamX) <= slamRange) {
+                if (damageEnemy(g, g.hp)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
+              }
+            }
+            // spawn extra dust/debris
+            for (let i = 0; i < 3; i++) spawnDust(slamX + (i - 1) * TILE, player.y + player.h);
+            // Break blocks within 3 tiles on either side at ground level
+            for (const sol of [...solids]) {
+              if (Math.abs((sol.x + sol.w / 2) - slamX) <= slamRange) hitBlock(sol);
+            }
+          } else {
+            playSound('land', 0.3);
+            player.spinning = false;
+            if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
+            player.ballForm = false;
+            player.dashingUp = false;
+            player.dashFrames = 0;
+            comboCount = 0; comboTimer = 0;
+          }
         }
+        player.dashingDown = false;
+        player.slamFreezeTimer = 0;
         player.onGround = true;
-        player.homingUsed = false; player.homingCount = 0;
+        player.homingCount = 0;
         player.dashUsedUp = 0; player.dashUsedH = 0; player.dashKills = 0;
+        player.slamUsed = false;
       } else if (player.vy < 0) {
         player.y = s.y + s.h;
         player.vy = 1;
@@ -299,65 +352,40 @@ function update(dt) {
   }
 
 
-  // Pit death — frenzy wraps to ceiling instead
+  // Pit death
   if (player.y > H + 200) {
-    if (player.frenzyTimer > 0) {
-      player.y = -player.h;
-      player.vy = Math.abs(player.vy) * 0.5;
-    } else {
-      killPlayer(); return;
-    }
+    if (CFG.godMode) { player.y = (groundY - 1) * TILE - player.h; player.vy = 0; return; }
+    killPlayer(); return;
   }
 
   // Coins
+  const groundFloorY = (groundY - 1) * TILE;
   for (const coin of coins) {
     if (coin.collected) continue;
     coin.bobTimer += 0.05;
-    if (rectsOverlap({ x: coin.x + 4, y: coin.y + 4, w: TILE - 8, h: TILE - 8 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
-      coin.collected = true; coinCount++; score += 200; updateHUD(); playSound('coin', 0.5);
-      if (typeof totalCoins !== 'undefined') { totalCoins++; saveAbilities(); }
-      // Coins nudge frenzy meter (every 3 coins = 1 kill)
-      if (player.frenzyTimer <= 0) {
-        player.coinFrenzyAcc = (player.coinFrenzyAcc || 0) + 1;
-        if (player.coinFrenzyAcc >= 10) { player.coinFrenzyAcc -= 10; player.frenzyKills = Math.min(player.frenzyKills + 1, 12); }
+    // Block-spawned coins arc with physics until they settle
+    if (coin.fromBlock) {
+      coin.vy = (coin.vy || 0) + 0.45;
+      coin.vx = (coin.vx || 0) * 0.94;
+      coin.x += coin.vx;
+      coin.y += coin.vy;
+      const floatOffset = player.h; // hover at player foot level
+      if (coin.y + TILE >= groundFloorY - floatOffset) {
+        coin.y = groundFloorY - TILE - floatOffset;
+        coin.vy *= -0.25; // tiny bounce
+        if (Math.abs(coin.vy) < 0.5) { coin.vy = 0; coin.vx = 0; coin.fromBlock = false; }
       }
     }
-  }
-
-  // Frenzy activation (R or Q)
-  if (frenzyKeyPressed) {
-    const devMode = frenzyKeyDev;
-    frenzyKeyPressed = false; frenzyKeyDev = false;
-    if ((devMode || player.frenzyKills >= 12) && player.frenzyTimer <= 0) {
-      player.frenzyKills = 0;
-      player.frenzyTimer = 540;
-      player.homingUsed = false;
-      turboFlash = 70;
-      hp = MAX_HP; updateHPBar();
-      spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
+    if (coin.fromBlock) continue; // not collectible until settled
+    if (rectsOverlap({ x: coin.x + 4, y: coin.y + 4, w: TILE - 8, h: TILE - 8 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      coin.collected = true; coinCount++; score += 200; updateHUD(); playSound('coin', 0.5);
+      coinPopups.push({ x: coin.x + TILE / 2, y: coin.y, timer: 50 });
+      if (typeof totalCoins !== 'undefined') {
+        totalCoins++;
+        if (totalCoins % 115 === 0) { totalTokens++; showAmuletBanner('token'); }
+        saveAbilities();
+      }
     }
-  }
-
-  // Cancel frenzy when entering the boss arena (only once player is close to the boss)
-  if (player.frenzyTimer > 0 && redBat.active && !redBat.dead && player.x >= redBat.x - 600) {
-    player.frenzyTimer = 0;
-    player.frenzyKills = 0;
-  }
-
-  // Frenzy tick + trail
-  if (player.frenzyTimer > 0) {
-    player.frenzyTimer--;
-    // Spawn cyan trail every frame
-    trailParticles.push({
-      x: player.x + player.w / 2 + (Math.random() - 0.5) * 10,
-      y: player.y + player.h / 2 + (Math.random() - 0.5) * 10,
-      r: Math.random() * 7 + 4,
-      life: 18 + Math.floor(Math.random() * 8),
-      maxLife: 26,
-      hue: 185 + Math.random() * 30,
-      bright: true,
-      frenzyTrail: true,
-    });
   }
 
   // Heart pickups
@@ -372,16 +400,31 @@ function update(dt) {
     h.vx *= 0.96;
     if (h.y + 20 >= groundFloor) { h.y = groundFloor - 20; h.vy = 0; h.vx = 0; }
     h.bobTimer += 0.06;
-    if (rectsOverlap({ x: h.x, y: h.y, w: 20, h: 20 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+    if (rectsOverlap({ x: h.x, y: h.y, w: 36, h: 36 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       h.collected = true;
-      hp = Math.min(MAX_HP, hp + 1); updateHPBar();
+      hp = MAX_HP; updateHPBar();
     }
   }
+
 
   // Ground enemies + flyers — unified update
   const allEnemies = [...goombas, ...flyers];
   for (const g of allEnemies) {
-    if (g.dead) { g.deadTimer--; if (g.lockFlash) g.lockFlash--; continue; }
+    if (g.dead) {
+      if (g.deadTimer > 0) { g.deadTimer--; if (g.lockFlash) g.lockFlash--; }
+      else if (g.spawnX !== undefined) {
+        const offscreen = g.spawnX < camera - W || g.spawnX > camera + W * 2;
+        if (offscreen) {
+          g.dead = false; g.deadTimer = 0; g.hitFlash = 0; g.lockFlash = 0;
+          g.x = g.spawnX; g.y = g.spawnY; g.vx = g.spawnVx;
+          g.pl = g.spawnPl; g.pr = g.spawnPr;
+          g.hp = g.spawnHp; g.maxHp = g.spawnHp;
+          g.shockStun = 0; g.frame = 0;
+          if (g.flying) g.wobble = Math.random() * Math.PI * 2;
+        }
+      }
+      continue;
+    }
     if (g.lockFlash) g.lockFlash--;
     if (g.shockStun > 0) { g.shockStun--; continue; } // frozen during shockwave
     // Reverse at patrol bounds or pit edges (ground enemies only)
@@ -412,14 +455,14 @@ function update(dt) {
     }
 
     {
-      // Shoot logic — flying bats and ground shooters
-      if (g.flying || g.type === 'shooter') {
+      // Shoot logic — flying bats only (ground shooters no longer fire)
+      if (g.flying) {
         if (!g.shootCooldown) g.shootCooldown = 180 + Math.floor(Math.random() * 120);
         g.shootCooldown--;
         if (g.shootCooldown <= 0) {
           const dx = (player.x + player.w / 2) - (g.x + g.w / 2);
           const dy = (player.y + player.h / 2) - (g.y + g.h / 2);
-          const dist = Math.hypot(dx, dy);
+          const dist = Math.hypot(dx, dy);  
           if (dist < 380) {
             const spd = 4.5, ang = Math.atan2(dy, dx);
             const spreads = (g.flying && g.red) ? [-0.25, 0, 0.25] : [0];
@@ -438,18 +481,16 @@ function update(dt) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !g.hitFlash) {
-        const dashingFromBelow = g.flying && player.y > g.y + g.h * 0.5;
-        if (!dashingFromBelow) {
-          // Dash deals 1 damage in normal mode, kills in frenzy
-          const dmg = player.frenzyTimer > 0 ? g.hp : 1;
-          if (damageEnemy(g, dmg)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
-          player.vx = -Math.sign(player.vx) * 8;
-          player.vy = -6;
+        {
+          if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
+          player.vx = -player.dir * 10;
+          player.vy = 0;
           player.dashFrames = 0;
           player.onGround = false;
+          player.knockbackTimer = 18;
         }
       } else if (CFG.stompKill && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
-        if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; checkComboAchievements(); }
+        if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; }
         player.vy = -6;
         player.onGround = false;
       } else if (player.homing) {
@@ -546,26 +587,44 @@ function spawnBlockDebris(x, y, type) {
   explosionParticles.push({ x, y, vx:0, vy:0, r:20, life:5, maxLife:5, hue:45, flash:true });
 }
 
-function hitBlock(s) {
+function hitBlock(s, hitDir = 0) {
   if (!s.key || blockHit[s.key]) return;
   blockHit[s.key] = true;
   if (s.type === 'qblock') { score += 200; }
   else if (s.type === 'brick') score += 50;
-  else if (s.type === 'hblock') { hp = Math.min(MAX_HP, hp + 1); updateHPBar(); }
+  else if (s.type === 'hblock') {
+    heartPickups.push({ x: s.x + TILE / 2 - 16, y: s.y, vy: -9, vx: 0, bobTimer: 0, collected: false });
+  }
   updateHUD();
   spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, s.type);
   playSound('hit', 0.5);
+  // Spawn 1–3 gems from block
+  const gemCount = 1 + Math.floor(Math.random() * 3);
+  const gemDirs = [-5, -2, 2, 5];
+  for (let gi = 0; gi < gemCount; gi++) {
+    const dir = gemDirs[gi % gemDirs.length];
+    const sideVx = hitDir !== 0
+      ? hitDir * (2 + Math.random() * 4) + (Math.random() - 0.5) * 2
+      : dir + (Math.random() - 0.5);
+    const sideVy = hitDir !== 0
+      ? -(1 + Math.random() * 4)
+      : -4 - Math.random() * 3;
+    coins.push({ id: Date.now() + Math.random(),
+      x: s.x + TILE / 2 - 8,
+      y: s.y,
+      collected: false, bobTimer: Math.random() * Math.PI * 2,
+      vy: sideVy,
+      vx: sideVx,
+      fromBlock: true });
+  }
+
   // Remove block entirely from solids array
   const idx = solids.indexOf(s);
   if (idx !== -1) solids.splice(idx, 1);
-  // Tutorial: block destroyed while in frenzy/dash → step 7 complete
-  if (LEVELS[currentLevel]?.isTutorial && tut.step === 7 && !tut.hasBrokenBlock && player.frenzyTimer > 0) {
-    tut.hasBrokenBlock = true; tutAdvance();
-  }
 }
 
 function hurtPlayer(dmg = 1) {
-  if (player.frenzyTimer > 0) return; // infinite health during frenzy
+  if (CFG.godMode) return;
   hp -= dmg; updateHPBar();
 }
 
@@ -590,11 +649,4 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && dead) doRestart();
 });
 
-let frenzyKeyPressed = false, frenzyKeyDev = false;
-document.addEventListener('keydown', e => {
-  if ((e.code === 'KeyR' || e.code === 'KeyQ') && !dead) {
-    frenzyKeyPressed = true;
-    frenzyKeyDev = e.code === 'KeyQ';
-  }
-});
 

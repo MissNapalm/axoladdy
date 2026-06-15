@@ -68,6 +68,28 @@ function updateChaser() {
     }
   }
 
+  // Player can hit chaser during telegraph (vulnerable window)
+  if (chaser.state === 'telegraph' && !chaser.dead && chaser.hitFlash === 0) {
+    const cr = { x: chaser.x, y: chaser.y, w: chaser.w, h: chaser.h };
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    const playerHitting = player.homing ||
+                          (player.ballForm && player.vy > 2); // stomp / slam
+    if (playerHitting && rectsOverlap(pr, cr)) {
+      chaser.hp--;
+      chaser.hitFlash = 18;
+      spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, false);
+      // Bounce player off
+      player.homing = false; player.homingTarget = null;
+      player.ballForm = true;
+      player.vy = -8; player.vx = player.dir * CFG.moveSpeed * 1.5;
+      
+      if (chaser.hp <= 0) {
+        chaser.dead = true; chaser.deadTimer = 60;
+        spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, true);
+      }
+    }
+  }
+
   if (chaser.descending) {
     const targetX = player.x + chaser.targetOffX;
     const targetY = player.y + chaser.targetOffY;
@@ -102,36 +124,34 @@ function updateChaser() {
     }
 
   } else if (chaser.state === 'aiming') {
-    // Hold position — only laser tracks player
+    // Thin red laser tracks player freely
     chaser.vx = 0; chaser.vy = 0;
     const targetAngle = Math.atan2(py - cy, px - cx);
-    // Wrap angle diff
     let diff = targetAngle - chaser.laserAngle;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
-    chaser.laserAngle += diff * 0.06; // smooth track
+    chaser.laserAngle += diff * 0.12;
     if (chaser.stateTimer <= 0) {
       chaser.state = 'telegraph';
-      chaser.stateTimer = 22; // short white flash freeze
+      chaser.stateTimer = 45; // ~0.75s of locked-on thick beam before firing
     }
 
   } else if (chaser.state === 'telegraph') {
-    // Completely frozen, flashing white
+    // Locked on — thick bright beam, angle freezes on player position at lock moment
     chaser.vx = 0; chaser.vy = 0;
-    chaser.hitFlash = 4; // keep flash on
+    // Angle is frozen — don't update laserAngle here
     if (chaser.stateTimer <= 0) {
-      // Fire bolt along laserAngle
       const speed = 14;
       chaser.bolt = {
         x: cx, y: cy,
         vx: Math.cos(chaser.laserAngle) * speed,
         vy: Math.sin(chaser.laserAngle) * speed,
         life: 120, reflected: false, dead: false,
-        w: 16, h: 16, // needed for homing distance calc (treated as center)
+        w: 16, h: 16,
       };
       chaser.hitFlash = 0;
       chaser.state = 'cooldown';
-      chaser.stateTimer = 150; // pause before next aim cycle
+      chaser.stateTimer = 60; // 1s before resuming hover
     }
 
   } else if (chaser.state === 'cooldown') {
@@ -152,56 +172,82 @@ function drawChaser() {
   const scx = Math.round(chaser.x - camera + chaser.w / 2);
   const scy = Math.round(chaser.y - cameraY + chaser.h / 2);
   const r = CHASER_R;
-  const t = performance.now() / 1000;
-
   // Draw active bolt
   if (chaser.bolt) {
     const b = chaser.bolt;
     const bx = b.x - camera, by = b.y - cameraY;
     const fade = b.life / 120;
-    ctx.save();
-    // Fire streak — elongated along velocity
     const ang = Math.atan2(b.vy, b.vx);
+    ctx.save();
     ctx.translate(bx, by);
     ctx.rotate(ang);
-    const grad = ctx.createLinearGradient(-24, 0, 8, 0);
-    grad.addColorStop(0, 'rgba(255,80,0,0)');
-    grad.addColorStop(0.4, `rgba(255,180,40,${fade})`);
-    grad.addColorStop(1, `rgba(255,255,200,${fade})`);
+    // Outer fire glow
+    const grad = ctx.createLinearGradient(-44, 0, 14, 0);
+    grad.addColorStop(0, 'rgba(255,60,0,0)');
+    grad.addColorStop(0.35, `rgba(255,120,0,${fade * 0.5})`);
+    grad.addColorStop(1, `rgba(255,220,80,${fade * 0.7})`);
     ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 24, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Bright core
-    ctx.fillStyle = `rgba(255,255,255,${fade * 0.9})`;
-    ctx.beginPath(); ctx.ellipse(4, 0, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, 44, 13, 0, 0, Math.PI * 2); ctx.fill();
+    // Mid fire body
+    const grad2 = ctx.createLinearGradient(-28, 0, 10, 0);
+    grad2.addColorStop(0, `rgba(255,80,0,0)`);
+    grad2.addColorStop(0.4, `rgba(255,160,20,${fade})`);
+    grad2.addColorStop(1, `rgba(255,240,120,${fade})`);
+    ctx.fillStyle = grad2;
+    ctx.beginPath(); ctx.ellipse(0, 0, 28, 8, 0, 0, Math.PI * 2); ctx.fill();
+    // Bright white-hot core
+    ctx.fillStyle = `rgba(255,255,220,${fade})`;
+    ctx.beginPath(); ctx.ellipse(6, 0, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${fade * 0.95})`;
+    ctx.beginPath(); ctx.ellipse(7, 0, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
   ctx.save();
   if (chaser.dead) ctx.globalAlpha = Math.max(0, chaser.deadTimer / 60);
 
-  // Draw laser beam during aiming
+  // Draw laser beam
   if (chaser.state === 'aiming' || chaser.state === 'telegraph') {
-    // Compute beam end along laserAngle, extend past player
     const beamLen = 800;
     const ex = scx + Math.cos(chaser.laserAngle) * beamLen;
     const ey = scy + Math.sin(chaser.laserAngle) * beamLen;
-    const flicker = 0.4 + 0.35 * Math.sin(t * 40);
-    const isTeleg = chaser.state === 'telegraph';
-
     ctx.save();
-    // Outer glow beam
-    ctx.globalAlpha = (isTeleg ? 0.9 : 0.35) * flicker;
-    ctx.strokeStyle = isTeleg ? '#ff4400' : '#ff2200';
-    ctx.lineWidth = isTeleg ? 8 : 4;
     ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
-    // Bright core
-    ctx.globalAlpha = (isTeleg ? 1 : 0.7) * flicker;
-    ctx.strokeStyle = isTeleg ? '#ffcc44' : '#ff8844';
-    ctx.lineWidth = isTeleg ? 3 : 1.5;
-    ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+
+    if (chaser.state === 'aiming') {
+      // Thin red targeting beam with soft glow
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = '#ff2200';
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+    } else {
+      // Telegraph: locked on — flickering charge beam
+      const chargeT = 1 - (chaser.stateTimer / 45); // 0→1 as it charges
+      const flicker = 0.7 + 0.3 * Math.sin(performance.now() * 0.04);
+      const baseW = 3 + chargeT * 5; // max outer ~8px, not massive
+      const outerW = baseW * flicker;
+      const coreW  = (1 + chargeT * 3) * flicker;
+
+      // Outer glow
+      ctx.globalAlpha = (0.2 + chargeT * 0.35) * flicker;
+      ctx.strokeStyle = '#ff2200';
+      ctx.lineWidth = outerW + 6;
+      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      // Mid layer
+      ctx.globalAlpha = (0.5 + chargeT * 0.5) * flicker;
+      ctx.strokeStyle = '#ff4400';
+      ctx.lineWidth = outerW;
+      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      // Orange-white core
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = '#ffcc44';
+      ctx.lineWidth = coreW;
+      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -213,31 +259,25 @@ function drawChaser() {
   ctx.beginPath(); ctx.arc(scx, scy, glowR, 0, Math.PI * 2);
   ctx.fillStyle = grad; ctx.fill();
 
-  // Body
-  const isTelegraph = chaser.state === 'telegraph';
-  const flashWhite = isTelegraph || chaser.hitFlash > 0;
-  ctx.beginPath(); ctx.arc(scx, scy, r, 0, Math.PI * 2);
-  ctx.fillStyle = flashWhite ? '#ffffff' : '#2255ee';
-  ctx.fill();
-  ctx.strokeStyle = flashWhite ? '#ffffff' : '#88bbff';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  const flashWhite = chaser.hitFlash > 0;
+  const isVulnerable = chaser.state === 'telegraph';
+  const eyeBlink = isVulnerable && Math.floor(performance.now() / 80) % 2 === 0;
 
-  // Inner highlight
-  ctx.beginPath(); ctx.arc(scx - r * 0.3, scy - r * 0.3, r * 0.3, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(180,220,255,0.35)'; ctx.fill();
-
-  // Single eye that points toward player / laser angle
-  const eyeAng = chaser.state === 'aiming' || chaser.state === 'telegraph'
-    ? chaser.laserAngle
-    : Math.atan2((player.y + player.h / 2) - (chaser.y - cameraY + chaser.h / 2),
-                 (player.x + player.w / 2) - (chaser.x - camera  + chaser.w / 2));
-  const ex2 = scx + Math.cos(eyeAng) * r * 0.38;
-  const ey2 = scy + Math.sin(eyeAng) * r * 0.38;
-  ctx.beginPath(); ctx.arc(ex2, ey2, 5, 0, Math.PI * 2);
-  ctx.fillStyle = flashWhite ? '#ff2200' : '#ddeeff'; ctx.fill();
-  ctx.beginPath(); ctx.arc(ex2 + Math.cos(eyeAng) * 1.5, ey2 + Math.sin(eyeAng) * 1.5, 2.5, 0, Math.PI * 2);
-  ctx.fillStyle = '#001133'; ctx.fill();
+  // eye.png is 1200×952 — draw at correct aspect ratio, flipped horizontally
+  const eyeH = r * 2.6 * 1.3;
+  const eyeW = eyeH * (1200 / 952);
+  ctx.save();
+  if (flashWhite || eyeBlink) ctx.filter = 'brightness(10) saturate(0)';
+  ctx.translate(scx, scy);
+  ctx.scale(-1, 1);
+  if (eyeImg.complete && eyeImg.naturalWidth > 0) {
+    ctx.drawImage(eyeImg, -eyeW / 2, -eyeH / 2, eyeW, eyeH);
+  } else {
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#2255ee'; ctx.fill();
+  }
+  ctx.filter = 'none';
+  ctx.restore();
 
   // HP bar
   const barW = r * 2.5, barH = 4;
@@ -364,7 +404,7 @@ function updateBoss() {
         player.ballForm = true;
         player.vy = -6;
         player.vx = player.dir * CFG.moveSpeed * 1.5;
-        player.spinning = false; player.homingUsed = false;
+        player.spinning = false; 
         comboCount++; comboTimer = 120;
         // Each orb death damages boss
         damageBoss(1);
@@ -526,7 +566,7 @@ function updateBoss() {
       player.homing = false; player.homingTarget = null; player.ballForm = true;
       player.vy = Math.min(player.vy, -CFG.jump1 * 0.3);
       player.vx = player.dir * CFG.moveSpeed * 1.5;
-      player.homingUsed = false; comboCount++; comboTimer = 120;
+       comboCount++; comboTimer = 120;
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
       hurtPlayer(1); player.invincible = 80;
       player.vy = -9; player.vx = (player.x < bx ? -1 : 1) * 10;
@@ -728,7 +768,6 @@ function damageRedBat(dmg) {
   redBat.hitFlash = 18;
   spawnExplosion(redBat.x + redBat.w / 2, redBat.y + redBat.h / 2, true);
   playSound('hit', 0.6);
-  if (!player.onGround) { player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
   if (redBat.hp <= 0) {
     redBat.hp = 0;
     redBat.dead = true;
@@ -842,7 +881,7 @@ function updateRedBat() {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !redBat.hitFlash) {
-        damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
+        damageRedBat(1);
         player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -6; player.dashFrames = 0;
       } else if (player.homing) {
         // homing handled in nearestLiveGoomba redirect — handled below
@@ -1046,7 +1085,7 @@ function updateWraith() {
           player.homing = false; player.homingTarget = null; player.ballForm = true;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
-          player.homingUsed = false; comboCount++; comboTimer = 120;
+           comboCount++; comboTimer = 120;
           damageWraith(1);
         } else {
           // bounce off — clone is locked
@@ -1277,7 +1316,7 @@ function updateWraith() {
       player.homing = false; player.homingTarget = null; player.ballForm = true;
       player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
       player.vx = player.dir * CFG.moveSpeed * 1.5;
-      player.homingUsed = false; comboCount++; comboTimer = 120;
+       comboCount++; comboTimer = 120;
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
       hurtPlayer(1); player.invincible = 80;
       player.vy = -9; player.vx = (player.x < wx ? -1 : 1) * 11;
@@ -1464,8 +1503,6 @@ function damageWarden(dmg) {
   warden.hitFlash = 20;
   warden.shakeX = 8;
   score += 500; updateHUD();
-  // Each hit fills 1/5 of the frenzy bar (12 kills total → 2.4 per hit)
-  player.frenzyKills = Math.min(player.frenzyKills + 2.4, 12);
   if (warden.hp <= 0) {
     warden.hp = 0;
     warden.dead = true; warden.deadTimer = 300; // 5s total: 3s shake + 2s grand explosion
@@ -1640,7 +1677,7 @@ function updateWarden() {
     if (rectsOverlap({ x: rk.x - 10, y: rk.y - 10, w: 20, h: 20 }, pR)) {
       if (player.dashFrames > 0 || (player.homing && player.homingTarget === rk)) {
         rk.dead = true; rk.deadTimer = 20;
-        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -9; player.homingUsed = false; }
+        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -9;  }
         else { player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -5; player.dashFrames = 0; }
       } else if (player.invincible === 0) {
         hurtPlayer(1); player.invincible = 60;
@@ -1742,7 +1779,7 @@ function updateWarden() {
       }
     } else if (player.homing && player.homingTarget === warden) {
       player.homing = false; player.homingTarget = null; player.ballForm = true;
-      player.homingUsed = false;
+      
       if (wardenVuln) {
         damageWarden(1);
         player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
@@ -1952,8 +1989,6 @@ function damageSniperById(id, dmg) {
     score += 1500; updateHUD();
     comboCount += 3; comboTimer = 160;
     if (!player.onGround) {
-      player.homingUsed = false;
-      player.homingCount = Math.max(0, player.homingCount - 1);
       player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
       player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
     }

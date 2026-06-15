@@ -10,9 +10,12 @@ canvas.height *= DPR;
 
 const walkSheet     = new Image(); walkSheet.src     = 'assets/images/walk_sheet.png';
 const fireballSheet = new Image(); fireballSheet.src = 'assets/images/fireball_sheet.png';
+const dashSheet     = new Image(); dashSheet.src     = 'assets/images/dash_sheet.png';
+const ballImg       = new Image(); ballImg.src       = 'assets/images/ball.png';
 const batSheet      = new Image(); batSheet.src      = 'assets/images/bat_sheet.png';
 const baddieSheet   = new Image(); baddieSheet.src   = 'assets/images/baddie_sheet.png';
 const cloudImg      = new Image(); cloudImg.src      = 'assets/images/cloud.png';
+const eyeImg        = new Image(); eyeImg.src        = 'assets/images/eye.png';
 
 const BAT_FRAMES    = 59;
 const BAT_COLS      = 10;
@@ -38,6 +41,12 @@ const FB_FH         = 96;
 let   fbFrame       = 0;
 let   fbTick        = 0;
 const FB_SPEED      = 2;
+const DASH_FRAMES   = 78;
+const DASH_FW       = 132;
+const DASH_FH       = 96;
+let   dashFrame     = 0;
+let   dashTick      = 0;
+const DASH_SPEED    = 2;
 const BALL_EXIT_FLASH = 6; // frames for white-flash-to-normal transition
 
 const W = 800, H = 450;
@@ -65,6 +74,8 @@ const DEFAULTS = {
   dashCount: 1,
   dashChain: 1,
   stompKill: 0,
+  slamUnlocked: 0,
+  godMode: 0,
 };
 
 function loadCFG() {
@@ -75,7 +86,7 @@ function saveCFG() { localStorage.setItem('axo_cfg', JSON.stringify(CFG)); }
 
 const CFG = loadCFG();
 
-const KEY_DEFAULTS = { left: 'ArrowLeft', right: 'ArrowRight', jump: 'KeyL', up: 'KeyE', dash: 'KeyF' };
+const KEY_DEFAULTS = { left: 'ArrowLeft', right: 'ArrowRight', jump: 'KeyL', up: 'KeyE', dash: 'KeyF', down: 'KeyX' };
 function loadKeys() {
   try {
     const s = localStorage.getItem('axo_keys');
@@ -214,33 +225,38 @@ const LEVELS = [
       {x:555,w:5},               // final stretch
     ],
     platforms: [
+      // Early section — staircase of platforms to jump through
+      {x:5,y:9,w:6,t:'brick'},{x:14,y:9,w:4,t:'qblock'},
+      {x:22,y:9,w:5,t:'brick'},{x:30,y:9,w:4,t:'qblock'},
+      {x:38,y:9,w:6,t:'brick'},{x:47,y:9,w:4,t:'qblock'},
+      {x:52,y:9,w:5,t:'brick'},{x:57,y:9,w:4,t:'qblock'},
       // Opening
-      {x:62,y:9,w:4,t:'qblock'},{x:88,y:6,w:5,t:'brick'},
+      {x:62,y:9,w:4,t:'qblock'},{x:88,y:9,w:5,t:'brick'},
       // Bridge over pit 1
-      {x:130,y:6,w:5,t:'brick'},{x:142,y:5,w:10,t:'qblock'},{x:160,y:7,w:5,t:'qblock'},
-      {x:205,y:9,w:6,t:'brick'},{x:230,y:7,w:5,t:'qblock'},
+      {x:130,y:9,w:5,t:'brick'},{x:142,y:9,w:10,t:'qblock'},{x:160,y:9,w:5,t:'qblock'},
+      {x:205,y:9,w:6,t:'brick'},{x:230,y:9,w:5,t:'qblock'},
       // Mid section
-      {x:258,y:6,w:5,t:'brick'},{x:285,y:8,w:5,t:'qblock'},
+      {x:258,y:9,w:5,t:'brick'},{x:285,y:9,w:5,t:'qblock'},
       // Bridge over pit 2
-      {x:310,y:6,w:12,t:'qblock'},{x:330,y:7,w:4,t:'brick'},
-      {x:360,y:9,w:5,t:'brick'},{x:378,y:7,w:5,t:'qblock'},
+      {x:310,y:9,w:12,t:'qblock'},{x:330,y:9,w:4,t:'brick'},
+      {x:360,y:9,w:5,t:'brick'},{x:378,y:9,w:5,t:'qblock'},
       // Mid section 2
-      {x:395,y:6,w:4,t:'brick'},
+      {x:395,y:9,w:4,t:'brick'},
       // Bridge over pit 3
-      {x:412,y:5,w:6,t:'brick'},{x:422,y:6,w:10,t:'qblock'},
-      {x:452,y:9,w:5,t:'brick'},{x:468,y:7,w:5,t:'qblock'},
+      {x:412,y:9,w:6,t:'brick'},{x:422,y:9,w:10,t:'qblock'},
+      {x:452,y:9,w:5,t:'brick'},{x:468,y:9,w:5,t:'qblock'},
       // Mid section 3
-      {x:500,y:6,w:5,t:'brick'},
+      {x:500,y:9,w:5,t:'brick'},
       // Bridge over pit 4
-      {x:510,y:5,w:8,t:'qblock'},{x:525,y:7,w:4,t:'brick'},
+      {x:510,y:9,w:8,t:'qblock'},{x:525,y:9,w:4,t:'brick'},
       // Final stretch
-      {x:566,y:7,w:6,t:'qblock'},{x:575,y:9,w:5,t:'brick'},
+      {x:566,y:9,w:6,t:'qblock'},{x:575,y:9,w:5,t:'brick'},
       // Health blocks
-      {x:60,y:7,w:1,t:'hblock'},{x:285,y:7,w:1,t:'hblock'},{x:468,y:6,w:1,t:'hblock'},
+      {x:60,y:9,w:1,t:'hblock'},{x:285,y:9,w:1,t:'hblock'},{x:468,y:9,w:1,t:'hblock'},
     ],
     pipes: [{x:20,h:2},{x:40,h:3},{x:72,h:2},{x:106,h:4},{x:245,h:3},{x:265,h:2},{x:370,h:3},{x:385,h:4}],
     groundEnd: 475,
-    coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,14,10);cl(18,50,8);ca(60,9,5,7);cl(88,112,5);ca(130,7,4,6);cl(148,165,5);ca(200,9,5,7);cl(230,258,4);cl(268,298,5);ca(312,6,5,7);cl(338,378,5);cl(390,412,4);ca(425,6,5,7);cl(455,470,5); }),
+    coinDefs: makeCoinDefs((cl,ca)=>{ cl(18,50,11);cl(128,132,11);cl(198,202,11);cl(268,298,11);cl(310,314,11);cl(423,427,11);cl(455,470,11); }),
     hasChaserEncounter: true,
     chaserTriggerX: 150 * TILE,
     chaserExitX: 200 * TILE,
@@ -257,9 +273,6 @@ const LEVELS = [
       {x:455,pl:445,pr:470,shooter:true},
     ],
     flyers: [
-      {x:18,fy:6*TILE,pw:7},{x:31,fy:7*TILE,pw:7},{x:45,fy:6*TILE,pw:7},
-      {x:72,fy:6*TILE,pw:7},{x:85,fy:7*TILE,pw:7},{x:98,fy:6*TILE,pw:7},
-      {x:138,fy:6*TILE,pw:7},
       // 150-200 cleared for chaser encounter
       {x:218,fy:6*TILE,pw:7},{x:232,fy:7*TILE,pw:7},{x:245,fy:6*TILE,pw:7},
       {x:270,fy:6*TILE,pw:7},{x:283,fy:7*TILE,pw:7},{x:295,fy:6*TILE,pw:7},
@@ -494,12 +507,11 @@ function checkComboAchievements() {
     if (comboCount >= 4) triggerAchievement('combo4');
   }
 }
-let turboFlash = 0; // frames of turbo activation freeze (60 = 1s)
-const MAX_HP = 4;
+const MAX_HP = 3;
 let hp = MAX_HP;
 
 const player = {
-  x: 48, y: 0,
+  x: 48, y: (groundY - 1) * TILE - 44,
   vx: 0, vy: 0,
   w: 44, h: 44,
   onGround: false,
@@ -508,13 +520,14 @@ const player = {
   spinning: false,
   homing: false,
   homingTarget: null,
-  homingUsed: false,
-  homingCount: 0,   // air homes used this jump (max 3 in normal, unlimited in frenzy)
-  frenzyTimer: 0,   // frames remaining on frenzy (900 = 15s)
-  frenzyKills: 0,   // kills toward next frenzy (resets at 10)
+  homingCount: 0,
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
+  dashingDown: false,
+  slamFreezeTimer: 0,
+  slamUsed: false,
+  knockbackTimer: 0,
   dashUsedUp: 0,
   dashUsedH: 0,
   dashFrames: 0,    // frames remaining in active dash
@@ -526,11 +539,16 @@ const player = {
 
 let camera  = 0;
 let cameraY = 0;
+let screenShake = 0; // frames remaining
+let chaserWallBubble = false;
+let dashTutorial = true; // force player to buy dash before moving
 
-let coins   = [];
+let coins      = [];
+let coinPopups = []; // { x, y, timer, text }
 let goombas = [];
 let flyers  = [];
 let heartPickups = [];
+let levelAmulets = [];
 let powerBoxes   = [];   // frenzy power-up crates
 let projectiles  = [];   // { x, y, vx, vy, life, flying }
 let blockHit = {};
@@ -539,7 +557,7 @@ let blockHit = {};
 function buildSolids() {
   const lv = LEVELS[currentLevel];
   // Strip all platforms above tile row 5 — no high blocks anywhere
-  lv.platforms = lv.platforms.filter(p => p.y >= 5);
+  lv.platforms = lv.platforms.filter(p => p.y >= 5 || p.t === 'hblock');
   const solids = [];
   for (let tx = 0; tx < LEVEL_W_TILES; tx++) {
     if (groundInGap(tx)) continue;
@@ -560,6 +578,14 @@ function buildSolids() {
     }
   }
 
+  // Chaser encounter wall — full-height barrier before chaser zone
+  if (lv.hasChaserEncounter) {
+    const wallX = lv.chaserTriggerX - TILE;
+    for (let ty = 0; ty < groundY + 1; ty++) {
+      solids.push({ x: wallX, y: ty * TILE, w: TILE, h: TILE, type: 'chaserwall', key: null });
+    }
+  }
+
   return solids;
 }
 let solids = buildSolids();
@@ -576,7 +602,7 @@ const chaser = {
   x: 0, y: 0, vx: 0, vy: 0,
   w: CHASER_R * 2, h: CHASER_R * 2,
   hp: 3, maxHp: 3, hitFlash: 0, wobble: 0,
-  targetOffX: 75, targetOffY: -200,
+  targetOffX: 75, targetOffY: -120,
   // attack state machine
   state: 'hover',   // hover | aiming | telegraph | cooldown
   stateTimer: 0,
@@ -609,11 +635,11 @@ function loadLevel(n) {
     const type = isShooter ? 'shooter' : 'normal';
     const h = isShooter ? 2 : 1;
     const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
-    const companion = { ...base, id: i * 2 + 1, x: (g.x + 7) * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: (g.pl + 7) * TILE, pr: (g.pr + 7) * TILE };
-    return [
-      { ...base, id: i * 2, x: g.x * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: g.pl * TILE, pr: g.pr * TILE },
-      companion,
-    ];
+    const e1 = { ...base, id: i * 2,     x: g.x * TILE,       y: groundY * TILE - TILE, vx: -0.7, pl: g.pl * TILE,       pr: g.pr * TILE };
+    const e2 = { ...base, id: i * 2 + 1, x: (g.x + 7) * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: (g.pl + 7) * TILE, pr: (g.pr + 7) * TILE };
+    e1.spawnX = e1.x; e1.spawnY = e1.y; e1.spawnVx = e1.vx; e1.spawnPl = e1.pl; e1.spawnPr = e1.pr; e1.spawnHp = h;
+    e2.spawnX = e2.x; e2.spawnY = e2.y; e2.spawnVx = e2.vx; e2.spawnPl = e2.pl; e2.spawnPr = e2.pr; e2.spawnHp = h;
+    return [e1, e2];
   });
   const halfwayX = 140 * TILE; // black bats before tile 140, red from tile 140
   flyers = lv.flyers.map((f, i) => {
@@ -636,11 +662,15 @@ function loadLevel(n) {
         }
       }
     }
-    return { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: sz, h: sz, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isRed };
+    const fly = { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: sz, h: sz, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isRed };
+    fly.spawnX = fly.x; fly.spawnY = safeY; fly.spawnVx = 1.2; fly.spawnPl = fly.pl; fly.spawnPr = fly.pr; fly.spawnHp = h;
+    return fly;
   });
   heartPickups = [];
   projectiles  = [];
   powerBoxes   = [];
+  levelAmulets = (lv.amulets || []).map(a => ({ ...a, collected: false, bobTimer: 0 }));
+  coinPopups = [];
 
   // Snipers (level 3 only)
   initSnipers(lv.snipers || []);
@@ -699,11 +729,10 @@ function loadLevel(n) {
 
   // reset player
   Object.assign(player, {
-    x: TILE * 3, y: (groundY - 3) * TILE,
+    x: TILE * 3, y: (groundY - 1) * TILE - player.h,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingUsed: false, homingCount: 0,
-    frenzyTimer: 0, frenzyKills: 0, coinFrenzyAcc: 0,
+    homing: false, homingTarget: null, homingCount: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: 0, dashUsedV: 0,
     invincible: 0, dead: false, wonSlide: false,
@@ -824,28 +853,18 @@ function spawnShockerBurst(g) {
 
 function damageEnemy(g, dmg) {
   if (g.dead) return false;
-  if (player.frenzyTimer > 0) dmg = g.hp; // one-shot all enemies in frenzy
   g.hp -= dmg;
   if (g.hp <= 0) {
     g.dead = true; g.deadTimer = 40;
     score += g.flying ? 200 : 100; updateHUD();
     spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
     playSound('hit', 0.6);
-    // Frenzy kill counter — fills meter, R to activate; red bats count as 3 kills
-    if (player.frenzyTimer <= 0) {
-      const killVal = g.red ? 3 : 1;
-      player.frenzyKills = Math.min(player.frenzyKills + killVal, 12);
-    }
-    // Kill while airborne: track chain kills, re-enable homing/dash if under limits
+    // Kill while airborne: re-enable dash if under chain limit
     if (!player.onGround) {
-      player.homingCount++;
-      if (player.homingCount < CFG.homingChain) player.homingUsed = false;
-      if (player.frenzyTimer <= 0) {
-        player.dashKills = (player.dashKills || 0) + 1;
-        if (player.dashKills < CFG.dashChain) {
-          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
-        }
+      player.dashKills = (player.dashKills || 0) + 1;
+      if (player.dashKills < CFG.dashChain) {
+        player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+        player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
       }
     }
     return true; // killed
@@ -912,4 +931,5 @@ const HOMING_SPEED = 14;
 let prevJumpKey = false;
 let prevUpKey   = false;
 let prevEKey = false;
+let prevDownKey = false;
 

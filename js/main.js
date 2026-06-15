@@ -17,6 +17,16 @@ function loop(ts) {
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, H);
 
+  // Screen shake
+  let shakeX = 0, shakeY = 0;
+  if (screenShake > 0) {
+    const mag = Math.min(screenShake, 12);
+    shakeX = (Math.random() - 0.5) * mag;
+    shakeY = (Math.random() - 0.5) * mag;
+    screenShake--;
+  }
+  ctx.translate(shakeX, shakeY);
+
   // Zoom: scale around player's screen position so player stays centered
   const pScreenX = W / 2;
   const pScreenY = player.y + player.h / 2 - cameraY;
@@ -34,6 +44,7 @@ function loop(ts) {
   drawPlatforms();
 
   drawCoins();
+  drawCoinPopups();
   drawHeartPickups();
   drawGoombas();
   drawBoss();
@@ -52,52 +63,6 @@ function loop(ts) {
   // All screen-space overlays drawn in logical coords (DPR scaled)
   ctx.save();
   ctx.scale(DPR, DPR);
-
-  // Turbo activation freeze flash
-  if (turboFlash > 0) {
-    const t = turboFlash / 70; // 1 at start → 0 at end
-    const elapsed = 1 - t;    // 0 at start → 1 at end
-    ctx.save();
-
-    // White flash that fades to cyan tint
-    const flashAlpha = Math.pow(t, 0.4) * 0.7;
-    ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = `rgba(80,220,255,${t * 0.35})`;
-    ctx.fillRect(0, 0, W, H);
-
-    // Expanding white pulse rings from screen center
-    const cx = W / 2, cy = H / 2;
-    const maxR = Math.hypot(W, H) * 0.75;
-    for (let ri = 0; ri < 3; ri++) {
-      const phase = (elapsed + ri / 3) % 1;
-      const r = phase * maxR;
-      const ringAlpha = (1 - phase) * t * 0.9;
-      if (ringAlpha <= 0) continue;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255,255,255,${ringAlpha})`;
-      ctx.lineWidth = 6 * (1 - phase);
-      ctx.stroke();
-    }
-
-    // Text
-    const scale = 1 + elapsed * 0.35;
-    ctx.translate(W / 2, H / 2);
-    ctx.scale(scale, scale);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `bold ${Math.round(42)}px monospace`;
-    ctx.fillStyle = `rgba(255,255,255,${t})`;
-    ctx.shadowColor = '#50dcff';
-    ctx.shadowBlur = 40;
-    ctx.fillText('TURBO MODE', 0, 0);
-    ctx.shadowBlur = 12;
-    ctx.font = `bold 16px monospace`;
-    ctx.fillStyle = `rgba(180,240,255,${t * 0.85})`;
-    ctx.fillText('infinite health  ·  ceiling wrap  ·  3 homes', 0, 44);
-    ctx.restore();
-  }
 
   // Combo display — big text at top center
   if (comboCount >= 2 && comboTimer > 0) {
@@ -122,7 +87,7 @@ function loop(ts) {
     const toast = achievements.toasts[i];
     toast.timer--;
     if (toast.timer <= 0) { achievements.toasts.splice(i, 1); continue; }
-    const alpha = toast.timer < 40 ? toast.timer / 40 : toast.timer > 200 ? (240 - toast.timer) / 40 : 1;
+    const alpha = toast.timer < 40 ? toast.timer / 40 : toast.timer > 80 ? (240 - toast.timer) / 40 : 1;
     const yOff = (achievements.toasts.length - 1 - i) * 54;
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -143,43 +108,6 @@ function loop(ts) {
     ctx.font = '10px monospace';
     ctx.fillStyle = '#aaaaaa';
     ctx.fillText(toast.desc, tx, ty + 29);
-    ctx.restore();
-  }
-
-  // Frenzy kill counter / active bar
-  {
-    const bw = 120, bh = 8, bx = W / 2 - bw / 2, by = H - 22;
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-    if (player.frenzyTimer > 0) {
-      // Active: drain bar pulses cyan
-      const frac = player.frenzyTimer / 540;
-      const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
-      ctx.fillStyle = `rgba(80,220,255,${pulse})`;
-      ctx.fillRect(bx, by, bw * frac, bh);
-      ctx.strokeStyle = 'rgba(80,220,255,0.8)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
-      ctx.font = 'bold 9px monospace';
-      ctx.fillStyle = '#50dcff';
-      ctx.textAlign = 'center';
-      ctx.fillText('FRENZY', W / 2, by - 3);
-    } else {
-      // Building: show kill progress toward 7
-      const frac = player.frenzyKills / 12;
-      const ready = player.frenzyKills >= 12;
-      const readyPulse = ready ? (0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 180))) : 0.8;
-      ctx.fillStyle = ready ? `rgba(255,220,40,${readyPulse})` : 'rgba(255,180,40,0.8)';
-      ctx.fillRect(bx, by, bw * frac, bh);
-      ctx.strokeStyle = ready ? `rgba(255,220,40,${readyPulse})` : 'rgba(255,180,40,0.6)';
-      ctx.lineWidth = ready ? 2 : 1;
-      ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
-      ctx.font = `bold 9px monospace`;
-      ctx.fillStyle = ready ? `rgba(255,240,80,${readyPulse})` : '#ffb428';
-      ctx.textAlign = 'center';
-      ctx.fillText(ready ? 'FRENZY READY — R' : `KILLS ${player.frenzyKills}/12`, W / 2, by - 3);
-    }
     ctx.restore();
   }
 
@@ -345,6 +273,8 @@ function loop(ts) {
   ctx.restore(); // end overlay DPR scale
 
   if (abilityMenu.open) drawAbilityMenu();
+  if (dashTutorial && !abilityMenu.open) drawDashTutorialPrompt();
+  drawTokenBanner();
 
   updateHUD();
   requestAnimationFrame(loop);
@@ -386,6 +316,8 @@ function playTrack(audio) {
     document.addEventListener('click',   startOnInteraction);
   });
 
+  vid.playbackRate = 0.83;
+  vid.addEventListener('canplay', () => { vid.playbackRate = 0.83; });
   vid.addEventListener('ended', () => { prompt.style.display = 'block'; });
   vid.addEventListener('error', () => { prompt.style.display = 'block'; });
 
@@ -397,6 +329,7 @@ function playTrack(audio) {
     introMusic.currentTime = 0;
     currentTrack = null;
     screen.style.display = 'none';
+    resetAbilities();
     loadLevel(currentLevel);
     hp = MAX_HP;
     updateHPBar();
@@ -450,6 +383,7 @@ const sliders = [
   { id: 's-dashCount',     vid: 'v-dashCount',     key: 'dashCount',     fmt: v => Math.round(v) },
   { id: 's-dashChain',     vid: 'v-dashChain',     key: 'dashChain',     fmt: v => Math.round(v) },
   { id: 's-stompKill',    vid: 'v-stompKill',    key: 'stompKill',    fmt: v => v > 0 ? 'on' : 'off' },
+  { id: 's-godMode',      vid: 'v-godMode',      key: 'godMode',      fmt: v => v > 0 ? 'on' : 'off' },
   { id: 's-batScale',    vid: 'v-batScale',    key: 'batScale',     fmt: v => v.toFixed(1) + '×' },
   { id: 's-smoothing',  vid: 'v-smoothing',   key: 'smoothing',    fmt: v => v > 0 ? 'smooth' : 'pixel' },
   { id: 's-spriteRot',    vid: 'v-spriteRot',    key: 'spriteRot',    fmt: v => Math.round(v) + '°' },
@@ -480,6 +414,9 @@ for (const s of sliders) {
 
 document.getElementById('s-reset').addEventListener('click', () => {
   Object.assign(CFG, DEFAULTS); syncSliders(); saveCFG();
+});
+document.getElementById('s-give-token').addEventListener('click', () => {
+  totalTokens++; saveAbilities();
 });
 syncSliders();
 
@@ -541,14 +478,26 @@ document.getElementById('s-reset-keys').addEventListener('click', () => {
 syncKeyButtons();
 
 // ── Ability Menu ──────────────────────────────────────────────────────────────
-let totalCoins = parseInt(localStorage.getItem('axo_totalCoins') || '0');
+let totalCoins  = parseInt(localStorage.getItem('axo_totalCoins')  || '0');
+let totalTokens = parseInt(localStorage.getItem('axo_totalTokens') ?? '1'); // start with 1 token
 
 function saveAbilities() {
-  localStorage.setItem('axo_totalCoins', totalCoins);
+  localStorage.setItem('axo_totalCoins',  totalCoins);
+  localStorage.setItem('axo_totalTokens', totalTokens);
   localStorage.setItem('axo_abilities', JSON.stringify([...abilityMenu.purchased]));
 }
 
-const ABILITY_COST = 30;
+function resetAbilities() {
+  totalCoins  = 0;
+  totalTokens = 1; // one token to spend on dash
+  abilityMenu.purchased.clear();
+  applyPurchased();
+  saveAbilities();
+  document.getElementById('coins').textContent = '00';
+  dashTutorial = true;
+}
+
+const ABILITY_COST = 1; // 1 token per skill
 const ABILITY_DEFS = [
   {
     group: 'DASH',
@@ -572,32 +521,40 @@ const ABILITY_DEFS = [
       { id: 'stomp', label: 'Down Pound', desc: 'Jump on enemy heads to damage and kill', cfgKey: 'stompKill', cfgVal: 1 },
     ],
   },
+  {
+    group: 'SLAM',
+    items: [
+      { id: 'slam', label: 'Ground Slam', desc: 'Hold X + Dash to slam down and break blocks', cfgKey: 'slamUnlocked', cfgVal: 1 },
+    ],
+  },
 ];
 
 const abilityMenu = {
   open: false,
-  purchased: new Set(JSON.parse(localStorage.getItem('axo_abilities') || '["dash1"]')),
+  purchased: new Set(JSON.parse(localStorage.getItem('axo_abilities') || '[]')),
   cursor: { group: 0, item: 0 },
   flashTimer: 0, // flashes on failed purchase
 };
 
-// Apply purchased abilities to CFG on load
-(function applyPurchased() {
+// Apply purchased abilities to CFG — called on load and after amulet collection
+function applyPurchased() {
   // Reset all ability-controlled keys to locked defaults first
   // so stale localStorage values don't grant abilities
-  CFG.dashCount    = 1;
-  CFG.homingChain  = 0;
-  CFG.stompKill    = 0;
+  CFG.dashCount     = 0;
+  CFG.homingChain   = 0;
+  CFG.stompKill     = 0;
+  CFG.slamUnlocked  = 0;
   for (const grp of ABILITY_DEFS) {
     let best = null;
     for (const item of grp.items) { if (abilityMenu.purchased.has(item.id)) best = item; }
     if (best) CFG[best.cfgKey] = best.cfgVal;
   }
-})();
+}
+applyPurchased();
 
 function canBuyAbility(grp, item) {
   if (abilityMenu.purchased.has(item.id)) return false;
-  if (totalCoins < ABILITY_COST) return false;
+  if (totalTokens < ABILITY_COST) return false;
   const idx = grp.items.indexOf(item);
   if (idx > 0 && !abilityMenu.purchased.has(grp.items[idx - 1].id)) return false;
   return true;
@@ -613,7 +570,7 @@ function drawAbilityMenu() {
   // Blurred dark backdrop with subtle vignette
   ctx.fillStyle = 'rgba(4,6,12,0.88)';
   ctx.fillRect(0, 0, W, H);
-  const vig = ctx.createRadialGradient(W/2, H/2, 60, W/2, H/2, W * 0.75);
+  const vig = ctx.createRadialGradient(W/2, H/2, 60, W/2, H/2, W * 0.83);
   vig.addColorStop(0, 'rgba(0,0,0,0)');
   vig.addColorStop(1, 'rgba(0,0,0,0.55)');
   ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
@@ -646,25 +603,36 @@ function drawAbilityMenu() {
   const title = 'A B I L I T I E S';
   ctx.fillText(title, W / 2, py + 29);
 
-  // Orb counter — top right
+  // Token counter — top right
   const orbX = px + pw - 16;
   ctx.textAlign = 'right';
   ctx.font = '500 12px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(255,200,60,0.5)';
-  ctx.fillText('◆', orbX - 38, py + 28);
-  ctx.fillStyle = '#ffd84a';
+  ctx.fillStyle = 'rgba(180,100,255,0.6)';
+  ctx.fillText('🔮', orbX - 42, py + 28);
+  ctx.fillStyle = '#cc88ff';
   ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.fillText(totalCoins, orbX, py + 29);
+  ctx.fillText(totalTokens + ' token' + (totalTokens !== 1 ? 's' : ''), orbX, py + 29);
 
   // Thin separator
   ctx.fillStyle = 'rgba(255,255,255,0.06)';
   ctx.fillRect(px, py + 46, pw, 1);
 
+  // Reset button — top left of panel
+  const rbx = px + 12, rby = py + 10, rbw = 100, rbh = 22;
+  ctx.fillStyle = 'rgba(180,40,40,0.55)';
+  ctx.beginPath(); ctx.roundRect(rbx, rby, rbw, rbh, 4); ctx.fill();
+  ctx.strokeStyle = 'rgba(220,80,80,0.4)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(rbx, rby, rbw, rbh, 4); ctx.stroke();
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(255,180,180,0.9)';
+  ctx.textAlign = 'center';
+  ctx.fillText('RESET SKILLS', rbx + rbw / 2, rby + 15);
+
   // Hint bar bottom
   ctx.textAlign = 'center';
   ctx.font = '11px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.fillText('← → navigate   ·   ENTER purchase   ·   TAB close', W / 2, py + ph - 10);
+  ctx.fillText('← → navigate   ·   ENTER unlock   ·   TAB close   ·   115 gems = 1 token', W / 2, py + ph - 10);
   ctx.fillStyle = 'rgba(255,255,255,0.06)';
   ctx.fillRect(px, py + ph - 24, pw, 1);
 
@@ -753,46 +721,65 @@ function drawAbilityMenu() {
         ctx.beginPath(); ctx.roundRect(bx, by, cardW, cardH, 6); ctx.fill();
       }
 
+      // Clip all text to card bounds
+      ctx.save();
+      ctx.beginPath(); ctx.rect(bx + 4, by + 4, cardW - 8, cardH - 8); ctx.clip();
+
+      const pad = 10, maxTW = cardW - pad * 2 - 38;
+
       // Label
       ctx.textAlign = 'left';
-      ctx.font = `600 13px system-ui, sans-serif`;
+      ctx.font = `600 12px system-ui, sans-serif`;
       ctx.fillStyle = owned ? '#7eed7e' : locked ? 'rgba(255,255,255,0.2)' : selected ? '#ffe090' : 'rgba(255,255,255,0.8)';
-      ctx.fillText(item.label, bx + 14, by + 22);
+      ctx.fillText(item.label, bx + pad, by + 20);
 
       // Cost badge (top-right of card)
       if (!owned) {
         const costAlpha = locked ? 0.2 : buyable ? 1 : 0.5;
-        ctx.font = '11px system-ui, sans-serif';
+        ctx.font = '10px system-ui, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillStyle = `rgba(255,210,50,${costAlpha})`;
-        ctx.fillText('◆ 30', bx + cardW - 10, by + 22);
+        ctx.fillStyle = `rgba(180,100,255,${costAlpha})`;
+        ctx.fillText('1 token', bx + cardW - pad, by + 20);
       } else {
         ctx.font = '11px system-ui, sans-serif';
         ctx.textAlign = 'right';
         ctx.fillStyle = 'rgba(80,220,80,0.7)';
-        ctx.fillText('✓', bx + cardW - 10, by + 22);
+        ctx.fillText('✓', bx + cardW - pad, by + 20);
       }
 
-      // Description
+      // Description — word wrap into 2 lines max
       ctx.textAlign = 'left';
-      ctx.font = '11px system-ui, sans-serif';
+      ctx.font = '10px system-ui, sans-serif';
       ctx.fillStyle = owned ? 'rgba(120,220,120,0.55)' : locked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.38)';
-      ctx.fillText(item.desc, bx + 14, by + 40);
+      const words = item.desc.split(' ');
+      let line = '', lineY = by + 35;
+      for (const word of words) {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > cardW - pad * 2 && line) {
+          ctx.fillText(line, bx + pad, lineY);
+          line = word; lineY += 13;
+          if (lineY > by + cardH - 14) break;
+        } else { line = test; }
+      }
+      if (line && lineY <= by + cardH - 14) ctx.fillText(line, bx + pad, lineY);
 
       // Status line
+      const statusY = by + cardH - 8;
       if (selected && buyable) {
-        ctx.font = `bold 10px system-ui, sans-serif`;
+        ctx.font = `bold 9px system-ui, sans-serif`;
         ctx.fillStyle = `rgba(255,200,60,${0.6 + pulse * 0.4})`;
-        ctx.fillText('Press ENTER to unlock', bx + 14, by + 60);
-      } else if (selected && locked && totalCoins < ABILITY_COST) {
-        ctx.font = '10px system-ui, sans-serif';
+        ctx.fillText('ENTER to unlock', bx + pad, statusY);
+      } else if (selected && locked && totalTokens < ABILITY_COST) {
+        ctx.font = '9px system-ui, sans-serif';
         ctx.fillStyle = 'rgba(220,80,60,0.7)';
-        ctx.fillText('Need ' + ABILITY_COST + ' orbs  (' + totalCoins + ' owned)', bx + 14, by + 60);
+        ctx.fillText('No tokens (' + totalTokens + ' owned)', bx + pad, statusY);
       } else if (selected && locked) {
-        ctx.font = '10px system-ui, sans-serif';
+        ctx.font = '9px system-ui, sans-serif';
         ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.fillText('Unlock previous ability first', bx + 14, by + 60);
+        ctx.fillText('Unlock previous first', bx + pad, statusY);
       }
+
+      ctx.restore();
     }
   }
 
@@ -805,10 +792,32 @@ function drawAbilityMenu() {
   ctx.restore();
 }
 
+function drawDashTutorialPrompt() {
+  ctx.save();
+  ctx.scale(DPR, DPR);
+  const bw = 360, bh = 68, bx2 = (W - bw) / 2, by2 = H / 2 - 110;
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 175);
+  ctx.fillStyle = 'rgba(10,6,20,0.88)';
+  ctx.beginPath(); ctx.roundRect(bx2, by2, bw, bh, 8); ctx.fill();
+  ctx.strokeStyle = `rgba(180,100,255,${0.4 + pulse * 0.4})`; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(bx2, by2, bw, bh, 8); ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 15px "Courier New", monospace';
+  ctx.fillStyle = '#cc88ff';
+  ctx.shadowColor = '#9900ff'; ctx.shadowBlur = 12;
+  ctx.fillText('FREE SKILL TOKEN AVAILABLE!', W / 2, by2 + 26);
+  ctx.shadowBlur = 0;
+  ctx.font = '12px "Courier New", monospace';
+  ctx.fillStyle = 'rgba(220,200,255,0.8)';
+  ctx.fillText('Press TAB to open skills and buy DASH.', W / 2, by2 + 50);
+  ctx.restore();
+}
+
 document.addEventListener('keydown', e => {
   if (e.code === 'Tab') {
     e.preventDefault();
-    abilityMenu.open = !abilityMenu.open;
+    if (dashTutorial) abilityMenu.open = true; // can open but not close during tutorial
+    else abilityMenu.open = !abilityMenu.open;
     return;
   }
   if (!abilityMenu.open) return;
@@ -825,9 +834,9 @@ document.addEventListener('keydown', e => {
     const grp  = ABILITY_DEFS[cursor.group];
     const item = grp.items[cursor.item];
     if (canBuyAbility(grp, item)) {
-      totalCoins -= ABILITY_COST;
+      totalTokens -= ABILITY_COST;
       abilityMenu.purchased.add(item.id);
-      CFG[item.cfgKey] = item.cfgVal;
+      applyPurchased();
       saveCFG();
       saveAbilities();
     } else if (!abilityMenu.purchased.has(item.id)) {
@@ -835,4 +844,56 @@ document.addEventListener('keydown', e => {
     }
   }
   if (e.code === 'Escape') abilityMenu.open = false;
+});
+
+document.getElementById('c').addEventListener('click', e => {
+  if (!abilityMenu.open) return;
+  const canvas = document.getElementById('c');
+  const rect = canvas.getBoundingClientRect();
+  // Convert click to logical canvas coords
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top)  * (H / rect.height);
+
+  const pw = 620, ph = 340, px = (W - pw) / 2, py = (H - ph) / 2;
+
+  // Reset button hit test
+  const rbx = px + 12, rby = py + 10, rbw = 100, rbh = 22;
+  if (mx >= rbx && mx <= rbx + rbw && my >= rby && my <= rby + rbh) {
+    abilityMenu.purchased.clear();
+    totalTokens = 1;
+    applyPurchased();
+    saveAbilities();
+    return;
+  }
+
+  const cols = ABILITY_DEFS.length;
+  const colW  = pw / cols;
+  const cardW = colW - 28;
+  const cardH = 72;
+  const cardGap = 10;
+  const startY = py + 62;
+
+  for (let gi = 0; gi < cols; gi++) {
+    const colX = px + gi * colW + colW / 2;
+    const bx = colX - cardW / 2;
+    for (let ii = 0; ii < ABILITY_DEFS[gi].items.length; ii++) {
+      const by = startY + ii * (cardH + cardGap);
+      if (mx >= bx && mx <= bx + cardW && my >= by && my <= by + cardH) {
+        abilityMenu.cursor.group = gi;
+        abilityMenu.cursor.item  = ii;
+        const grp  = ABILITY_DEFS[gi];
+        const item = grp.items[ii];
+        if (canBuyAbility(grp, item)) {
+          totalTokens -= ABILITY_COST;
+          abilityMenu.purchased.add(item.id);
+          applyPurchased();
+          saveCFG();
+          saveAbilities();
+        } else if (!abilityMenu.purchased.has(item.id)) {
+          abilityMenu.flashTimer = 20;
+        }
+        return;
+      }
+    }
+  }
 });

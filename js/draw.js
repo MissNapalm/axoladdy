@@ -364,9 +364,95 @@ function drawPlatforms() {
       const tx = p.x + i, sx = tx * TILE - camera;
       if (sx < -TILE || sx > W + TILE) continue;
       const key = `${tx}_${p.y}`;
-      if (blockHit[key]) continue; // block destroyed — gone completely
+      if (blockHit[key]) continue;
       drawBlock(sx, p.y * TILE, p.t);
     }
+  }
+  // Chaser wall
+  const lv = LEVELS[currentLevel];
+  if (lv.hasChaserEncounter) {
+    const wallScreenX = lv.chaserTriggerX - TILE - camera;
+    if (wallScreenX > -TILE && wallScreenX < W + TILE) {
+      drawChaserWall(wallScreenX);
+    }
+  }
+}
+
+function drawChaserWall(sx) {
+  const t = performance.now() / 800;
+  const wallH = groundY * TILE; // full height from y=0 to ground
+
+  // Animated energy wall — dark with purple/pink shimmer
+  ctx.save();
+
+  // Base fill
+  const wg = ctx.createLinearGradient(sx, 0, sx + TILE, 0);
+  wg.addColorStop(0,   'rgba(10,0,30,0.92)');
+  wg.addColorStop(0.4, 'rgba(80,0,120,0.85)');
+  wg.addColorStop(0.6, 'rgba(80,0,120,0.85)');
+  wg.addColorStop(1,   'rgba(10,0,30,0.92)');
+  ctx.fillStyle = wg;
+  ctx.fillRect(sx, 0, TILE, wallH);
+
+  // Animated energy scanlines
+  const lineCount = 16;
+  for (let i = 0; i < lineCount; i++) {
+    const yf = ((i / lineCount) + t * 0.18) % 1;
+    const ly = yf * wallH;
+    const alpha = 0.15 + 0.12 * Math.sin(t * 3 + i);
+    ctx.fillStyle = `rgba(200,80,255,${alpha})`;
+    ctx.fillRect(sx + 2, ly, TILE - 4, 2);
+  }
+
+  // Glowing edges
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);
+  ctx.strokeStyle = `rgba(${180 + pulse*60|0},60,255,${0.7 + pulse * 0.3})`;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(160,40,255,0.8)'; ctx.shadowBlur = 12 + pulse * 8;
+  ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, wallH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx + TILE, 0); ctx.lineTo(sx + TILE, wallH); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Bright center energy line
+  ctx.fillStyle = `rgba(240,160,255,${0.3 + pulse * 0.2})`;
+  ctx.fillRect(sx + TILE/2 - 1, 0, 2, wallH);
+
+  ctx.restore();
+
+  // Speech bubble if player is touching and doesn't have homing
+  if (chaserWallBubble && CFG.homingChain === 0) {
+    const bx = sx - 180, by = groundY * TILE - 120;
+    const bw = 210, bh = 60, br = 10;
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,2,20,0.93)';
+    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, br); ctx.fill();
+    ctx.strokeStyle = `rgba(200,80,255,${0.7 + 0.3 * Math.sin(t*2)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, br); ctx.stroke();
+    // Tail pointing right toward wall
+    const tailX = bx + bw, tailY = by + bh * 0.7;
+    ctx.fillStyle = 'rgba(10,2,20,0.93)';
+    ctx.beginPath();
+    ctx.moveTo(tailX, tailY - 8);
+    ctx.lineTo(tailX + 14, tailY);
+    ctx.lineTo(tailX, tailY + 8);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(200,80,255,${0.7 + 0.3 * Math.sin(t*2)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(tailX, tailY - 8);
+    ctx.lineTo(tailX + 14, tailY);
+    ctx.lineTo(tailX, tailY + 8);
+    ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.fillStyle = '#e880ff';
+    ctx.fillText('Unlock  HOMING ATTACK', bx + bw/2, by + bh/2 - 8);
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(220,160,255,0.7)';
+    ctx.fillText('to continue past here', bx + bw/2, by + bh/2 + 10);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
   }
 }
 
@@ -470,31 +556,151 @@ function drawCoins() {
   }
 }
 
+function drawCoinPopups() {
+  for (let i = coinPopups.length - 1; i >= 0; i--) {
+    const p = coinPopups[i];
+    p.timer--;
+    if (p.timer <= 0) { coinPopups.splice(i, 1); continue; }
+    const sx = p.x - camera;
+    const progress = 1 - p.timer / 50;
+    const sy = p.y - progress * 28; // float upward
+    const alpha = p.timer < 15 ? p.timer / 15 : 1;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = 'bold 13px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    // little gem icon + +1
+    const scale = 1 + (1 - progress) * 0.4;
+    ctx.translate(sx, sy);
+    ctx.scale(scale, scale);
+    // glow
+    ctx.shadowColor = '#ffd84a';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ffe566';
+    ctx.fillText('✦ +1', 0, 0);
+    ctx.restore();
+  }
+}
 
 function drawHeartPickups() {
   for (const h of heartPickups) {
     if (h.collected) continue;
     const sx = h.x - camera;
     if (sx < -40 || sx > W + 40) continue;
-    const bob = Math.sin(h.bobTimer) * 2;
+    const bob = Math.sin(h.bobTimer) * 3;
     const sy = h.y + bob;
+    const pulse = 1 + 0.15 * Math.sin(h.bobTimer * 2.5);
     ctx.save();
-    ctx.translate(sx + 10, sy + 10);
-    // Simple heart shape
-    const pulse = 1 + 0.08 * Math.sin(h.bobTimer * 2);
-    ctx.scale(pulse, pulse);
-    ctx.fillStyle = '#ff4466';
+    ctx.translate(sx + 16, sy + 16);
+    ctx.scale(pulse * 2.8, pulse * 2.8);
+    // golden outer glow (full heal indicator)
+    ctx.shadowColor = '#ffdd00';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffdd00';
     ctx.beginPath();
-    ctx.moveTo(0, 4);
-    ctx.bezierCurveTo(-10, -4, -10, -10, 0, -6);
-    ctx.bezierCurveTo(10, -10, 10, -4, 0, 4);
+    ctx.moveTo(0, 5);
+    ctx.bezierCurveTo(-11, -4, -11, -11, 0, -7);
+    ctx.bezierCurveTo(11, -11, 11, -4, 0, 5);
     ctx.fill();
+    // red heart on top
+    ctx.shadowColor = '#ff2255';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ff3355';
+    ctx.scale(0.78, 0.78);
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    ctx.bezierCurveTo(-11, -4, -11, -11, 0, -7);
+    ctx.bezierCurveTo(11, -11, 11, -4, 0, 5);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // shine
     ctx.fillStyle = '#ff88aa';
     ctx.beginPath();
     ctx.ellipse(-3, -5, 2.5, 2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
+}
+
+let amuletBanner = null; // { text, timer }
+
+function showAmuletBanner(abilityId) {
+  const labels = { token: 'SKILL TOKEN EARNED', home1: 'HOMING UNLOCKED', home2: '2-KILL CHAIN', home3: '3-KILL CHAIN', dash2: '2 DASHES', dash3: '3 DASHES', stomp: 'DOWN POUND' };
+  amuletBanner = { text: labels[abilityId] || 'ABILITY UNLOCKED', timer: 220 };
+}
+
+function drawAmulets() {
+  if (!levelAmulets) return;
+  const t = performance.now() / 1000;
+  for (const a of levelAmulets) {
+    if (a.collected) continue;
+    const sx = a.x - camera;
+    if (sx < -60 || sx > W + 60) continue;
+    const bob = Math.sin(a.bobTimer * 2) * 4;
+    const sy = a.y + bob;
+    const r = 14 + Math.sin(t * 3) * 1.5;
+    ctx.save();
+    // Outer glow
+    const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2.2);
+    glow.addColorStop(0, 'rgba(180,60,255,0.55)');
+    glow.addColorStop(0.5, 'rgba(120,0,200,0.25)');
+    glow.addColorStop(1, 'rgba(80,0,160,0)');
+    ctx.beginPath();
+    ctx.arc(sx, sy, r * 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+    // Core gem
+    const gem = ctx.createRadialGradient(sx - r*0.3, sy - r*0.3, 0, sx, sy, r);
+    gem.addColorStop(0, '#e8aaff');
+    gem.addColorStop(0.4, '#9b30d0');
+    gem.addColorStop(1, '#4a006e');
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fillStyle = gem;
+    ctx.fill();
+    // Shimmer
+    ctx.beginPath();
+    ctx.arc(sx - r*0.35, sy - r*0.35, r*0.28, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+}
+
+function drawTokenBanner() {
+  if (!amuletBanner || amuletBanner.timer <= 0) return;
+  amuletBanner.timer--;
+  const progress = amuletBanner.timer / 220;
+  const alpha = Math.min(1, amuletBanner.timer / 30);
+  // slide in from top
+  const slideY = progress > 0.9 ? (1 - (progress - 0.9) / 0.1) * -60 : 0;
+  ctx.save();
+  ctx.scale(DPR, DPR);
+  ctx.globalAlpha = alpha;
+  ctx.translate(0, slideY);
+  // Big background bar
+  const barH = 80;
+  const barY = H / 2 - 90;
+  ctx.fillStyle = 'rgba(30,0,50,0.82)';
+  ctx.fillRect(0, barY, W, barH);
+  ctx.strokeStyle = 'rgba(180,80,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, barY, W, barH);
+  // Main text
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 32px "Courier New", monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#cc00ff';
+  ctx.shadowBlur = 24;
+  ctx.fillText('NEW SKILL AVAILABLE!', W / 2, barY + 38);
+  // Sub text
+  ctx.font = 'bold 15px "Courier New", monospace';
+  ctx.fillStyle = '#cc88ff';
+  ctx.shadowBlur = 10;
+  ctx.fillText('PRESS TAB TO BUY NEW SKILLS', W / 2, barY + 62);
+  ctx.restore();
+  if (amuletBanner.timer <= 0) amuletBanner = null;
 }
 
 function drawPowerBoxes() {
@@ -620,7 +826,7 @@ function drawEnemy(g) {
     const dw = Math.round(TILE * CFG.gnomeScale);
     const dh = Math.round(dw * BADDIE_FH / BADDIE_FW);
     const dx = cx - dw / 2, dy = g.y + g.h - dh + CFG.spriteOffset;
-    const shooterTint = g.type === 'shooter' ? '#cc1100' : null;
+    const shooterTint = g.type === 'shooter' ? '#6688cc' : null;
     ctx.save();
     if (g.vx < 0) {
       ctx.translate(dx + dw, 0);
@@ -678,25 +884,20 @@ function drawFlagPole() {
 }
 
 function drawPlayer() {
-  // Flicker every 4 frames while invincible — but not during frenzy
-  if (player.frenzyTimer <= 0 && player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
+  // Flicker every 4 frames while invincible
+  if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
   ctx.save();
-  // Frenzy: periodic white flash every ~40 frames
-  if (player.frenzyTimer > 0) {
-    ctx.filter = 'brightness(1.5) saturate(0.15)';
-  }
   const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
 
   if ((player.homing || player.ballForm) && fireballSheet.complete && fireballSheet.naturalWidth > 0) {
+    // Homing + all dash directions: spinning flame ball
     const bd = CFG.ballSize;
-    // Advance fireball animation
     fbTick++;
     if (fbTick >= FB_SPEED) { fbTick = 0; fbFrame = (fbFrame + 1) % FB_FRAMES; }
     ctx.translate(sx + player.w / 2, player.y + player.h / 2);
-    ctx.imageSmoothingEnabled = CFG.smoothing === 1;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.filter = 'grayscale(1) brightness(1.4) sepia(0.4) saturate(3) hue-rotate(170deg)';
     const fbW = Math.round(bd * (FB_FW / FB_FH));
     ctx.drawImage(fireballSheet, fbFrame * FB_FW + 1, 1, FB_FW - 2, FB_FH - 2, -fbW / 2, -bd / 2, fbW, bd);
@@ -748,29 +949,6 @@ function drawPlayer() {
   }
 
   // Frenzy pulse ring (drawn in screen space, independent of transform)
-  if (player.frenzyTimer > 0) {
-    const pcx = player.x + player.w / 2 - camera;
-    const pcy = player.y + player.h / 2;
-    const t = Date.now() / 300;
-    const pulseR = player.w * 0.9 + Math.sin(t) * 8;
-    const alpha = 0.35 + 0.25 * Math.abs(Math.sin(t));
-    ctx.save();
-    ctx.strokeStyle = `rgba(80,220,255,${alpha})`;
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = '#50dcff';
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.arc(pcx, pcy, pulseR, 0, Math.PI * 2);
-    ctx.stroke();
-    // second ring offset
-    const pulseR2 = pulseR + 10 + Math.sin(t + 1) * 5;
-    ctx.globalAlpha = alpha * 0.4;
-    ctx.beginPath();
-    ctx.arc(pcx, pcy, pulseR2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
   ctx.restore();
 }
 
