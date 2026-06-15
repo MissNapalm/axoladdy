@@ -795,24 +795,32 @@ function spawnDust(x, y, count = 6) {
 }
 
 function spawnTrail(x, y) {
+  const angle = Math.random() * Math.PI * 2;
+  const spd = Math.random() * 3 + 1;
+  const life = 8 + Math.floor(Math.random() * 6);
   trailParticles.push({
     x, y,
-    r: Math.random() * 6 + 4,
-    life: 20 + Math.floor(Math.random() * 8),
-    maxLife: 28,
-    hue: Math.random() * 60 + 180,
+    vx: Math.cos(angle) * spd,
+    vy: Math.sin(angle) * spd,
+    r: Math.random() * 2.5 + 1,
+    life, maxLife: life,
+    hue: 0, // white
   });
 }
 
 function spawnDashTrail(x, y) {
+  const angle = Math.random() * Math.PI * 2;
+  const spd = Math.random() * 5 + 2;
+  const life = 7 + Math.floor(Math.random() * 5);
   trailParticles.push({
-    x: x + (Math.random() - 0.5) * 10,
-    y: y + (Math.random() - 0.5) * 10,
-    r: Math.random() * 10 + 8,
-    life: 12 + Math.floor(Math.random() * 6),
-    maxLife: 18,
-    hue: 180 + Math.random() * 60,
+    x: x + (Math.random() - 0.5) * 8,
+    y: y + (Math.random() - 0.5) * 8,
+    vx: Math.cos(angle) * spd,
+    vy: Math.sin(angle) * spd,
+    r: Math.random() * 3 + 1.5,
+    life, maxLife: life,
     bright: true,
+    hue: 0,
   });
 }
 

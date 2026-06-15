@@ -56,36 +56,33 @@ function updateChaser() {
         }
       }
     } else {
-      // Normal bolt — hits player
+      // Normal bolt — dash or homing at the moment of contact reflects it; otherwise takes damage
       const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
-      const br = { x: b.x - 8, y: b.y - 8, w: 16, h: 16 };
-      if (rectsOverlap(br, pr) && player.invincible === 0 && !player.homing) {
-        hurtPlayer(1); player.invincible = 60;
-        player.vy = -6; player.vx = (player.x < b.x ? -1 : 1) * 8;
-        if (hp <= 0) { killPlayer(); return; }
-        b.dead = true; chaser.bolt = null;
-      }
-    }
-  }
-
-  // Player can hit chaser during telegraph (vulnerable window)
-  if (chaser.state === 'telegraph' && !chaser.dead && chaser.hitFlash === 0) {
-    const cr = { x: chaser.x, y: chaser.y, w: chaser.w, h: chaser.h };
-    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
-    const playerHitting = player.homing ||
-                          (player.ballForm && player.vy > 2); // stomp / slam
-    if (playerHitting && rectsOverlap(pr, cr)) {
-      chaser.hp--;
-      chaser.hitFlash = 18;
-      spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, false);
-      // Bounce player off
-      player.homing = false; player.homingTarget = null;
-      player.ballForm = true;
-      player.vy = -8; player.vx = player.dir * CFG.moveSpeed * 1.5;
-      
-      if (chaser.hp <= 0) {
-        chaser.dead = true; chaser.deadTimer = 60;
-        spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, true);
+      const br = { x: b.x - 18, y: b.y - 18, w: 36, h: 36 };
+      if (rectsOverlap(br, pr)) {
+        const dashing = player.dashFrames > 0;
+        const homingNow = player.homing;
+        const canReflect = dashing || homingNow;
+        if (canReflect) {
+          b.reflected = true;
+          const tcx = chaser.x + chaser.w / 2;
+          const tcy = chaser.y + chaser.h / 2;
+          const dx = tcx - b.x, dy = tcy - b.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const spd = Math.hypot(b.vx, b.vy) * 1.4;
+          b.vx = (dx / dist) * spd;
+          b.vy = (dy / dist) * spd;
+          b.life = 240;
+          player.homing = false; player.homingTarget = null;
+          player.ballForm = true;
+          player.vy = -8; player.vx = player.dir * CFG.moveSpeed * 1.5;
+          spawnExplosion(b.x, b.y, false);
+        } else if (player.invincible === 0) {
+          hurtPlayer(1); player.invincible = 60;
+          player.vy = -6; player.vx = (player.x < b.x ? -1 : 1) * 8;
+          if (hp <= 0) { killPlayer(); return; }
+          b.dead = true; chaser.bolt = null;
+        }
       }
     }
   }
@@ -264,7 +261,7 @@ function drawChaser() {
   const eyeBlink = isVulnerable && Math.floor(performance.now() / 80) % 2 === 0;
 
   // eye.png is 1200×952 — draw at correct aspect ratio, flipped horizontally
-  const eyeH = r * 2.6 * 1.3;
+  const eyeH = r * 2.6 * 1.3 * 1.4 * 1.15;
   const eyeW = eyeH * (1200 / 952);
   ctx.save();
   if (flashWhite || eyeBlink) ctx.filter = 'brightness(10) saturate(0)';

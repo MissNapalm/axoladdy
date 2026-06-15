@@ -24,9 +24,10 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
     for (const s of warden.sentinels) { if (!s.dead) candidates.push(s); }
     candidates.push(warden); // always targetable; homing bounces unless red
   }
-  // Chaser — targetable (eye) only during telegraph (vulnerable window)
-  if (chaser.active && !chaser.dead && chaser.state === 'telegraph') {
-    candidates.push(chaser);
+  // Chaser bolt — homing-lock onto the bolt so player can dash into it and reflect
+  if (chaser.active && !chaser.dead && chaser.bolt && !chaser.bolt.reflected && !chaser.bolt.dead) {
+    const boltProxy = { x: chaser.bolt.x - 8, y: chaser.bolt.y - 8, w: 16, h: 16, dead: false, _isChaserBolt: true };
+    candidates.push(boltProxy);
   }
   // Red bat mini-boss — homing target during idle/freeze only
   if (redBat.active && !redBat.dead && (redBat.state === 'idle' || redBat.state === 'freeze')) {

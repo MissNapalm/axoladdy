@@ -160,7 +160,8 @@ function update(dt) {
   if (player.dashFrames > 0) {
     player.dashFrames--;
     if (player.dashFrames === 0) { player.dashingUp = false; if (!player.homing) { if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH; player.ballForm = false; } }
-    // dense afterimage trail — two per frame
+    spawnDashTrail(player.x + player.w / 2, player.y + player.h / 2);
+    spawnDashTrail(player.x + player.w / 2, player.y + player.h / 2);
     spawnDashTrail(player.x + player.w / 2, player.y + player.h / 2);
     spawnDashTrail(player.x + player.w / 2, player.y + player.h / 2);
   }
@@ -171,36 +172,53 @@ function update(dt) {
     if (tg.dead) {
       player.homing = false; player.homingTarget = null; player.ballForm = true;
     } else {
+      // If homing at the chaser bolt, track the live bolt position
+      if (tg._isChaserBolt && chaser.bolt && !chaser.bolt.dead && !chaser.bolt.reflected) {
+        tg.x = chaser.bolt.x - 8; tg.y = chaser.bolt.y - 8;
+      } else if (tg._isChaserBolt) {
+        // Bolt gone — cancel homing
+        player.homing = false; player.homingTarget = null; player.ballForm = true;
+      }
       const tx = tg.x + tg.w / 2, ty = tg.y + tg.h / 2;
       const px = player.x + player.w / 2, py = player.y + player.h / 2;
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
-        if (tg === chaser) {
-          // Home into chaser eye — only damages if still in telegraph state
-          if (chaser.state === 'telegraph' && chaser.hitFlash === 0) {
-            chaser.hp--;
-            chaser.hitFlash = 18;
-            spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, false);
-            if (chaser.hp <= 0) { chaser.dead = true; chaser.deadTimer = 60; spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, true); }
-          }
+        if (tg._isChaserBolt) {
+          // Bolt reflect is handled in enemies.js when player.homing && overlapping bolt
+          // Just cancel homing here so the reflect check fires cleanly next frame
+          player.homing = false; player.homingTarget = null;
         } else if (tg === redBat) {
           damageRedBat(1);
           comboCount++; comboTimer = 120;
+          checkComboAchievements();
+          player.homing = false; player.homingTarget = null;
+          player.ballForm = true;
+          player.vy = -6;
+          player.vx = player.dir * CFG.moveSpeed * 1.5;
+          player.spinning = false;
+          player.onGround = false;
         } else if (snipers.includes(tg)) {
           damageSniperById(tg.id, 1);
           comboCount++; comboTimer = 120;
+          checkComboAchievements();
+          player.homing = false; player.homingTarget = null;
+          player.ballForm = true;
+          player.vy = -6;
+          player.vx = player.dir * CFG.moveSpeed * 1.5;
+          player.spinning = false;
+          player.onGround = false;
         } else {
           const killed = damageEnemy(tg, 1);
           if (killed) { comboCount++; comboTimer = 120; }
+          checkComboAchievements();
+          player.homing = false; player.homingTarget = null;
+          player.ballForm = true;
+          player.vy = -6;
+          player.vx = player.dir * CFG.moveSpeed * 1.5;
+          player.spinning = false;
+          player.onGround = false;
         }
-        checkComboAchievements();
-        player.homing = false; player.homingTarget = null;
-        player.ballForm = true;
-        player.vy = -6;
-        player.vx = player.dir * CFG.moveSpeed * 1.5;
-        player.spinning = false;
-        player.onGround = false;
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
         player.vy = (dy / dist) * HOMING_SPEED;

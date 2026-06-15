@@ -316,8 +316,8 @@ function playTrack(audio) {
     document.addEventListener('click',   startOnInteraction);
   });
 
-  vid.playbackRate = 0.83;
-  vid.addEventListener('canplay', () => { vid.playbackRate = 0.83; });
+  vid.playbackRate = 1.0;
+  vid.addEventListener('canplay', () => { vid.playbackRate = 1.0; });
   vid.addEventListener('ended', () => { prompt.style.display = 'block'; });
   vid.addEventListener('error', () => { prompt.style.display = 'block'; });
 

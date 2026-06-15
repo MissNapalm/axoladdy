@@ -891,17 +891,45 @@ function drawPlayer() {
   const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
 
-  if ((player.homing || player.ballForm) && fireballSheet.complete && fireballSheet.naturalWidth > 0) {
-    // Homing + all dash directions: spinning flame ball
-    const bd = CFG.ballSize;
-    fbTick++;
-    if (fbTick >= FB_SPEED) { fbTick = 0; fbFrame = (fbFrame + 1) % FB_FRAMES; }
-    ctx.translate(sx + player.w / 2, player.y + player.h / 2);
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    ctx.filter = 'grayscale(1) brightness(1.4) sepia(0.4) saturate(3) hue-rotate(170deg)';
-    const fbW = Math.round(bd * (FB_FW / FB_FH));
-    ctx.drawImage(fireballSheet, fbFrame * FB_FW + 1, 1, FB_FW - 2, FB_FH - 2, -fbW / 2, -bd / 2, fbW, bd);
-    ctx.filter = 'none';
+  if ((player.homing || player.ballForm) && walkSheet.complete && walkSheet.naturalWidth > 0) {
+    if (player.dashFrames > 0) {
+      // White dash smear — tight oval matching player size, soft edges only
+      const bx = sx + player.w / 2;
+      const by = player.y + player.h / 2;
+      const hw = player.w * 0.7;  // half-width
+      const hh = player.h * 0.45; // half-height
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.scale(1, hh / hw);
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, hw);
+      grad.addColorStop(0,    'rgba(255,255,255,1.0)');
+      grad.addColorStop(0.7,  'rgba(255,255,255,1.0)');
+      grad.addColorStop(1,    'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(0, 0, hw, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    } else {
+      // Homing: walk cycle rotated so nose points at target
+      fbTick++;
+      if (fbTick >= Math.max(1, WALK_SPEED / 2)) { fbTick = 0; fbFrame = (fbFrame + 1) % WALK_FRAMES; }
+      const dispH = player.h * 2;
+      const dispW = Math.round(dispH * (WALK_FW / WALK_FH));
+      // angle toward homing target, or fall back to velocity angle
+      let angle = Math.atan2(player.vy, player.vx);
+      if (player.homingTarget) {
+        const tx = player.homingTarget.x + (player.homingTarget.w || 0) / 2;
+        const ty = player.homingTarget.y + (player.homingTarget.h || 0) / 2;
+        angle = Math.atan2(ty - (player.y + player.h / 2), tx - (player.x + player.w / 2));
+      }
+      ctx.save();
+      ctx.translate(sx + player.w / 2, player.y + player.h / 2);
+      ctx.rotate(angle);
+      // flip vertically if heading left so sprite isn't upside-down
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(walkSheet, fbFrame * WALK_FW + 1, 1, WALK_FW - 2, WALK_FH - 2,
+        -dispW / 2, -dispH / 2, dispW, dispH);
+      ctx.restore();
+    }
   } else {
     fbFrame = 0; fbTick = 0;
     // Normal / walk / air sprite — with ball-exit white flash
@@ -971,22 +999,35 @@ function drawParticlesAll() {
     ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
   }
-  // Trail
+  // Trail — white electric sparks
   for (let i = trailParticles.length - 1; i >= 0; i--) {
-    const p = trailParticles[i]; p.r *= 0.9; p.life--;
+    const p = trailParticles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.85; p.vy *= 0.85;
+    p.life--;
     if (p.life <= 0) { trailParticles.splice(i, 1); continue; }
-    const a = p.life / p.maxLife;
+    const t = p.life / p.maxLife;
+    const alpha = t * (p.bright ? 1.0 : 0.8);
+    const px = p.x - camera;
+    ctx.globalAlpha = alpha;
+    // bright white core
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(px, p.y, p.r, 0, Math.PI * 2); ctx.fill();
     if (p.bright) {
-      ctx.globalAlpha = a * 0.9;
-      ctx.fillStyle = `hsl(${p.hue},100%,85%)`;
-      ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = a * 0.6;
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r * 0.45, 0, Math.PI*2); ctx.fill();
-    } else {
-      ctx.globalAlpha = a * 0.75;
-      ctx.fillStyle = `hsl(${p.hue},100%,70%)`;
-      ctx.beginPath(); ctx.arc(p.x - camera, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      // motion streak back along velocity
+      const spd = Math.hypot(p.vx, p.vy);
+      if (spd > 0.5) {
+        const nx = p.vx / spd, ny = p.vy / spd;
+        const streakLen = p.r * 4 + spd * 1.5;
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = p.r * 0.8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(px, p.y);
+        ctx.lineTo(px - nx * streakLen, p.y - ny * streakLen);
+        ctx.stroke();
+      }
     }
     ctx.globalAlpha = 1;
   }
