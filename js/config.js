@@ -9,6 +9,15 @@ canvas.width  *= DPR;
 canvas.height *= DPR;
 
 const walkSheet     = new Image(); walkSheet.src     = 'assets/images/walk_sheet.png';
+const dashImg       = new Image(); dashImg.src       = 'dash.png';
+const diveImg       = new Image(); diveImg.src       = 'dive.png';
+const fallingImg    = new Image(); fallingImg.src    = 'falling.png';
+const jumpSheet     = new Image(); jumpSheet.src     = 'assets/images/jump_sheet.png';
+const JUMP_FRAMES   = 101; // frames 45–145
+const JUMP_START    = 44;  // 0-based index of source frame 45
+const JUMP_COLS     = 10;
+const JUMP_FW       = 732;
+const JUMP_FH       = 672;
 const fireballSheet = new Image(); fireballSheet.src = 'assets/images/fireball_sheet.png';
 const dashSheet     = new Image(); dashSheet.src     = 'assets/images/dash_sheet.png';
 const ballImg       = new Image(); ballImg.src       = 'assets/images/ball.png';
@@ -35,6 +44,35 @@ const WALK_FH       = 256;
 let   walkFrame     = 0;
 let   walkTick      = 0;
 const WALK_SPEED    = 4;
+// Jump animation state machine
+// States: 'idle' | 'crouch' | 'air' | 'land'
+let   jumpAnimState = 'idle';
+let   jumpAnimFrame = 0;  // index into current sequence
+let   jumpAnimTick  = 0;
+let   prevOnGround  = false;
+const JUMP_CROUCH_FRAMES  = [5, 6, 7];
+const JUMP_AIR_START      = 58;   // 0-based frame 59
+const JUMP_AIR_END        = 92;   // 0-based frame 93
+const JUMP_LAND_FRAMES    = Array.from({length: 43}, (_, i) => 79 + i); // frames 80-122 (0-based 79-121)
+const JUMP_ANIM_SPEED     = 2;
+const JUMP_AIR_SPEED      = 3;
+// Per-frame scale factors to normalize character body size (ref = frame 50)
+const JUMP_SCALE = {
+  5:1.0054, 6:1.0054, 7:1.0754,
+  44:1.5787, 45:1.3110, 46:1.2164, 47:1.0600, 48:1.0109, 49:1.0000,
+  50:1.0054, 51:1.0137, 52:1.0249, 53:1.0363, 54:1.0451, 55:1.0510,
+  56:1.0570, 57:1.0570, 58:1.0630, 59:1.0510, 60:1.0510, 61:1.0421,
+  62:1.0421, 63:1.0306, 64:1.0306, 65:1.0054, 66:1.0054, 67:0.9946,
+  68:0.9946, 69:0.9738, 70:0.9738, 71:0.9537, 72:0.9537, 73:0.9392,
+  74:0.9392, 75:0.9252, 76:0.9252, 77:0.8854, 78:0.8854, 79:0.8791,
+  80:0.8791, 81:0.8854, 82:0.8854, 83:0.9115, 84:0.9115, 85:0.9587,
+  86:0.9587, 87:1.0277, 88:1.0249, 89:1.0451, 90:1.0451, 91:1.0027,
+  92:0.9738, 93:0.9440, 94:0.9206, 95:0.9206, 96:0.8983, 97:0.8961,
+  98:0.8791, 99:0.8812, 100:0.8983, 101:0.9005, 102:0.9636, 103:0.9636,
+  104:1.0944, 105:1.1929, 106:1.3250, 107:1.3590, 108:1.6787, 109:1.4549,
+  110:1.3203, 111:1.3018, 112:1.2576, 113:1.2326, 114:1.2085, 115:1.2492,
+  116:1.3203, 117:1.4215, 118:1.4215, 119:1.6201, 120:1.6201, 121:1.7256, 122:1.7256,
+};
 const FB_FRAMES     = 77;
 const FB_FW         = 132;
 const FB_FH         = 96;
@@ -65,11 +103,15 @@ const DEFAULTS = {
   axoSize: 44,
   enemySize: 32,
   gnomeScale: 1.0,
-  batScale: 1.8,
+  batScale: 1.26,
   smoothing: 1,
   spriteRot: 20,
   spriteOffset: 4,
-  ballSize: 80,
+  jumpSpriteOffset: 0,
+  landSpriteOffset: 0,
+  diveScale: 1.369,
+  jumpScale: 1.910,
+  ballSize: 48,
   homingChain: 0,
   dashCount: 1,
   dashChain: 1,
@@ -79,6 +121,20 @@ const DEFAULTS = {
 };
 
 function loadCFG() {
+  // Load axolotl.cfg synchronously — values override hardcoded DEFAULTS
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'axolotl.cfg?' + Date.now(), false);
+    xhr.send();
+    if (xhr.status === 200) {
+      for (const line of xhr.responseText.split('\n')) {
+        const eq = line.indexOf('=');
+        if (eq < 0) continue;
+        const k = line.slice(0, eq).trim(), v = line.slice(eq + 1).trim();
+        if (k in DEFAULTS) DEFAULTS[k] = parseFloat(v);
+      }
+    }
+  } catch(e) {}
   try { const s = localStorage.getItem('axo_cfg'); if (s) return { ...DEFAULTS, ...JSON.parse(s) }; } catch(e) {}
   return { ...DEFAULTS };
 }
@@ -404,16 +460,50 @@ const LEVELS = [
     flyers: [],
     // Trigger zone: walking past tile 12 spawns the chaser
     chaserTriggerX: 12 * TILE,
+    chaserExitX: 200 * TILE,
+  },
+  // Level 16 — LOOP THE LOOP
+  {
+    isLoopLevel: true,
+    gaps: [],
+    // Loop center at tile (30, groundY-6), radius 6 tiles
+    loopCenterTX: 30, loopCenterTY: 6, loopRadiusTiles: 6,
+    platforms: (function() {
+      const cx = 30, cy = 6, R = 6, segs = 48;
+      const seen = new Set();
+      const out = [];
+      // Approach ground from left
+      for (let tx = 2; tx < cx - R; tx++) {
+        out.push({ x: tx, y: groundY, w: 1, t: 'loop' });
+      }
+      // Loop circle tiles
+      for (let i = 0; i < segs; i++) {
+        const angle = (i / segs) * Math.PI * 2;
+        const tx = Math.round(cx + R * Math.cos(angle));
+        const ty = Math.round(cy + R * Math.sin(angle));
+        const key = tx + '_' + ty;
+        if (!seen.has(key)) { seen.add(key); out.push({ x: tx, y: ty, w: 1, t: 'loop' }); }
+      }
+      // Exit ground to the right
+      for (let tx = cx + R; tx <= cx + R + 30; tx++) {
+        out.push({ x: tx, y: groundY, w: 1, t: 'loop' });
+      }
+      return out;
+    })(),
+    pipes: [],
+    coinDefs: [],
+    goombas: [],
+    flyers: [],
   },
 ];
 
-let currentLevel = parseInt(localStorage.getItem('axo_level') || '0');
+let currentLevel = parseInt(localStorage.getItem('axo_level') || '1');
 
 function groundInGap(tx) {
   return LEVELS[currentLevel].gaps.some(g => tx >= g.x && tx < g.x + g.w);
 }
 
-const FLAG_X = 580; // end of level 1 — leads to boss
+const FLAG_X = 320; // end of level 1
 
 // ── Tutorial state ───────────────────────────────────────────────────────────
 const TUT_STEPS = [
@@ -459,6 +549,9 @@ const LVC_TOTAL     = LVC_FADE_IN + LVC_ZOOM + LVC_TEXT + LVC_HOLD + LVC_RUN;
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
 let comboCount = 0, comboTimer = 0;
+let maxCombo = 0, killCount = 0;
+let wonScreenTimer = 0; // frames since won, used to animate score card in
+let chaserCleared = false; // survives death, reset on manual level reload
 
 // ── Achievements ─────────────────────────────────────────────────────────────
 const achievements = {
@@ -477,6 +570,7 @@ function triggerAchievement(id) {
   achievements.toasts.push({ id, label: def.label, desc: def.desc, timer: 240 });
 }
 function checkComboAchievements() {
+  if (comboCount > maxCombo) maxCombo = comboCount;
   if (player.frenzyTimer > 0) {
     if (comboCount >= 10) triggerAchievement('frenzy10');
   } else {
@@ -485,6 +579,9 @@ function checkComboAchievements() {
 }
 const MAX_HP = 3;
 let hp = MAX_HP;
+let medPacks = 0;
+const MAX_MED_PACKS = 9;
+let medPackDrops = [];
 
 const player = {
   x: 48, y: (groundY - 1) * TILE - 44,
@@ -511,6 +608,9 @@ const player = {
   dir: 1,
   dead: false,
   wonSlide: false,
+  onLoop: false,
+  loopAngle: Math.PI / 2,
+  loopSpeed: 0,
 };
 
 let camera  = 0;
@@ -532,8 +632,8 @@ let blockHit = {};
 // ── Solids ────────────────────────────────────────────────────────────────────
 function buildSolids() {
   const lv = LEVELS[currentLevel];
-  // Strip all platforms above tile row 5 — no high blocks anywhere
-  lv.platforms = lv.platforms.filter(p => p.y >= 5 || p.t === 'hblock');
+  // Strip all platforms above tile row 5 — no high blocks anywhere (loop tiles exempt)
+  lv.platforms = lv.platforms.filter(p => p.y >= 5 || p.t === 'hblock' || p.t === 'loop');
   const solids = [];
   for (let tx = 0; tx < LEVEL_W_TILES; tx++) {
     if (groundInGap(tx)) continue;
@@ -586,7 +686,8 @@ const chaser = {
   bolt: null,       // active fire bolt {x,y,vx,vy,life}
 };
 
-function loadLevel(n) {
+function loadLevel(n, keepProgress) {
+  if (!keepProgress) chaserCleared = false;
   currentLevel = ((n % LEVELS.length) + LEVELS.length) % LEVELS.length;
   localStorage.setItem('axo_level', currentLevel);
   const lv = LEVELS[currentLevel];
@@ -601,6 +702,8 @@ function loadLevel(n) {
       hasDashed:false, hasUpDashed:false, hasHomed:false, hasHitTough:false,
       hasActivatedTurbo:false, hasBrokenBlock:false, anyKeyTimer:30 });
     tutSetupAnyKey();
+  } else {
+    if (typeof dashTutorial !== 'undefined') dashTutorial = false;
   }
 
   coins = lv.coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
@@ -618,11 +721,10 @@ function loadLevel(n) {
     return [e1, e2];
   });
   const halfwayX = 140 * TILE; // black bats before tile 140, red from tile 140
-  flyers = lv.flyers.map((f, i) => {
+  flyers = lv.flyers.filter(f => f.x * TILE >= halfwayX).map((f, i) => {
     const type = 'normal';
-    const isRed = f.x * TILE >= halfwayX;
-    const h = isRed ? 3 : 2;
-    const sz = isRed ? Math.round(TILE * 1.35) : TILE;
+    const h = 3;
+    const sz = Math.round(TILE * 1.35);
     // Minimum y = 5*TILE so bats stay in mid-height range
     let safeY = Math.max(f.fy, 5 * TILE);
     // Push down if spawning inside any platform
@@ -638,11 +740,12 @@ function loadLevel(n) {
         }
       }
     }
-    const fly = { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: sz, h: sz, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isRed };
+    const fly = { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: sz, h: sz, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: true };
     fly.spawnX = fly.x; fly.spawnY = safeY; fly.spawnVx = 1.2; fly.spawnPl = fly.pl; fly.spawnPr = fly.pr; fly.spawnHp = h;
     return fly;
   });
   heartPickups = [];
+  medPackDrops = [];
   projectiles  = [];
   powerBoxes   = [];
   levelAmulets = (lv.amulets || []).map(a => ({ ...a, collected: false, bobTimer: 0 }));
@@ -650,6 +753,13 @@ function loadLevel(n) {
 
   // Snipers (level 3 only)
   initSnipers(lv.snipers || []);
+  // Shooter bats — disabled
+  initShooterBats([]);
+  // Place fixed chests — one just after the eye boss in level 1
+  chests = [];
+  if (currentLevel === 1) {
+    chests.push({ x: (lv.chaserExitX / TILE + 4) * TILE, y: groundY * TILE - TILE, w: TILE, h: TILE, collected: false, bobTimer: 0, dead: false, deadTimer: 0 });
+  }
 
   // Boss setup
   boss.active = false;
@@ -703,9 +813,14 @@ function loadLevel(n) {
     }));
   }
 
-  // reset player
+  // reset player — chaser/boss levels spawn near the action, not level start
+  const spawnX = lv.isBossLevel
+    ? (lv.bossType === 'leviathan' ? TILE * 13 : TILE * 8)
+    : (lv.chaserExitX != null && chaserCleared)
+    ? lv.chaserExitX
+    : TILE * 3;
   Object.assign(player, {
-    x: TILE * 3, y: (groundY - 1) * TILE - player.h,
+    x: spawnX, y: (groundY - 1) * TILE - player.h,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
     homing: false, homingTarget: null, homingCount: 0,
@@ -714,21 +829,21 @@ function loadLevel(n) {
     invincible: 0, dead: false, wonSlide: false,
     dir: 1,
   });
-  camera = 0; cameraY = 0;
+  camera = (lv.isBossLevel || lv.chaserTriggerX != null) ? Math.max(0, spawnX - W / 3) : 0; cameraY = 0;
   comboCount = 0; comboTimer = 0;
+  maxCombo = 0; killCount = 0; wonScreenTimer = 0;
   won = false; dead = false;
+  player.onLoop = false; player.loopAngle = Math.PI / 2; player.loopSpeed = 0;
   score = 0; coinCount = 0;
   lvlComplete.active = false; lvlComplete.timer = 0;
   redBat.active = false; redBat.dead = false; redBat.hp = RB_MAX_HP;
   redBat.hitFlash = 0; redBat.phase2 = false; redBat.state = 'idle'; redBat.stateTimer = 0;
-  // Reset chaser
-  chaser.active = false; chaser.triggered = false; chaser.dead = false;
-  chaser.hp = chaser.maxHp; chaser.hitFlash = 0;
+  // Reset chaser — mark dead/triggered if player spawns past the exit point
+  const chaserPrecleared = lv.chaserExitX != null && spawnX >= lv.chaserExitX;
+  chaser.active = false; chaser.triggered = chaserPrecleared; chaser.dead = chaserPrecleared;
+  chaser.hp = chaserPrecleared ? 0 : chaser.maxHp; chaser.hitFlash = 0;
   chaser.x = 30 * TILE; chaser.y = -6 * TILE; chaser.vx = 0; chaser.vy = 0;
   chaser.state = 'hover'; chaser.stateTimer = 180; chaser.bolt = null; chaser.wobble = 0;
-  if (lv.isTestLevel) {
-    chaser.triggered = false;
-  }
   // Spawn red bat mini-boss for level 1 only
   if (currentLevel === 1) {
     const rbX = 480 * TILE;
@@ -840,9 +955,13 @@ function damageEnemy(g, dmg) {
   g.hp -= dmg;
   if (g.hp <= 0) {
     g.dead = true; g.deadTimer = 40;
+    killCount++;
     score += g.flying ? 200 : 100; updateHUD();
     spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
     playSound('hit', 0.6);
+    if (medPacks < MAX_MED_PACKS && Math.random() < 1/30) {
+      medPackDrops.push({ x: g.x + g.w / 2 - 10, y: g.y, vy: -5, collected: false });
+    }
     // Kill while airborne: re-enable dash if under chain limit
     if (!player.onGround) {
       player.dashKills = (player.dashKills || 0) + 1;
@@ -862,6 +981,23 @@ function damageEnemy(g, dmg) {
     tut.hasHitTough = true; tutAdvance();
   }
   return false; // hurt but alive
+}
+
+function spawnWhiteExplosion(x, y) {
+  for (let i = 0; i < 24; i++) {
+    const angle = (Math.PI * 2 * i / 24) + Math.random() * 0.3;
+    const speed = 2.5 + Math.random() * 5;
+    explosionParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1.5,
+      r: 2 + Math.random() * 5,
+      life: 28 + Math.floor(Math.random() * 22),
+      maxLife: 50,
+      white: true, opaque: true,
+    });
+  }
+  explosionParticles.push({ x, y, vx:0, vy:0, r:18, life:6, maxLife:6, white:true, opaque:true, flash:true });
 }
 
 function spawnExplosion(x, y, flying) {
@@ -894,6 +1030,12 @@ function updateHPBar() {
   }
 }
 
+function updateMedPackHUD() {
+  const el = document.getElementById('medpack-hud');
+  if (!el) return;
+  el.textContent = medPacks > 0 ? `[Y] ×${medPacks}` : '';
+}
+
 function spawnSpindash(x, y, dir) {
   for (let i = 0; i < 3; i++) {
     spindashParticles.push({
@@ -916,4 +1058,5 @@ let prevJumpKey = false;
 let prevUpKey   = false;
 let prevEKey = false;
 let prevDownKey = false;
+let prevYKey = false;
 

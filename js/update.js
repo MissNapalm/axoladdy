@@ -34,10 +34,20 @@ function update(dt) {
 
   const eKey    = keys[KEYS.dash] || false;
   const downKey = keys[KEYS.down] || false;
+  const yKey    = keys['KeyY'] || false;
   const eJustPressed    = eKey    && !prevEKey;
   const downJustPressed = downKey && !prevDownKey;
+  const yJustPressed    = yKey    && !prevYKey;
   prevEKey    = eKey;
   prevDownKey = downKey;
+  prevYKey    = yKey;
+
+  if (yJustPressed && medPacks > 0 && hp < MAX_HP) {
+    medPacks--;
+    hp++;
+    updateHPBar();
+    updateMedPackHUD();
+  }
 
   if (lvlComplete.active) {
     lvlComplete.timer++;
@@ -100,10 +110,10 @@ function update(dt) {
     if (wantDown && canDash && !CFG.slamUnlocked) {
       player.vx = 0;
       player.vy = CFG.dashV * 0.5;
+      player.dashAngle = Math.PI / 2;
       player.dashUsedUp = dashesUsed + 1;
       player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
-      player.ballForm = true;
       player.spinning = false;
       playSound('dash', 0.45);
     } else if (wantUp && wantH && canDash) {
@@ -111,27 +121,27 @@ function update(dt) {
       const diagV = CFG.dashV * 0.707 * 0.5;
       player.vx = horizDir * diagH;
       player.vy = -diagV;
+      player.dashAngle = Math.atan2(-diagV, horizDir * diagH);
       player.dashUsedUp = dashesUsed + 1;
       player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
-      player.ballForm = true;
       player.spinning = false;
     } else if (wantUp && canDash) {
       player.vx = 0;
       player.vy = -(CFG.dashV * 0.5);
+      player.dashAngle = -Math.PI / 2;
       player.dashUsedUp = dashesUsed + 1;
       player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
       player.dashingUp = true;
-      player.ballForm = true;
       player.spinning = false;
     } else if (!wantUp && !wantDown && canDash) {
       player.vx = horizDir * CFG.dashH * 0.5;
       player.vy = 0;
+      player.dashAngle = horizDir > 0 ? 0 : Math.PI;
       player.dashUsedUp = dashesUsed + 1;
       player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
-      player.ballForm = true;
       player.spinning = false;
     }
     if (player.dashFrames > 0) playSound('dash', 0.45);
@@ -141,7 +151,6 @@ function update(dt) {
   if (CFG.slamUnlocked && eJustPressed && downKey && !player.onGround && !player.homing && !player.dashingDown && player.slamFreezeTimer === 0 && !player.slamUsed) {
     player.slamFreezeTimer = 12;
     player.slamUsed = true;
-    player.ballForm = true;
     player.spinning = false;
   }
   // Tick slam freeze — float up then launch downward
@@ -170,14 +179,14 @@ function update(dt) {
   if (player.homing && player.homingTarget) {
     const tg = player.homingTarget;
     if (tg.dead) {
-      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.homing = false; player.homingTarget = null;
     } else {
       // If homing at the chaser bolt, track the live bolt position
       if (tg._isChaserBolt && chaser.bolt && !chaser.bolt.dead && !chaser.bolt.reflected) {
         tg.x = chaser.bolt.x - 8; tg.y = chaser.bolt.y - 8;
       } else if (tg._isChaserBolt) {
         // Bolt gone — cancel homing
-        player.homing = false; player.homingTarget = null; player.ballForm = true;
+        player.homing = false; player.homingTarget = null;
       }
       const tx = tg.x + tg.w / 2, ty = tg.y + tg.h / 2;
       const px = player.x + player.w / 2, py = player.y + player.h / 2;
@@ -193,7 +202,6 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.ballForm = true;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -203,17 +211,29 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.ballForm = true;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
+          player.onGround = false;
+        } else if (shooterBats.includes(tg)) {
+          tg.hp--; tg.hitFlash = 14;
+          if (tg.hp <= 0) { tg.dead = true; tg.deadTimer = 30; spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, false); }
+          comboCount++; comboTimer = 120;
+          checkComboAchievements();
+          player.homing = false; player.homingTarget = null;
+          player.vy = -6;
+          player.vx = player.dir * CFG.moveSpeed * 1.5;
+          player.spinning = false;
+          player.onGround = false;
+        } else if (chests.includes(tg)) {
+          player.homing = false; player.homingTarget = null;
+          player.vy = -8;
           player.onGround = false;
         } else {
           const killed = damageEnemy(tg, 1);
           if (killed) { comboCount++; comboTimer = 120; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.ballForm = true;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -243,6 +263,7 @@ function update(dt) {
     player.onGround = false;
     player.homingCount = 0;
     player.dashKills = 0;
+    jumpAnimState = 'air'; jumpAnimFrame = 0; jumpAnimTick = 0;
     playSound('jump', 0.5);
   }
 
@@ -257,6 +278,55 @@ function update(dt) {
     const g = player.onGround ? CFG.gravity : CFG.gravity1;
     player.vy += g;
     if (player.vy > 20) player.vy = 20;
+  }
+
+  // Loop-the-loop — scripted path system
+  if (LEVELS[currentLevel].isLoopLevel) {
+    const lv = LEVELS[currentLevel];
+    const lcx = lv.loopCenterTX * TILE + TILE / 2;
+    const lcy = lv.loopCenterTY * TILE + TILE / 2;
+    const lR = lv.loopRadiusTiles * TILE;
+
+    if (player.onLoop) {
+      // ── Scripted path: move player along the circle ──
+      // Sonic formula: tangential deceleration on uphill, acceleration on downhill
+      // loopAngle starts at PI/2 (bottom), decreases (counter-clockwise) for a lap
+      player.loopSpeed -= Math.sin(player.loopAngle) * CFG.gravity1 * 0.7;
+      // Clamp so player can't reverse inside the loop
+      if (player.loopSpeed > -1) player.loopSpeed = -1;
+      player.loopAngle += player.loopSpeed / lR;
+
+      // Position player on circle surface (feet on the inside of the ring)
+      player.x = lcx + Math.cos(player.loopAngle) * lR - player.w / 2;
+      player.y = lcy + Math.sin(player.loopAngle) * lR - player.h / 2;
+
+      // Suppress all other physics this frame
+      player.onGround = false;
+      player.vy = 0; player.vx = 0;
+
+      // Exit: completed a full lap (angle gone past PI/2 - 2PI = -3PI/2)
+      if (player.loopAngle <= Math.PI / 2 - Math.PI * 2) {
+        player.onLoop = false;
+        // Release onto ground going right, speed preserved as vx
+        player.vx = -player.loopSpeed; // loopSpeed is negative, so vx is positive
+        player.vy = 0;
+        player.y = lcy + lR - player.h; // snap to bottom of loop
+        player.onGround = true;
+        player.dir = 1;
+      }
+      return; // skip all normal physics while on loop
+    } else {
+      // ── Entry trigger ──
+      // Player must be on the ground, moving right, past the loop entry X, fast enough
+      const entryX = lcx - lR; // left side of loop at ground level
+      const px = player.x + player.w / 2;
+      const MIN_ENTRY_SPEED = 3.5;
+      if (player.onGround && player.vx >= MIN_ENTRY_SPEED && px >= entryX && px < entryX + TILE * 2) {
+        player.onLoop = true;
+        player.loopAngle = Math.PI / 2; // start at bottom
+        player.loopSpeed = -Math.hypot(player.vx, player.vy); // negative = counter-clockwise
+      }
+    }
   }
 
   // Reset wall bubble each frame — stays true only if collision fires this frame
@@ -425,6 +495,23 @@ function update(dt) {
   }
 
 
+  // Med pack drops — fall to ground, walk into to pick up
+  const groundFloorMed = (groundY - 1) * TILE;
+  for (let i = medPackDrops.length - 1; i >= 0; i--) {
+    const m = medPackDrops[i];
+    if (m.collected) { medPackDrops.splice(i, 1); continue; }
+    m.vy += 0.45;
+    if (m.vy > 18) m.vy = 18;
+    m.y += m.vy;
+    if (m.y + 20 >= groundFloorMed) { m.y = groundFloorMed - 20; m.vy = 0; }
+    m.bob = (m.bob || 0) + 0.06;
+    if (rectsOverlap({ x: m.x, y: m.y, w: 20, h: 20 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      m.collected = true;
+      medPacks = Math.min(MAX_MED_PACKS, medPacks + 1);
+      updateMedPackHUD();
+    }
+  }
+
   // Ground enemies + flyers — unified update
   const allEnemies = [...goombas, ...flyers];
   for (const g of allEnemies) {
@@ -541,6 +628,9 @@ function update(dt) {
   }
 
 
+  updateShooterBats();
+  updateChests();
+
   // Tutorial step detection
   tutCheck();
 
@@ -552,8 +642,8 @@ function update(dt) {
   updateSnipers();
   updateChaser();
 
-  // Flag — level complete on non-boss, non-tutorial levels (not level 1 which ends with red bat)
-  if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial && currentLevel !== 1) {
+  // Flag — level complete on non-boss, non-tutorial levels
+  if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial) {
     if (player.x + player.w > FLAG_X * TILE && !won) {
       {
         lvlComplete.active = true;
@@ -657,7 +747,7 @@ function killPlayer() {
 
 function doRestart() {
   document.getElementById('gameover').classList.remove('show');
-  loadLevel(currentLevel);
+  loadLevel(currentLevel, true);
   hp = MAX_HP;
   updateHPBar();
 }
@@ -665,6 +755,11 @@ function doRestart() {
 document.getElementById('go-restart').addEventListener('click', doRestart);
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && dead) doRestart();
+  if (e.key === 'Enter' && won && wonScreenTimer > 120) {
+    loadLevel(currentLevel, false);
+    hp = MAX_HP;
+    updateHPBar();
+  }
 });
 
 

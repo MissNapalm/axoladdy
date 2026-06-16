@@ -76,6 +76,7 @@
 <div id="hud">
   <span>AXO <span id="score">000000</span></span>
   <div id="hp-wrap"></div>
+  <span id="medpack-hud" style="color:#00ffaa;font-size:12px;"></span>
   <span id="jumpstate">—</span>
   <span>GEMS <span id="coins">00</span></span>
   <div id="zoom-wrap">
@@ -99,6 +100,7 @@
     <option value="13">BOSS: WRAITH</option>
     <option value="14">BOSS: WARDEN</option>
     <option value="15">TEST: ENEMY ROOM</option>
+    <option value="16">LOOP THE LOOP</option>
   </select>
 </div>
 <canvas id="c" width="800" height="450"></canvas>
@@ -191,6 +193,22 @@
     <input type="range" id="s-spriteOffset" min="-20" max="20" step="1">
     <span class="val" id="v-spriteOffset"></span>
   </label>
+  <label><span class="lbl">Jump sprite size</span>
+    <input type="range" id="s-jumpScale" min="0.3" max="4.0" step="0.05">
+    <span class="val" id="v-jumpScale"></span>
+  </label>
+  <label><span class="lbl">Dive sprite size</span>
+    <input type="range" id="s-diveScale" min="0.3" max="3.0" step="0.05">
+    <span class="val" id="v-diveScale"></span>
+  </label>
+  <label><span class="lbl">Jump sprite offset</span>
+    <input type="range" id="s-jumpSpriteOffset" min="-80" max="80" step="1">
+    <span class="val" id="v-jumpSpriteOffset"></span>
+  </label>
+  <label><span class="lbl">Land sprite offset</span>
+    <input type="range" id="s-landSpriteOffset" min="-80" max="80" step="1">
+    <span class="val" id="v-landSpriteOffset"></span>
+  </label>
   <label><span class="lbl">Ball size (px)</span>
     <input type="range" id="s-ballSize" min="20" max="120" step="2">
     <span class="val" id="v-ballSize"></span>
@@ -218,6 +236,7 @@
     </select>
   </label>
   <button id="s-reset">Reset defaults</button>
+  <button id="s-export-cfg" style="background:#1a2a10;border:1px solid #4a8a20;color:#afa;margin-top:6px">⬇ Export .cfg</button>
   <hr>
   <h3 style="margin-bottom:8px">🛠 CODER</h3>
   <button id="s-give-token">+ Give Token</button>

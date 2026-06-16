@@ -358,8 +358,46 @@ function drawGroundTile(sx, sy, isTop) {
   }
 }
 
+function drawLoopLevel() {
+  const lv = LEVELS[currentLevel];
+  if (!lv.isLoopLevel) return;
+  const cx = lv.loopCenterTX * TILE - camera;
+  const cy = lv.loopCenterTY * TILE;
+  const R = lv.loopRadiusTiles * TILE;
+  const th = THEMES[currentTheme];
+  // Outer ring fill (track body)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R + TILE, 0, Math.PI * 2);
+  ctx.arc(cx, cy, R - TILE * 0.5, 0, Math.PI * 2, true);
+  ctx.fillStyle = th.brick;
+  ctx.fill();
+  // Inner ring edge highlight
+  ctx.strokeStyle = th.brickEdge;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy, R + TILE, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, R - TILE * 0.5, 0, Math.PI * 2); ctx.stroke();
+  // Cross-lines to give tiled feel
+  ctx.strokeStyle = th.brickCross;
+  ctx.lineWidth = 1;
+  const segs = 24;
+  for (let i = 0; i < segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (R - TILE * 0.5), cy + Math.sin(a) * (R - TILE * 0.5));
+    ctx.lineTo(cx + Math.cos(a) * (R + TILE), cy + Math.sin(a) * (R + TILE));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawPlatforms() {
-  for (const p of LEVELS[currentLevel].platforms) {
+  const lv = LEVELS[currentLevel];
+  if (lv.isLoopLevel) {
+    drawLoopLevel();
+    return;
+  }
+  for (const p of lv.platforms) {
     for (let i = 0; i < p.w; i++) {
       const tx = p.x + i, sx = tx * TILE - camera;
       if (sx < -TILE || sx > W + TILE) continue;
@@ -369,7 +407,6 @@ function drawPlatforms() {
     }
   }
   // Chaser wall
-  const lv = LEVELS[currentLevel];
   if (lv.hasChaserEncounter) {
     const wallScreenX = lv.chaserTriggerX - TILE - camera;
     if (wallScreenX > -TILE && wallScreenX < W + TILE) {
@@ -622,6 +659,25 @@ function drawHeartPickups() {
   }
 }
 
+function drawMedPackDrops() {
+  for (const m of medPackDrops) {
+    if (m.collected) continue;
+    const sx = m.x - camera;
+    if (sx < -40 || sx > W + 40) continue;
+    const bob = Math.sin(m.bob || 0) * 3;
+    ctx.save();
+    ctx.translate(sx + 10, m.y + 10 + bob);
+    ctx.shadowColor = '#00ffaa';
+    ctx.shadowBlur = 10;
+    // small cross / medkit icon
+    ctx.fillStyle = '#00cc88';
+    ctx.fillRect(-7, -2, 14, 4);
+    ctx.fillRect(-2, -7, 4, 14);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
 let amuletBanner = null; // { text, timer }
 
 function showAmuletBanner(abilityId) {
@@ -819,7 +875,7 @@ function drawEnemy(g) {
     const batFrame = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BAT_FRAMES;
     const dw = Math.round(TILE * CFG.batScale * scale);
     const dh = Math.round(dw * (BAT_FH / BAT_FW));
-    drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, isRedBat);
+    drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, false);
   } else {
     // Ground goomba — sprite from baddie.mov sheet
     const baddieFrame = Math.floor((performance.now() / 1000 * 24 + g.id * 7)) % BADDIE_FRAMES;
@@ -888,47 +944,165 @@ function drawPlayer() {
   if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
   ctx.save();
-  const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
 
-  if ((player.homing || player.ballForm) && walkSheet.complete && walkSheet.naturalWidth > 0) {
+  if ((player.homing || player.dashFrames > 0 || player.ballForm) && walkSheet.complete && walkSheet.naturalWidth > 0) {
+    const bx = sx + player.w / 2;
+    const by = player.y + player.h / 2;
+    const now = performance.now();
+
+    const bd = CFG.ballSize * 1.3;
+
     if (player.dashFrames > 0) {
-      // White dash smear — tight oval matching player size, soft edges only
-      const bx = sx + player.w / 2;
-      const by = player.y + player.h / 2;
-      const hw = player.w * 0.7;  // half-width
-      const hh = player.h * 0.45; // half-height
+      fbTick++;
+      if (fbTick >= FB_SPEED) { fbTick = 0; fbFrame = (fbFrame + 1) % FB_FRAMES; }
+      const dashAngle = player.dashAngle || 0;
+      const pulse = 0.5 + 0.5 * Math.sin(now * 0.04);
+      const auraLen = bd * (1.0 + pulse * 0.2);
+
+      // plasma trail opposite to velocity
       ctx.save();
       ctx.translate(bx, by);
-      ctx.scale(1, hh / hw);
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, hw);
-      grad.addColorStop(0,    'rgba(255,255,255,1.0)');
-      grad.addColorStop(0.7,  'rgba(255,255,255,1.0)');
-      grad.addColorStop(1,    'rgba(255,255,255,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(0, 0, hw, 0, Math.PI * 2); ctx.fill();
+      ctx.rotate(dashAngle + Math.PI);
+      const aura = ctx.createLinearGradient(0, 0, auraLen, 0);
+      aura.addColorStop(0,    `rgba(255,255,255,${0.95 + pulse * 0.05})`);
+      aura.addColorStop(0.15, `rgba(180,240,255,${0.85 + pulse * 0.1})`);
+      aura.addColorStop(0.5,  'rgba(80,180,255,0.5)');
+      aura.addColorStop(1,    'rgba(40,120,255,0)');
+      ctx.lineWidth = bd * 0.6;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = aura;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(auraLen, 0); ctx.stroke();
+      const core = ctx.createLinearGradient(0, 0, auraLen * 0.5, 0);
+      core.addColorStop(0,   'rgba(255,255,255,1.0)');
+      core.addColorStop(0.4, 'rgba(220,240,255,0.8)');
+      core.addColorStop(1,   'rgba(180,220,255,0)');
+      ctx.lineWidth = bd * 0.3;
+      ctx.strokeStyle = core;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(auraLen * 0.5, 0); ctx.stroke();
       ctx.restore();
-    } else {
-      // Homing: walk cycle rotated so nose points at target
-      fbTick++;
-      if (fbTick >= Math.max(1, WALK_SPEED / 2)) { fbTick = 0; fbFrame = (fbFrame + 1) % WALK_FRAMES; }
-      const dispH = player.h * 2;
-      const dispW = Math.round(dispH * (WALK_FW / WALK_FH));
-      // angle toward homing target, or fall back to velocity angle
-      let angle = Math.atan2(player.vy, player.vx);
-      if (player.homingTarget) {
-        const tx = player.homingTarget.x + (player.homingTarget.w || 0) / 2;
-        const ty = player.homingTarget.y + (player.homingTarget.h || 0) / 2;
-        angle = Math.atan2(ty - (player.y + player.h / 2), tx - (player.x + player.w / 2));
+
+      // sprite — gradient white (transparent at head, white at tail), vibrates, rotated to dash direction
+      {
+        const angle = player.dashAngle || 0;
+        const isVertical = Math.abs(Math.sin(angle)) > 0.7;
+        const vibrate = Math.floor(performance.now() / 80) % 2 === 0 ? -2 : 2;
+        ctx.save();
+        ctx.translate(bx, by + vibrate - 10);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        if (isVertical && diveImg.complete && diveImg.naturalWidth > 0) {
+          const diveAngle = angle > 0 ? Math.PI : 0;
+          const diveMult = angle > 0 ? CFG.diveScale : CFG.diveScale * 0.65;
+          const dW = Math.round(player.h * 2 * (WALK_FW / WALK_FH) * diveMult);
+          const dH = Math.round(dW * (918 / 546));
+          ctx.rotate(diveAngle);
+          ctx.drawImage(diveImg, -dW / 2, -dH / 2, dW, dH);
+          // white overlay fading from head (top, transparent) to tail (bottom, opaque)
+          const oc = document.createElement('canvas'); oc.width = dW; oc.height = dH;
+          const ox = oc.getContext('2d');
+          ox.filter = 'brightness(10) saturate(0)';
+          ox.drawImage(diveImg, 0, 0, dW, dH);
+          ox.filter = 'none';
+          ox.globalCompositeOperation = 'destination-in';
+          const g = ox.createLinearGradient(0, 0, 0, dH);
+          g.addColorStop(0.0, 'rgba(0,0,0,0)');
+          g.addColorStop(0.55, 'rgba(0,0,0,0.5)');
+          g.addColorStop(1.0, 'rgba(0,0,0,1)');
+          ox.fillStyle = g; ox.fillRect(0, 0, dW, dH);
+          ctx.drawImage(oc, -dW / 2, -dH / 2);
+        } else if (dashImg.complete && dashImg.naturalWidth > 0) {
+          const flipX = Math.cos(angle) < -0.001 ? -1 : 1;
+          const drawAngle = flipX === -1 ? -(Math.PI + angle) : angle;
+          const dW = Math.round(player.h * 2 * (WALK_FW / WALK_FH) * 1.284);
+          const dH = Math.round(dW * (371 / 779));
+          ctx.scale(flipX, 1);
+          ctx.rotate(drawAngle);
+          ctx.drawImage(dashImg, -dW / 2, -dH / 2, dW, dH);
+          // white overlay: head is on right side of dashImg, tail on left → gradient right→left
+          const oc = document.createElement('canvas'); oc.width = dW; oc.height = dH;
+          const ox = oc.getContext('2d');
+          ox.filter = 'brightness(10) saturate(0)';
+          ox.drawImage(dashImg, 0, 0, dW, dH);
+          ox.filter = 'none';
+          ox.globalCompositeOperation = 'destination-in';
+          const g = ox.createLinearGradient(dW, 0, 0, 0);
+          g.addColorStop(0.0, 'rgba(0,0,0,0)');
+          g.addColorStop(0.45, 'rgba(0,0,0,0.5)');
+          g.addColorStop(1.0, 'rgba(0,0,0,1)');
+          ox.fillStyle = g; ox.fillRect(0, 0, dW, dH);
+          ctx.drawImage(oc, -dW / 2, -dH / 2);
+        }
+        ctx.restore();
       }
+
+    } else if (player.homing) {
+      // Homing: white fireball + plasma trail
+      const rawAngle = Math.atan2(player.vy, player.vx);
+      const pulse = 0.5 + 0.5 * Math.sin(now * 0.05);
+      const auraLen = bd * (1.0 + pulse * 0.2);
+
+      // plasma trail opposite to velocity
       ctx.save();
-      ctx.translate(sx + player.w / 2, player.y + player.h / 2);
-      ctx.rotate(angle);
-      // flip vertically if heading left so sprite isn't upside-down
-      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(walkSheet, fbFrame * WALK_FW + 1, 1, WALK_FW - 2, WALK_FH - 2,
-        -dispW / 2, -dispH / 2, dispW, dispH);
+      ctx.translate(bx, by);
+      ctx.rotate(rawAngle + Math.PI);
+      const aura = ctx.createLinearGradient(0, 0, auraLen, 0);
+      aura.addColorStop(0,    `rgba(255,255,255,${0.95 + pulse * 0.05})`);
+      aura.addColorStop(0.15, `rgba(180,240,255,${0.85 + pulse * 0.1})`);
+      aura.addColorStop(0.5,  `rgba(80,180,255,0.5)`);
+      aura.addColorStop(1,    'rgba(40,120,255,0)');
+      ctx.lineWidth = bd * 0.6;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = aura;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(auraLen, 0); ctx.stroke();
+      const core = ctx.createLinearGradient(0, 0, auraLen * 0.5, 0);
+      core.addColorStop(0,   'rgba(255,255,255,1.0)');
+      core.addColorStop(0.4, 'rgba(220,240,255,0.8)');
+      core.addColorStop(1,   'rgba(180,220,255,0)');
+      ctx.lineWidth = bd * 0.3;
+      ctx.strokeStyle = core;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(auraLen * 0.5, 0); ctx.stroke();
       ctx.restore();
+
+      // dive.png sprite facing homing direction — same as up-dash
+      if (diveImg.complete && diveImg.naturalWidth > 0) {
+        const dW = Math.round(player.h * 2 * (WALK_FW / WALK_FH) * CFG.diveScale * 0.65);
+        const dH = Math.round(dW * (918 / 546));
+        const homingDrawAngle = rawAngle + Math.PI / 2;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(homingDrawAngle);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(diveImg, -dW / 2, -dH / 2, dW, dH);
+        const oc = document.createElement('canvas'); oc.width = dW; oc.height = dH;
+        const ox = oc.getContext('2d');
+        ox.filter = 'brightness(10) saturate(0)';
+        ox.drawImage(diveImg, 0, 0, dW, dH);
+        ox.filter = 'none';
+        ox.globalCompositeOperation = 'destination-in';
+        const g = ox.createLinearGradient(0, 0, 0, dH);
+        g.addColorStop(0.0, 'rgba(0,0,0,0)');
+        g.addColorStop(0.55, 'rgba(0,0,0,0.5)');
+        g.addColorStop(1.0, 'rgba(0,0,0,1)');
+        ox.fillStyle = g; ox.fillRect(0, 0, dW, dH);
+        ctx.drawImage(oc, -dW / 2, -dH / 2);
+        ctx.restore();
+      }
+    } else {
+      // post-homing bounce, airborne — hold frame 50
+      if (jumpSheet.complete && jumpSheet.naturalWidth > 0) {
+        const fW = Math.round(player.h * 2 * (WALK_FW / WALK_FH) * CFG.jumpScale);
+        const fH = Math.round(fW * (JUMP_FH / JUMP_FW));
+        const scaleX = player.dir === -1 ? -1 : 1;
+        const airFrame = 41;
+        const jCol = airFrame % JUMP_COLS;
+        const jRow = Math.floor(airFrame / JUMP_COLS);
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.scale(scaleX, 1);
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(jumpSheet, jCol * JUMP_FW, jRow * JUMP_FH, JUMP_FW, JUMP_FH, -fW / 2, -fH / 2, fW, fH);
+        ctx.restore();
+      }
     }
   } else {
     fbFrame = 0; fbTick = 0;
@@ -948,12 +1122,47 @@ function drawPlayer() {
       ctx.rotate(CFG.spriteRot * Math.PI / 180);
     }
     if (player.spinning) ctx.rotate((player.spinAngle * Math.PI) / 180);
-    // All sprites pre-baked to exact draw size — drawn 1:1, no scaling
-    if (walkSheet.complete && walkSheet.naturalWidth > 0) {
+    // Jump anim state machine — transition on ground change
+    if (!prevOnGround && player.onGround && (jumpAnimState === 'air' || jumpAnimState === 'crouch')) {
+      jumpAnimState = 'idle'; jumpAnimFrame = 0; jumpAnimTick = 0;
+    }
+    // Only transition to 'air' on intentional jump (set in update.js on key press)
+    // Do NOT auto-trigger on slam bounce or safe bounce
+    prevOnGround = player.onGround;
+
+    const useJumpSheet = jumpSheet.complete && jumpSheet.naturalWidth > 0 &&
+                         jumpAnimState === 'air';
+
+    if (useJumpSheet && !player.spinning) {
+      let srcFrame;
+      if (jumpAnimState === 'crouch') {
+        srcFrame = JUMP_CROUCH_FRAMES[Math.min(jumpAnimFrame, JUMP_CROUCH_FRAMES.length - 1)];
+        jumpAnimTick++;
+        if (jumpAnimTick >= JUMP_ANIM_SPEED) {
+          jumpAnimTick = 0; jumpAnimFrame++;
+          if (jumpAnimFrame >= JUMP_CROUCH_FRAMES.length) { jumpAnimState = 'air'; jumpAnimFrame = 0; }
+        }
+      } else if (jumpAnimState === 'air') {
+        srcFrame = Math.min(JUMP_AIR_START + jumpAnimFrame, JUMP_AIR_END);
+        jumpAnimTick++;
+        if (jumpAnimTick >= JUMP_AIR_SPEED && srcFrame < JUMP_AIR_END) {
+          jumpAnimTick = 0; jumpAnimFrame++;
+        }
+      }
+      const scaleFactor = 1.0;
+      const baseW = Math.round(player.h * 2 * (WALK_FW / WALK_FH) * CFG.jumpScale);
+      const dispW = Math.round(baseW * scaleFactor);
+      const dispH = Math.round(dispW * (JUMP_FH / JUMP_FW));
+      const jCol = srcFrame % JUMP_COLS;
+      const jRow = Math.floor(srcFrame / JUMP_COLS);
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      const jumpYOffset = jumpAnimState === 'land' ? CFG.landSpriteOffset : CFG.jumpSpriteOffset;
+      ctx.drawImage(jumpSheet, jCol * JUMP_FW, jRow * JUMP_FH, JUMP_FW, JUMP_FH, -dispW / 2, -dispH + footOffset + jumpYOffset, dispW, dispH);
+    } else if (walkSheet.complete && walkSheet.naturalWidth > 0) {
       let frameIdx;
       if (!player.onGround || player.spinning) {
         walkFrame = 0; walkTick = 0;
-        frameIdx = 0; // stand pose for air
+        frameIdx = 0;
       } else if (Math.abs(player.vx) > 0.2) {
         walkTick++;
         if (walkTick >= WALK_SPEED) { walkTick = 0; walkFrame = (walkFrame + 1) % WALK_FRAMES; }
@@ -1010,25 +1219,8 @@ function drawParticlesAll() {
     const alpha = t * (p.bright ? 1.0 : 0.8);
     const px = p.x - camera;
     ctx.globalAlpha = alpha;
-    // bright white core
     ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.arc(px, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-    if (p.bright) {
-      // motion streak back along velocity
-      const spd = Math.hypot(p.vx, p.vy);
-      if (spd > 0.5) {
-        const nx = p.vx / spd, ny = p.vy / spd;
-        const streakLen = p.r * 4 + spd * 1.5;
-        ctx.globalAlpha = alpha * 0.5;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = p.r * 0.8;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(px, p.y);
-        ctx.lineTo(px - nx * streakLen, p.y - ny * streakLen);
-        ctx.stroke();
-      }
-    }
     ctx.globalAlpha = 1;
   }
   // Spindash sparks
@@ -1050,7 +1242,7 @@ function drawParticlesAll() {
     }
     p.r *= p.flash ? 0.75 : 0.97; p.life--;
     if (p.life <= 0) { explosionParticles.splice(i, 1); continue; }
-    const alpha = p.flash ? (p.life / p.maxLife) : (p.life / p.maxLife) * 0.92;
+    const alpha = p.opaque ? 1 : (p.flash ? (p.life / p.maxLife) : (p.life / p.maxLife) * 0.92);
     ctx.globalAlpha = alpha;
     if (p.square) {
       // Block debris chunk
@@ -1064,7 +1256,7 @@ function drawParticlesAll() {
       ctx.strokeRect(-p.r / 2, -p.r / 2, p.r, p.r);
       ctx.restore();
     } else {
-      ctx.fillStyle = p.flash ? `hsl(${p.hue},100%,90%)` : `hsl(${p.hue},100%,60%)`;
+      ctx.fillStyle = p.white ? '#ffffff' : (p.flash ? `hsl(${p.hue},100%,90%)` : `hsl(${p.hue},100%,60%)`);
       ctx.beginPath(); ctx.arc(p.x - camera, p.y, Math.max(p.r, 0.5), 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha = 1;

@@ -26,8 +26,32 @@ function updateChaser() {
 
   if (chaser.dead) {
     chaser.deadTimer--;
-    chaser.y += 2;
-    if (chaser.deadTimer <= 0) chaser.active = false;
+    const groundFloor = (groundY - 1) * TILE;
+
+    chaser.deathPhaseTimer++;
+
+    if (chaser.deathPhase === 'fall') {
+      // Very slow fall with white explosions — until it hits the ground
+      chaser.deathFallVy += 0.018;
+      chaser.y += chaser.deathFallVy;
+      if (chaser.deathPhaseTimer % 10 === 0) {
+        const ox = (Math.random() - 0.5) * chaser.w * 2.5;
+        const oy = (Math.random() - 0.5) * chaser.h * 2.5;
+        spawnWhiteExplosion(chaser.x + chaser.w / 2 + ox, chaser.y + chaser.h / 2 + oy);
+      }
+      if (chaser.y + chaser.h >= groundFloor) {
+        chaser.y = groundFloor - chaser.h;
+        chaser.deathPhase = 'flash';
+        chaser.deathPhaseTimer = 0;
+        chaser.deathFlashR = 0;
+        screenShake = 60;
+      }
+
+    } else if (chaser.deathPhase === 'flash') {
+      // Slow white flash expands to fill entire screen then fades
+      chaser.deathFlashR += 6 * 0.65;
+      if (chaser.deathPhaseTimer >= 420) chaser.active = false;
+    }
     return;
   }
 
@@ -51,8 +75,13 @@ function updateChaser() {
         spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, false);
         b.dead = true; chaser.bolt = null;
         if (chaser.hp <= 0) {
-          chaser.dead = true; chaser.deadTimer = 60;
-          spawnExplosion(chaser.x + chaser.w / 2, chaser.y + chaser.h / 2, true);
+          chaser.dead = true; chaser.deadTimer = 9999;
+          chaser.deathPhase = 'fall';
+          chaser.deathPhaseTimer = 0;
+          chaser.deathFallVy = 0;
+          chaser.deathFlashR = 0;
+          screenShake = 35;
+          chaserCleared = true;
         }
       }
     } else {
@@ -74,7 +103,6 @@ function updateChaser() {
           b.vy = (dy / dist) * spd;
           b.life = 240;
           player.homing = false; player.homingTarget = null;
-          player.ballForm = true;
           player.vy = -8; player.vx = player.dir * CFG.moveSpeed * 1.5;
           spawnExplosion(b.x, b.y, false);
         } else if (player.invincible === 0) {
@@ -138,7 +166,7 @@ function updateChaser() {
     chaser.vx = 0; chaser.vy = 0;
     // Angle is frozen — don't update laserAngle here
     if (chaser.stateTimer <= 0) {
-      const speed = 14;
+      const speed = 22;
       chaser.bolt = {
         x: cx, y: cy,
         vx: Math.cos(chaser.laserAngle) * speed,
@@ -160,6 +188,17 @@ function updateChaser() {
       chaser.stateTimer = 60;
     }
   }
+
+  // Contact damage
+  if (player.invincible === 0 && !player.homing) {
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    const cr = { x: chaser.x, y: chaser.y, w: chaser.w, h: chaser.h };
+    if (rectsOverlap(pr, cr)) {
+      hurtPlayer(1); player.invincible = 60;
+      player.vy = -6; player.vx = (player.x < chaser.x + chaser.w / 2 ? -1 : 1) * 8;
+      if (hp <= 0) { killPlayer(); return; }
+    }
+  }
 }
 
 function drawChaser() {
@@ -167,12 +206,15 @@ function drawChaser() {
   if ((!lv?.isTestLevel && !lv?.hasChaserEncounter) || !chaser.active) return;
 
   const scx = Math.round(chaser.x - camera + chaser.w / 2);
-  const scy = Math.round(chaser.y - cameraY + chaser.h / 2);
+  const scy = Math.round(chaser.y + chaser.h / 2);
+  // Clamp scy so the eye sprite never gets cut off at the top of the canvas
+  const eyeHCalc = CHASER_R * 2.6 * 1.3 * 1.4 * 1.15;
+  const scyClamped = Math.max(scy, eyeHCalc / 2 + 4);
   const r = CHASER_R;
   // Draw active bolt
   if (chaser.bolt) {
     const b = chaser.bolt;
-    const bx = b.x - camera, by = b.y - cameraY;
+    const bx = b.x - camera, by = b.y;
     const fade = b.life / 120;
     const ang = Math.atan2(b.vy, b.vx);
     ctx.save();
@@ -200,14 +242,29 @@ function drawChaser() {
     ctx.restore();
   }
 
+  // Big screen-fill flash during death
+  if (chaser.dead && chaser.deathPhase === 'flash' && chaser.deathFlashR > 0) {
+    const flashCx = chaser.x + chaser.w / 2 - camera;
+    const flashCy = chaser.y + chaser.h / 2;
+    const maxR = Math.sqrt(W * W + H * H);
+    const progress = Math.min(chaser.deathFlashR / maxR, 1);
+    const alpha = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+    ctx.save();
+    ctx.globalAlpha = Math.min(alpha * 1.4, 1);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(flashCx, flashCy, chaser.deathFlashR, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
   ctx.save();
-  if (chaser.dead) ctx.globalAlpha = Math.max(0, chaser.deadTimer / 60);
+  if (chaser.dead && chaser.deathPhase === 'flash') ctx.globalAlpha = Math.max(0, 1 - chaser.deathFlashR / 120);
+  else ctx.globalAlpha = 1;
 
   // Draw laser beam
   if (chaser.state === 'aiming' || chaser.state === 'telegraph') {
     const beamLen = 800;
     const ex = scx + Math.cos(chaser.laserAngle) * beamLen;
-    const ey = scy + Math.sin(chaser.laserAngle) * beamLen;
+    const ey = scyClamped + Math.sin(chaser.laserAngle) * beamLen;
     ctx.save();
     ctx.lineCap = 'round';
 
@@ -216,11 +273,11 @@ function drawChaser() {
       ctx.globalAlpha = 0.18;
       ctx.strokeStyle = '#ff2200';
       ctx.lineWidth = 8;
-      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(scx, scyClamped); ctx.lineTo(ex, ey); ctx.stroke();
       ctx.globalAlpha = 0.7;
       ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(scx, scyClamped); ctx.lineTo(ex, ey); ctx.stroke();
     } else {
       // Telegraph: locked on — flickering charge beam
       const chargeT = 1 - (chaser.stateTimer / 45); // 0→1 as it charges
@@ -233,27 +290,27 @@ function drawChaser() {
       ctx.globalAlpha = (0.2 + chargeT * 0.35) * flicker;
       ctx.strokeStyle = '#ff2200';
       ctx.lineWidth = outerW + 6;
-      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(scx, scyClamped); ctx.lineTo(ex, ey); ctx.stroke();
       // Mid layer
       ctx.globalAlpha = (0.5 + chargeT * 0.5) * flicker;
       ctx.strokeStyle = '#ff4400';
       ctx.lineWidth = outerW;
-      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(scx, scyClamped); ctx.lineTo(ex, ey); ctx.stroke();
       // Orange-white core
       ctx.globalAlpha = 1;
       ctx.strokeStyle = '#ffcc44';
       ctx.lineWidth = coreW;
-      ctx.beginPath(); ctx.moveTo(scx, scy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(scx, scyClamped); ctx.lineTo(ex, ey); ctx.stroke();
     }
     ctx.restore();
   }
 
   // Outer glow
   const glowR = r + 8 + 3 * Math.sin(chaser.wobble);
-  const grad = ctx.createRadialGradient(scx, scy, r * 0.3, scx, scy, glowR);
+  const grad = ctx.createRadialGradient(scx, scyClamped, r * 0.3, scx, scyClamped, glowR);
   grad.addColorStop(0, 'rgba(40,120,255,0.4)');
   grad.addColorStop(1, 'rgba(40,120,255,0)');
-  ctx.beginPath(); ctx.arc(scx, scy, glowR, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(scx, scyClamped, glowR, 0, Math.PI * 2);
   ctx.fillStyle = grad; ctx.fill();
 
   const flashWhite = chaser.hitFlash > 0;
@@ -261,11 +318,11 @@ function drawChaser() {
   const eyeBlink = isVulnerable && Math.floor(performance.now() / 80) % 2 === 0;
 
   // eye.png is 1200×952 — draw at correct aspect ratio, flipped horizontally
-  const eyeH = r * 2.6 * 1.3 * 1.4 * 1.15;
+  const eyeH = r * 2.6 * 1.3 * 1.4 * 1.15 * 1.35;
   const eyeW = eyeH * (1200 / 952);
   ctx.save();
   if (flashWhite || eyeBlink) ctx.filter = 'brightness(10) saturate(0)';
-  ctx.translate(scx, scy);
+  ctx.translate(scx, scyClamped);
   ctx.scale(-1, 1);
   if (eyeImg.complete && eyeImg.naturalWidth > 0) {
     ctx.drawImage(eyeImg, -eyeW / 2, -eyeH / 2, eyeW, eyeH);
@@ -278,7 +335,7 @@ function drawChaser() {
 
   // HP bar
   const barW = r * 2.5, barH = 4;
-  const barX = scx - barW / 2, barY = scy - r - 12;
+  const barX = scx - barW / 2, barY = scyClamped - r - 12;
   ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
   ctx.fillStyle = '#3388ff'; ctx.fillRect(barX, barY, barW * (chaser.hp / chaser.maxHp), barH);
 
@@ -398,7 +455,6 @@ function updateBoss() {
       if (dist < 14) {
         o.dead = true; o.deadTimer = 30;
         player.homing = false; player.homingTarget = null;
-        player.ballForm = true;
         player.vy = -6;
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false; 
@@ -560,7 +616,7 @@ function updateBoss() {
       player.vy = -7; player.dashFrames = 0; player.onGround = false;
     } else if (player.homing && player.homingTarget === boss && allOrbsDead) {
       damageBoss(1);
-      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.homing = false; player.homingTarget = null;
       player.vy = Math.min(player.vy, -CFG.jump1 * 0.3);
       player.vx = player.dir * CFG.moveSpeed * 1.5;
        comboCount++; comboTimer = 120;
@@ -1079,7 +1135,7 @@ function updateWraith() {
       if (dist < 14) {
         if (clKillable) {
           cl.dead = true; cl.deadTimer = 30;
-          player.homing = false; player.homingTarget = null; player.ballForm = true;
+          player.homing = false; player.homingTarget = null;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
            comboCount++; comboTimer = 120;
@@ -1310,7 +1366,7 @@ function updateWraith() {
       player.dashFrames = 0; player.onGround = false;
     } else if (player.homing && player.homingTarget === wraith && allClonesDead) {
       damageWraith(1);
-      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.homing = false; player.homingTarget = null;
       player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
       player.vx = player.dir * CFG.moveSpeed * 1.5;
        comboCount++; comboTimer = 120;
@@ -1593,7 +1649,7 @@ function updateWarden() {
         playSound('hit', 0.7);
         score += 300; updateHUD();
         comboCount++; comboTimer = 120;
-        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -6; }
+        if (player.homing) { player.homing = false; player.homingTarget = null; player.vy = -6; }
         else if (player.dashFrames > 0) { player.vx = -Math.sign(player.vx||1)*8; player.vy = -6; player.dashFrames = 0; }
         else { player.vy = Math.min(player.vy, -6); }
         // (vulnerability now only opens after ground pound)
@@ -1674,7 +1730,7 @@ function updateWarden() {
     if (rectsOverlap({ x: rk.x - 10, y: rk.y - 10, w: 20, h: 20 }, pR)) {
       if (player.dashFrames > 0 || (player.homing && player.homingTarget === rk)) {
         rk.dead = true; rk.deadTimer = 20;
-        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -9;  }
+        if (player.homing) { player.homing = false; player.homingTarget = null; player.vy = -9; }
         else { player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -5; player.dashFrames = 0; }
       } else if (player.invincible === 0) {
         hurtPlayer(1); player.invincible = 60;
@@ -1775,7 +1831,7 @@ function updateWarden() {
         if (hp <= 0) { killPlayer(); return; }
       }
     } else if (player.homing && player.homingTarget === warden) {
-      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.homing = false; player.homingTarget = null;
       
       if (wardenVuln) {
         damageWarden(1);
@@ -1941,6 +1997,148 @@ function drawWarden() {
     ctx.fillRect(wsx - 8, warden.y - 8, warden.w + 16, warden.h + 16);
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+}
+
+// ── Shooter Bats ─────────────────────────────────────────────────────────────
+// Hover above goomba clusters, shoot one bullet periodically.
+// 2 hits to kill — homing or dash contact both deal damage.
+
+let shooterBats = [];
+
+function initShooterBats(clusters) {
+  const sz = TILE * 1.8;
+  shooterBats = clusters.filter((_, i) => i % 4 === 0).map((g, i) => {
+    const midX = ((g.pl + g.pr) / 2) * TILE;
+    const y = (groundY - 5) * TILE - TILE;
+    return {
+      id: i, x: midX - sz / 2, y,
+      w: sz, h: sz,
+      bobBase: y, bobPhase: Math.random() * Math.PI * 2,
+      shootTimer: 90 + Math.floor(Math.random() * 60),
+      dead: false, deadTimer: 0, hitFlash: 0,
+      hp: 2, maxHp: 2,
+    };
+  });
+}
+
+function updateShooterBats() {
+  const px = player.x + player.w / 2, py = player.y + player.h / 2;
+  for (const b of shooterBats) {
+    if (b.dead) { if (b.deadTimer > 0) b.deadTimer--; continue; }
+    if (b.hitFlash > 0) b.hitFlash--;
+    b.bobPhase += 0.04;
+    b.y = b.bobBase + Math.sin(b.bobPhase) * 8;
+
+    const onScreen = b.x > camera - 200 && b.x < camera + W + 200;
+    if (!onScreen) continue;
+
+    b.shootTimer--;
+    if (b.shootTimer <= 0) {
+      b.shootTimer = 120 + Math.floor(Math.random() * 80);
+      const bx = b.x + b.w / 2, by = b.y + b.h / 2;
+      const dx = px - bx, dy = py - by;
+      const dist = Math.hypot(dx, dy) || 1;
+      projectiles.push({ x: bx, y: by, vx: (dx / dist) * 5, vy: (dy / dist) * 5, life: 180, shooterBatId: b.id });
+    }
+
+    // Dash contact damage (like stomping a goomba)
+    if (player.dashFrames > 0 && b.hitFlash === 0) {
+      const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+      const br = { x: b.x, y: b.y, w: b.w, h: b.h };
+      if (rectsOverlap(pr, br)) {
+        b.hp--; b.hitFlash = 14;
+        player.vx = -Math.sign(player.vx) * CFG.moveSpeed * 1.5;
+        player.vy = -6;
+        if (b.hp <= 0) { b.dead = true; b.deadTimer = 30; spawnExplosion(b.x + b.w / 2, b.y + b.h / 2, false); }
+      }
+    }
+  }
+}
+
+function drawShooterBats() {
+  for (const b of shooterBats) {
+    if (b.dead && b.deadTimer <= 0) continue;
+    const cx = b.x + b.w / 2 - camera;
+    const cy = b.y + b.h / 2;
+    const alpha = b.dead ? b.deadTimer / 30 : 1;
+    ctx.globalAlpha = alpha;
+    if (b.hitFlash > 0 && Math.floor(b.hitFlash / 2) % 2 === 0) ctx.filter = 'brightness(10) saturate(0)';
+    const batFrame = Math.floor(performance.now() / 1000 * 20 + b.id * 5) % BAT_FRAMES;
+    const dw = Math.round(b.w);
+    const dh = Math.round(dw * (BAT_FH / BAT_FW));
+    drawBatSprite(ctx, batFrame, dw, dh, cx - dw / 2, cy - dh / 2, false);
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ── Chests ───────────────────────────────────────────────────────────────────
+// Fixed chests placed by initLevel. Home or dash into to fully heal.
+
+let chests = [];
+
+function updateChests() {
+  for (const c of chests) {
+    if (c.collected) { if (c.deadTimer > 0) c.deadTimer--; continue; }
+    c.bobTimer += 0.05;
+
+    // Homing contact — player homing into it
+    if (player.homing && player.homingTarget === c) {
+      c.collected = true; c.deadTimer = 30;
+      hp = MAX_HP; updateHPBar();
+      spawnExplosion(c.x + c.w / 2, c.y + c.h / 2, false);
+      player.homing = false; player.homingTarget = null;
+      player.vy = -8;
+    }
+
+    // Dash contact — bounce player back and collect
+    if (!c.collected && player.dashFrames > 0) {
+      const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+      const cr = { x: c.x, y: c.y, w: c.w, h: c.h };
+      if (rectsOverlap(pr, cr)) {
+        c.collected = true; c.deadTimer = 30;
+        hp = MAX_HP; updateHPBar();
+        spawnExplosion(c.x + c.w / 2, c.y + c.h / 2, false);
+        // Bounce player back opposite dash direction
+        player.vx = -Math.sign(player.vx || player.dir) * CFG.moveSpeed * 2;
+        player.vy = -7;
+        player.dashFrames = 0;
+      }
+    }
+  }
+  // Cull old collected chests
+  for (let i = chests.length - 1; i >= 0; i--) {
+    if (chests[i].collected && chests[i].deadTimer <= 0) chests.splice(i, 1);
+  }
+}
+
+function drawChests() {
+  for (const c of chests) {
+    if (c.collected && c.deadTimer <= 0) continue;
+    const cx = c.x - camera;
+    const cy = c.y + Math.sin(c.bobTimer) * 4;
+    const alpha = c.collected ? c.deadTimer / 30 : 1;
+    ctx.globalAlpha = alpha;
+    // Glow
+    const grd = ctx.createRadialGradient(cx + c.w / 2, cy + c.h / 2, 2, cx + c.w / 2, cy + c.h / 2, TILE);
+    grd.addColorStop(0, 'rgba(255,220,80,0.5)');
+    grd.addColorStop(1, 'rgba(255,180,0,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(cx + c.w / 2, cy + c.h / 2, TILE, 0, Math.PI * 2); ctx.fill();
+    // Chest body
+    ctx.fillStyle = '#8B5E1A';
+    ctx.fillRect(cx, cy + c.h * 0.35, c.w, c.h * 0.65);
+    // Chest lid
+    ctx.fillStyle = '#A0722A';
+    ctx.fillRect(cx, cy, c.w, c.h * 0.38);
+    // Gold band
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(cx, cy + c.h * 0.33, c.w, c.h * 0.08);
+    // Lock
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(cx + c.w * 0.4, cy + c.h * 0.55, c.w * 0.2, c.h * 0.25);
+    ctx.globalAlpha = 1;
   }
 }
 

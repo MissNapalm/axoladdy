@@ -3,6 +3,7 @@ let lastTime = 0;
 function loop(ts) {
   const dt = ts - lastTime; lastTime = ts;
   if (!dead) update(dt);
+  if (won) wonScreenTimer++;
 
   // Draw with zoom
   ctx.save();
@@ -46,12 +47,15 @@ function loop(ts) {
   drawCoins();
   drawCoinPopups();
   drawHeartPickups();
+  drawMedPackDrops();
   drawGoombas();
   drawBoss();
   drawWraith();
   drawWarden();
   drawRedBat();
   drawSnipers();
+  drawShooterBats();
+  drawChests();
   drawChaser();
   drawParticlesAll();
   if (!dead) drawPlayer();
@@ -203,13 +207,22 @@ function loop(ts) {
     ctx.translate(-pScreenX, -pScreenY);
     ctx.save();
     ctx.translate(0, -cameraY);
-    const _prevBallForm = player.ballForm;
-    const _prevHoming   = player.homing;
-    player.ballForm = false;
-    player.homing   = false;
+    const _prevBallForm   = player.ballForm;
+    const _prevHoming     = player.homing;
+    const _prevDashFrames = player.dashFrames;
+    const _prevSpinning   = player.spinning;
+    const _prevJumpState  = jumpAnimState;
+    player.ballForm   = false;
+    player.homing     = false;
+    player.dashFrames = 0;
+    player.spinning   = false;
+    jumpAnimState     = 'idle';
     if (!dead) drawPlayer();
-    player.ballForm = _prevBallForm;
-    player.homing   = _prevHoming;
+    player.ballForm   = _prevBallForm;
+    player.homing     = _prevHoming;
+    player.dashFrames = _prevDashFrames;
+    player.spinning   = _prevSpinning;
+    jumpAnimState     = _prevJumpState;
     ctx.restore();
     ctx.restore();
 
@@ -235,22 +248,115 @@ function loop(ts) {
 
   // Screen-space overlays
   if (won) {
-    const isBoss = LEVELS[currentLevel].isBossLevel;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H);
-    if (isBoss) {
-      const bt = performance.now() / 600;
-      const bossName = LEVELS[currentLevel].bossType === 'wraith' ? 'ABYSSAL WRAITH' : LEVELS[currentLevel].bossType === 'warden' ? 'THE WARDEN' : 'LEVIATHAN';
-      ctx.fillStyle = `hsl(${260 + Math.sin(bt)*40},80%,65%)`; ctx.font = 'bold 40px monospace'; ctx.textAlign = 'center';
-      ctx.fillText(`✦ ${bossName} DEFEATED ✦`, W/2, H/2 - 20);
-      ctx.fillStyle = '#aaddff'; ctx.font = '20px monospace';
-      ctx.fillText('The darkness recedes.', W/2, H/2 + 18);
-    } else {
-      ctx.fillStyle = '#d4a855'; ctx.font = 'bold 52px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('★ YOU WIN! ★', W/2, H/2 - 10);
+    const CARD_DELAY = 90; // frames before score card slides in
+    const cardT = Math.max(0, Math.min((wonScreenTimer - CARD_DELAY) / 40, 1));
+    const cardY = H * (1 - cardT * cardT * (3 - 2 * cardT)); // slide from bottom
+
+    // Dark overlay
+    const overlayAlpha = Math.min(wonScreenTimer / 60, 0.72);
+    ctx.fillStyle = `rgba(0,0,0,${overlayAlpha})`; ctx.fillRect(0, 0, W, H);
+
+    if (cardT > 0) {
+      ctx.save();
+      ctx.translate(0, cardY);
+
+      // Card background
+      const cardW = 420, cardH = 280;
+      const cx = W / 2, cy = H / 2;
+      ctx.fillStyle = 'rgba(10,8,6,0.92)';
+      ctx.strokeStyle = '#c87840';
+      ctx.lineWidth = 2;
+      const rx = cx - cardW / 2, ry = cy - cardH / 2;
+      ctx.beginPath();
+      ctx.roundRect(rx, ry, cardW, cardH, 8);
+      ctx.fill(); ctx.stroke();
+
+      // Header
+      ctx.textAlign = 'center';
+      const isBoss = LEVELS[currentLevel].isBossLevel;
+      if (isBoss) {
+        const bt = performance.now() / 600;
+        const bossName = LEVELS[currentLevel].bossType === 'wraith' ? 'ABYSSAL WRAITH'
+          : LEVELS[currentLevel].bossType === 'warden' ? 'THE WARDEN' : 'LEVIATHAN';
+        ctx.fillStyle = `hsl(${260 + Math.sin(bt)*40},80%,70%)`;
+        ctx.font = 'bold 22px monospace';
+        ctx.fillText(`✦ ${bossName} DEFEATED ✦`, cx, ry + 36);
+      } else {
+        ctx.fillStyle = '#ffe566';
+        ctx.font = 'bold 26px monospace';
+        ctx.shadowColor = '#ffcc00'; ctx.shadowBlur = 14;
+        ctx.fillText('★  LEVEL CLEAR  ★', cx, ry + 38);
+        ctx.shadowBlur = 0;
+      }
+
+      // Divider
+      ctx.strokeStyle = '#443322'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(rx + 20, ry + 52); ctx.lineTo(rx + cardW - 20, ry + 52); ctx.stroke();
+
+      // Stat rows — each row slides in with a small stagger
+      const statsDelay = CARD_DELAY + 40;
+      const skillsUnlocked = abilityMenu.purchased.size;
+      const statRows = [
+        ['Enemies Killed', killCount],
+        ['Longest Combo',  maxCombo + 'x'],
+        ['Skills Unlocked', skillsUnlocked],
+        ['Gems Collected', coinCount],
+        ['Score',          String(score).padStart(6, '0')],
+      ];
+      ctx.font = '16px monospace';
+      statRows.forEach(([label, val], i) => {
+        const rowT = Math.max(0, Math.min((wonScreenTimer - statsDelay - i * 8) / 20, 1));
+        if (rowT <= 0) return;
+        const rowY = ry + 76 + i * 30;
+        ctx.globalAlpha = rowT;
+        ctx.fillStyle = '#a09080'; ctx.textAlign = 'left';
+        ctx.fillText(label, rx + 28, rowY);
+        ctx.fillStyle = '#ffe566'; ctx.textAlign = 'right';
+        ctx.fillText(val, rx + cardW - 28, rowY);
+        ctx.globalAlpha = 1;
+      });
+
+      // Grade
+      const gradeDelay = statsDelay + statRows.length * 8 + 30;
+      const gradeT = Math.max(0, Math.min((wonScreenTimer - gradeDelay) / 25, 1));
+      if (gradeT > 0) {
+        // Grade: weighted score from kills, combo, skills, gems, score
+        const maxPossibleScore = 30000;
+        const pct = Math.min(score / maxPossibleScore, 1);
+        const comboBonus = Math.min(maxCombo / 10, 1);
+        const skillBonus = Math.min(skillsUnlocked / 12, 1);
+        const gradeVal = pct * 0.5 + comboBonus * 0.3 + skillBonus * 0.2;
+        const grade = gradeVal >= 0.92 ? 'S' : gradeVal >= 0.80 ? 'A' : gradeVal >= 0.65 ? 'B'
+          : gradeVal >= 0.50 ? 'C' : gradeVal >= 0.35 ? 'D' : 'F';
+        const gradeColor = grade === 'S' ? '#ffee44' : grade === 'A' ? '#88ff88'
+          : grade === 'B' ? '#88ccff' : grade === 'C' ? '#ffaa44'
+          : grade === 'D' ? '#ff8866' : '#cc4444';
+
+        ctx.save();
+        ctx.globalAlpha = gradeT;
+        ctx.translate(cx, ry + cardH - 42);
+        const pulse = 1 + 0.06 * Math.sin(performance.now() / 200);
+        ctx.scale(pulse * gradeT, pulse * gradeT);
+        ctx.font = 'bold 52px monospace';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = gradeColor; ctx.shadowBlur = 24;
+        ctx.fillStyle = gradeColor;
+        ctx.fillText(grade, 0, 18);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+
+      // Continue prompt
+      const promptT = Math.max(0, Math.min((wonScreenTimer - gradeDelay - 60) / 20, 1));
+      if (promptT > 0) {
+        ctx.globalAlpha = promptT * (0.6 + 0.4 * Math.sin(performance.now() / 400));
+        ctx.fillStyle = '#c8b89a'; ctx.font = '13px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('Press Enter or select level to continue', cx, ry + cardH + 22);
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.restore();
     }
-    ctx.fillStyle = '#fff'; ctx.font = '24px monospace';
-    ctx.fillText('Score: ' + String(score).padStart(6,'0'), W/2, H/2 + 50);
-    ctx.fillText(`LVL ${currentLevel + 1} — Press R or LVL to continue`, W/2, H/2 + 80);
   }
 
   // Boss level intro hint
@@ -387,7 +493,11 @@ const sliders = [
   { id: 's-batScale',    vid: 'v-batScale',    key: 'batScale',     fmt: v => v.toFixed(1) + '×' },
   { id: 's-smoothing',  vid: 'v-smoothing',   key: 'smoothing',    fmt: v => v > 0 ? 'smooth' : 'pixel' },
   { id: 's-spriteRot',    vid: 'v-spriteRot',    key: 'spriteRot',    fmt: v => Math.round(v) + '°' },
-  { id: 's-spriteOffset', vid: 'v-spriteOffset', key: 'spriteOffset', fmt: v => Math.round(v) + 'px' },
+  { id: 's-spriteOffset',     vid: 'v-spriteOffset',     key: 'spriteOffset',     fmt: v => Math.round(v) + 'px' },
+  { id: 's-jumpSpriteOffset', vid: 'v-jumpSpriteOffset', key: 'jumpSpriteOffset', fmt: v => Math.round(v) + 'px' },
+  { id: 's-landSpriteOffset', vid: 'v-landSpriteOffset', key: 'landSpriteOffset', fmt: v => Math.round(v) + 'px' },
+  { id: 's-jumpScale',        vid: 'v-jumpScale',        key: 'jumpScale',        fmt: v => v.toFixed(2) + 'x' },
+  { id: 's-diveScale',        vid: 'v-diveScale',        key: 'diveScale',        fmt: v => v.toFixed(2) + 'x' },
   { id: 's-ballSize',     vid: 'v-ballSize',     key: 'ballSize',     fmt: v => Math.round(v) + 'px' },
 ];
 
@@ -414,6 +524,15 @@ for (const s of sliders) {
 
 document.getElementById('s-reset').addEventListener('click', () => {
   Object.assign(CFG, DEFAULTS); syncSliders(); saveCFG();
+});
+document.getElementById('s-export-cfg').addEventListener('click', () => {
+  const lines = Object.entries(CFG).map(([k, v]) => `${k}=${v}`);
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'axolotl.cfg';
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 document.getElementById('s-give-token').addEventListener('click', () => {
   totalTokens++; saveAbilities();
@@ -479,7 +598,7 @@ syncKeyButtons();
 
 // ── Ability Menu ──────────────────────────────────────────────────────────────
 let totalCoins  = parseInt(localStorage.getItem('axo_totalCoins')  || '0');
-let totalTokens = parseInt(localStorage.getItem('axo_totalTokens') ?? '1'); // start with 1 token
+let totalTokens = parseInt(localStorage.getItem('axo_totalTokens') ?? '100');
 
 function saveAbilities() {
   localStorage.setItem('axo_totalCoins',  totalCoins);
@@ -632,7 +751,7 @@ function drawAbilityMenu() {
   ctx.textAlign = 'center';
   ctx.font = '11px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.fillText('← → navigate   ·   ENTER unlock   ·   TAB close   ·   115 gems = 1 token', W / 2, py + ph - 10);
+  ctx.fillText('← → navigate   ·   ENTER unlock   ·   U = unlock all   ·   TAB close   ·   115 gems = 1 token', W / 2, py + ph - 10);
   ctx.fillStyle = 'rgba(255,255,255,0.06)';
   ctx.fillRect(px, py + ph - 24, pw, 1);
 
@@ -725,7 +844,7 @@ function drawAbilityMenu() {
       ctx.save();
       ctx.beginPath(); ctx.rect(bx + 4, by + 4, cardW - 8, cardH - 8); ctx.clip();
 
-      const pad = 10, maxTW = cardW - pad * 2 - 38;
+      const pad = 10;
 
       // Label
       ctx.textAlign = 'left';
@@ -842,6 +961,12 @@ document.addEventListener('keydown', e => {
     } else if (!abilityMenu.purchased.has(item.id)) {
       abilityMenu.flashTimer = 20;
     }
+  }
+  if (e.code === 'KeyU') {
+    for (const grp of ABILITY_DEFS)
+      for (const item of grp.items)
+        abilityMenu.purchased.add(item.id);
+    applyPurchased(); saveCFG(); saveAbilities();
   }
   if (e.code === 'Escape') abilityMenu.open = false;
 });
