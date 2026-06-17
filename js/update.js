@@ -243,7 +243,7 @@ function update(dt) {
         } else {
           const killed = damageEnemy(tg, tg.flying ? 1 : tg.hp);
           if (killed) { comboCount++; comboTimer = 120; }
-          if (tg.flying) player.homingCount = CFG.homingChain; // bats always exhaust homing chain regardless of kill
+          if (tg.flying) { player.homingCount = CFG.homingChain; player.homingLockLanding = true; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
           player.vy = -6;
@@ -451,7 +451,7 @@ function update(dt) {
         player.dashingDown = false;
         player.slamFreezeTimer = 0;
         player.onGround = true;
-        player.homingCount = 0;
+        if (player.homingLockLanding) { player.homingLockLanding = false; } else { player.homingCount = 0; }
         player.dashUsedUp = 0; player.dashUsedH = 0; player.dashKills = 0;
         player.slamUsed = false;
       } else if (player.vy < 0) {
