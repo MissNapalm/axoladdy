@@ -1,3 +1,4 @@
+
 function update(dt) {
   if (won && !player.wonSlide) return;
   if (dead) return;
@@ -88,7 +89,7 @@ function update(dt) {
   // Space/jump while airborne — homing attack if enemy nearby
   const homingAllowed = CFG.homingChain > 0 && player.homingCount < CFG.homingChain;
   if (jumpJustPressed && !player.onGround && !player.homing && homingAllowed) {
-    const target = nearestLiveGoomba(169);
+    const target = nearestLiveGoomba(HOMING_RANGE);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
@@ -198,7 +199,7 @@ function update(dt) {
           // Just cancel homing here so the reflect check fires cleanly next frame
           player.homing = false; player.homingTarget = null;
         } else if (tg === redBat) {
-          damageRedBat(1);
+          if (damageRedBat(1)) player.homingCount = 0;
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
@@ -206,8 +207,11 @@ function update(dt) {
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
           player.onGround = false;
+          player.invincible = 30; player.invincibleNoFlash = true;
+          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (snipers.includes(tg)) {
-          damageSniperById(tg.id, 1);
+          if (damageSniperById(tg.id, 1)) player.homingCount = 0;
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
@@ -215,9 +219,12 @@ function update(dt) {
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
           player.onGround = false;
+          player.invincible = 30; player.invincibleNoFlash = true;
+          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (shooterBats.includes(tg)) {
           tg.hp--; tg.hitFlash = 14;
-          if (tg.hp <= 0) { tg.dead = true; tg.deadTimer = 30; spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, false); }
+          if (tg.hp <= 0) { tg.dead = true; tg.deadTimer = 30; spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, false); playSound('dies', 0.7); player.homingCount = 0; }
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
@@ -225,19 +232,26 @@ function update(dt) {
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
           player.onGround = false;
+          player.invincible = 30; player.invincibleNoFlash = true;
+          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (chests.includes(tg)) {
           player.homing = false; player.homingTarget = null;
           player.vy = -8;
           player.onGround = false;
+          player.invincible = 30; player.invincibleNoFlash = true;
         } else {
           const killed = damageEnemy(tg, 1);
-          if (killed) { comboCount++; comboTimer = 120; }
+          if (killed) { comboCount++; comboTimer = 120; player.homingCount = 0; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
           player.onGround = false;
+          player.invincible = 30; player.invincibleNoFlash = true;
+          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
+          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         }
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
@@ -398,7 +412,7 @@ function update(dt) {
             if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
             player.ballForm = false;
             player.dashFrames = 0;
-            playSound('hit', 0.8);
+            playSound('stomp', 0.8);
             // Kill all enemies within 3 tiles either side
             const slamX = player.x + player.w / 2;
             const slamRange = 3 * TILE;
@@ -465,8 +479,19 @@ function update(dt) {
       }
     }
     if (coin.fromBlock) continue; // not collectible until settled
+    if (CFG.vortexRange > 0) {
+      const pcx = player.x + player.w / 2, pcy = player.y + player.h / 2;
+      const ccx = coin.x + TILE / 2,       ccy = coin.y + TILE / 2;
+      const dx = pcx - ccx, dy = pcy - ccy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < CFG.vortexRange && dist > 1) {
+        const pull = Math.max(7.0 * (1 - dist / CFG.vortexRange), 3.5);
+        coin.x += (dx / dist) * pull;
+        coin.y += (dy / dist) * pull;
+      }
+    }
     if (rectsOverlap({ x: coin.x + 4, y: coin.y + 4, w: TILE - 8, h: TILE - 8 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
-      coin.collected = true; coinCount++; score += 200; updateHUD(); playSound('coin', 0.5);
+      coin.collected = true; coinCount++; score += 200; updateHUD(); playSound('gem', 0.5);
       coinPopups.push({ x: coin.x + TILE / 2, y: coin.y, timer: 50 });
       if (typeof totalCoins !== 'undefined') {
         totalCoins++;
@@ -521,7 +546,7 @@ function update(dt) {
         const offscreen = g.spawnX < camera - W || g.spawnX > camera + W * 2;
         if (offscreen) {
           g.dead = false; g.deadTimer = 0; g.hitFlash = 0; g.lockFlash = 0;
-          g.x = g.spawnX; g.y = g.spawnY; g.vx = g.spawnVx;
+          g.x = g.spawnX; g.y = g.spawnY; g.vx = g.spawnVx; g.vy = 0;
           g.pl = g.spawnPl; g.pr = g.spawnPr;
           g.hp = g.spawnHp; g.maxHp = g.spawnHp;
           g.shockStun = 0; g.frame = 0;
@@ -532,15 +557,28 @@ function update(dt) {
     }
     if (g.lockFlash) g.lockFlash--;
     if (g.shockStun > 0) { g.shockStun--; continue; } // frozen during shockwave
-    // Reverse at patrol bounds or pit edges (ground enemies only)
-    if (!g.flying) {
-      const nextX = g.x + g.vx;
-      const edgeTile = Math.floor((g.vx > 0 ? nextX + g.w : nextX) / TILE);
-      const onPit = LEVELS[currentLevel].gaps.some(gap => edgeTile >= gap.x && edgeTile < gap.x + gap.w);
-      if (onPit) g.vx *= -1;
+    if (g.knockbackTimer > 0) {
+      g.knockbackTimer--;
+      g.vx *= 0.80;
+      if (!g.flying) {
+        g.vy = (g.vy || 0) + 0.6;
+        g.y += g.vy;
+        const floor = groundY * TILE - g.h;
+        if (g.y >= floor) { g.y = floor; g.vy = 0; if (g.knockbackTimer > 7) g.knockbackTimer = 7; }
+      }
+      g.x += g.vx;
+    } else {
+      // Normal patrol — reverse at bounds or pit edges
+      if (!g.flying) {
+        const nextX = g.x + g.vx;
+        const edgeTile = Math.floor((g.vx > 0 ? nextX + g.w : nextX) / TILE);
+        const onPit = LEVELS[currentLevel].gaps.some(gap => edgeTile >= gap.x && edgeTile < gap.x + gap.w);
+        if (onPit) g.vx *= -1;
+      }
+      g.x += g.vx;
+      if (g.x <= g.pl || g.x + g.w >= g.pr) g.vx *= -1;
+      g.lastDir = g.vx < 0 ? -1 : 1;
     }
-    g.x += g.vx;
-    if (g.x <= g.pl || g.x + g.w >= g.pr) g.vx *= -1;
     g.frame += 0.08;
     if (g.flying) {
       g.wobble += 0.04;
@@ -575,6 +613,7 @@ function update(dt) {
               projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2,
                 vx: Math.cos(ang + spread) * spd, vy: Math.sin(ang + spread) * spd, life: 130, flying: true });
             }
+            playSound('laser', 0.35);
           }
           g.shootCooldown = 180 + Math.floor(Math.random() * 120);
         }
@@ -593,14 +632,16 @@ function update(dt) {
           player.dashFrames = 0;
           player.onGround = false;
           player.knockbackTimer = 18;
+          player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         }
-      } else if (CFG.stompKill && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
-        if (damageEnemy(g, 1)) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; }
+      } else if (!g.hitFlash && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
+        if (damageEnemy(g, g.hp)) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; }
+        player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         player.vy = -6;
         player.onGround = false;
       } else if (player.homing) {
         // homing handled separately
-      } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
+      } else if (!player.homing && !player.ballForm && !player.dashFrames && !g.knockbackTimer && !g.hitFlash && player.invincible === 0) {
         hurtPlayer(1); player.invincible = 80;
         playSound('hurt', 0.6);
         if (hp <= 0) { killPlayer(); return; }
@@ -705,7 +746,7 @@ function hitBlock(s, hitDir = 0) {
   }
   updateHUD();
   spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, s.type);
-  playSound('hit', 0.5);
+  playSound('crate', 0.6);
   // Spawn 1–3 gems from block
   const gemCount = 1 + Math.floor(Math.random() * 3);
   const gemDirs = [-5, -2, 2, 5];
@@ -734,11 +775,13 @@ function hitBlock(s, hitDir = 0) {
 function hurtPlayer(dmg = 1) {
   if (CFG.godMode) return;
   hp -= dmg; updateHPBar();
+  player.invincibleNoFlash = false;
 }
 
 function killPlayer() {
   if (dead) return;
   dead = true; player.dead = true; player.vy = -12; player.vx = 0;
+  deathCount++;
   setTimeout(() => {
     document.getElementById('go-score').textContent = 'Score: ' + String(score).padStart(6, '0');
     document.getElementById('gameover').classList.add('show');

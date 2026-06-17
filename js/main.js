@@ -261,7 +261,7 @@ function loop(ts) {
       ctx.translate(0, cardY);
 
       // Card background
-      const cardW = 420, cardH = 280;
+      const cardW = 420, cardH = 310;
       const cx = W / 2, cy = H / 2;
       ctx.fillStyle = 'rgba(10,8,6,0.92)';
       ctx.strokeStyle = '#c87840';
@@ -301,6 +301,7 @@ function loop(ts) {
         ['Longest Combo',  maxCombo + 'x'],
         ['Skills Unlocked', skillsUnlocked],
         ['Gems Collected', coinCount],
+        ['Deaths',         deathCount],
         ['Score',          String(score).padStart(6, '0')],
       ];
       ctx.font = '16px monospace';
@@ -321,13 +322,14 @@ function loop(ts) {
       const gradeT = Math.max(0, Math.min((wonScreenTimer - gradeDelay) / 25, 1));
       if (gradeT > 0) {
         // Grade: weighted score from kills, combo, skills, gems, score
-        const maxPossibleScore = 30000;
+        const maxPossibleScore = 10000;
         const pct = Math.min(score / maxPossibleScore, 1);
-        const comboBonus = Math.min(maxCombo / 10, 1);
-        const skillBonus = Math.min(skillsUnlocked / 12, 1);
-        const gradeVal = pct * 0.5 + comboBonus * 0.3 + skillBonus * 0.2;
-        const grade = gradeVal >= 0.92 ? 'S' : gradeVal >= 0.80 ? 'A' : gradeVal >= 0.65 ? 'B'
-          : gradeVal >= 0.50 ? 'C' : gradeVal >= 0.35 ? 'D' : 'F';
+        const comboBonus = Math.min(maxCombo / 5, 1);
+        const skillBonus = Math.min(skillsUnlocked / 4, 1);
+        const deathPenalty = Math.min(deathCount * 0.08, 0.3);
+        const gradeVal = Math.max(0, pct * 0.5 + comboBonus * 0.3 + skillBonus * 0.2 - deathPenalty);
+        const grade = gradeVal >= 0.88 ? 'S' : gradeVal >= 0.72 ? 'A' : gradeVal >= 0.55 ? 'B'
+          : gradeVal >= 0.38 ? 'C' : gradeVal >= 0.22 ? 'D' : 'F';
         const gradeColor = grade === 'S' ? '#ffee44' : grade === 'A' ? '#88ff88'
           : grade === 'B' ? '#88ccff' : grade === 'C' ? '#ffaa44'
           : grade === 'D' ? '#ff8866' : '#cc4444';
@@ -471,6 +473,7 @@ document.getElementById('settings-btn').addEventListener('click', () =>
   document.getElementById('settings-panel').classList.toggle('open'));
 document.addEventListener('keydown', e => {
   if (e.code === 'Escape') document.getElementById('settings-panel').classList.remove('open');
+  if (e.code === 'KeyT') { totalTokens++; saveAbilities(); }
 });
 
 const sliders = [
@@ -621,29 +624,29 @@ const ABILITY_DEFS = [
   {
     group: 'DASH',
     items: [
-      { id: 'dash1', label: '1 Dash',   desc: 'Dash once in mid-air',        cfgKey: 'dashCount', cfgVal: 1 },
-      { id: 'dash2', label: '2 Dashes', desc: 'Dash twice in mid-air',       cfgKey: 'dashCount', cfgVal: 2 },
-      { id: 'dash3', label: '3 Dashes', desc: 'Dash three times in mid-air', cfgKey: 'dashCount', cfgVal: 3 },
+      { id: 'dash1', label: '1 Dash',   desc: 'Dash once in mid-air  —  unlock this first',  cfgKey: 'dashCount', cfgVal: 1 },
+      { id: 'dash2', label: '2 Dashes', desc: 'Dash twice in mid-air',                        cfgKey: 'dashCount', cfgVal: 2 },
+      { id: 'dash3', label: '3 Dashes', desc: 'Dash three times in mid-air',                  cfgKey: 'dashCount', cfgVal: 3 },
     ],
   },
   {
     group: 'HOMING',
     items: [
-      { id: 'home1', label: '1-Kill Chain', desc: '1 homing kill per jump',       cfgKey: 'homingChain', cfgVal: 1 },
-      { id: 'home2', label: '2-Kill Chain', desc: 'Chain 2 kills before landing', cfgKey: 'homingChain', cfgVal: 2 },
-      { id: 'home3', label: '3-Kill Chain', desc: 'Chain 3 kills before landing', cfgKey: 'homingChain', cfgVal: 3 },
-    ],
-  },
-  {
-    group: 'STOMP',
-    items: [
-      { id: 'stomp', label: 'Down Pound', desc: 'Jump on enemy heads to damage and kill', cfgKey: 'stompKill', cfgVal: 1 },
+      { id: 'home1', label: '1-Kill Chain', desc: '1 homing kill per jump  —  unlock Dash first', cfgKey: 'homingChain', cfgVal: 1 },
+      { id: 'home2', label: '2-Kill Chain', desc: 'Chain 2 kills before landing',                  cfgKey: 'homingChain', cfgVal: 2 },
+      { id: 'home3', label: '3-Kill Chain', desc: 'Chain 3 kills before landing',                  cfgKey: 'homingChain', cfgVal: 3 },
     ],
   },
   {
     group: 'SLAM',
     items: [
       { id: 'slam', label: 'Ground Slam', desc: 'Hold X + Dash to slam down and break blocks', cfgKey: 'slamUnlocked', cfgVal: 1 },
+    ],
+  },
+  {
+    group: 'VORTEX',
+    items: [
+      { id: 'vortex1', label: 'Crystal Vortex', desc: 'Gems within range are pulled toward you automatically', cfgKey: 'vortexRange', cfgVal: 160 },
     ],
   },
 ];
@@ -661,8 +664,8 @@ function applyPurchased() {
   // so stale localStorage values don't grant abilities
   CFG.dashCount     = 0;
   CFG.homingChain   = 0;
-  CFG.stompKill     = 0;
   CFG.slamUnlocked  = 0;
+  CFG.vortexRange   = 0;
   for (const grp of ABILITY_DEFS) {
     let best = null;
     for (const item of grp.items) { if (abilityMenu.purchased.has(item.id)) best = item; }
@@ -676,6 +679,8 @@ function canBuyAbility(grp, item) {
   if (totalTokens < ABILITY_COST) return false;
   const idx = grp.items.indexOf(item);
   if (idx > 0 && !abilityMenu.purchased.has(grp.items[idx - 1].id)) return false;
+  // Homing requires dash to be purchased first
+  if (item.id === 'home1' && !abilityMenu.purchased.has('dash1')) return false;
   return true;
 }
 
@@ -751,7 +756,7 @@ function drawAbilityMenu() {
   ctx.textAlign = 'center';
   ctx.font = '11px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.fillText('← → navigate   ·   ENTER unlock   ·   U = unlock all   ·   TAB close   ·   115 gems = 1 token', W / 2, py + ph - 10);
+  ctx.fillText('← → ↑ ↓ navigate   ·   ENTER unlock   ·   TAB close   ·   unlock Dash before Homing', W / 2, py + ph - 10);
   ctx.fillStyle = 'rgba(255,255,255,0.06)';
   ctx.fillRect(px, py + ph - 24, pw, 1);
 
@@ -937,6 +942,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     if (dashTutorial) abilityMenu.open = true; // can open but not close during tutorial
     else abilityMenu.open = !abilityMenu.open;
+    if (abilityMenu.open) playSound('dial', 0.7);
     return;
   }
   if (!abilityMenu.open) return;
