@@ -243,6 +243,7 @@ function update(dt) {
         } else {
           const killed = damageEnemy(tg, tg.flying ? 1 : tg.hp);
           if (killed) { comboCount++; comboTimer = 120; }
+          if (tg.flying && !killed) player.homingCount = CFG.homingChain; // bat survived — block further homes until landing
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
           player.vy = -6;
