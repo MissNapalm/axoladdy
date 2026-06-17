@@ -2025,7 +2025,7 @@ function initShooterBats(clusters) {
       bobBase: y, bobPhase: Math.random() * Math.PI * 2,
       shootTimer: 90 + Math.floor(Math.random() * 60),
       dead: false, deadTimer: 0, hitFlash: 0,
-      hp: 2, maxHp: 2,
+      hp: 3, maxHp: 3,
     };
   });
 }

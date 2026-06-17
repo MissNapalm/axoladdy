@@ -199,7 +199,7 @@ function update(dt) {
           // Just cancel homing here so the reflect check fires cleanly next frame
           player.homing = false; player.homingTarget = null;
         } else if (tg === redBat) {
-          if (damageRedBat(1)) player.homingCount = 0;
+          damageRedBat(1);
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
@@ -211,7 +211,7 @@ function update(dt) {
           player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
           player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (snipers.includes(tg)) {
-          if (damageSniperById(tg.id, 1)) player.homingCount = 0;
+          damageSniperById(tg.id, 1);
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
@@ -224,7 +224,7 @@ function update(dt) {
           player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (shooterBats.includes(tg)) {
           tg.hp--; tg.hitFlash = 14;
-          if (tg.hp <= 0) { tg.dead = true; tg.deadTimer = 30; spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, false); playSound('dies', 0.7); player.homingCount = 0; }
+          if (tg.hp <= 0) { tg.dead = true; tg.deadTimer = 30; spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, false); playSound('dies', 0.7); }
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
@@ -241,8 +241,8 @@ function update(dt) {
           player.onGround = false;
           player.invincible = 30; player.invincibleNoFlash = true;
         } else {
-          const killed = damageEnemy(tg, 1);
-          if (killed) { comboCount++; comboTimer = 120; player.homingCount = 0; }
+          const killed = damageEnemy(tg, tg.flying ? 1 : tg.hp);
+          if (killed) { comboCount++; comboTimer = 120; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
           player.vy = -6;
@@ -285,6 +285,14 @@ function update(dt) {
   if (player.spinning || player.homing || player.ballForm) {
     player.spinAngle += player.homing ? 28 : 18;
     if (Math.random() < 0.5) spawnTrail(player.x + player.w / 2, player.y + player.h / 2);
+  }
+
+  // Stomp kill flip — one clockwise 360 over 20 frames
+  if (player.stompFlipTimer > 0) {
+    player.stompFlipTimer--;
+    player.stompFlipAngle += 360 / 20;
+  } else {
+    player.stompFlipAngle = 0;
   }
 
   // Gravity (suppressed during homing and active dash frames)
@@ -635,7 +643,8 @@ function update(dt) {
           player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         }
       } else if (!g.hitFlash && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
-        if (damageEnemy(g, g.hp)) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; }
+        const stompKilled = damageEnemy(g, 1);
+        if (stompKilled) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; player.stompFlipTimer = 20; player.stompFlipAngle = 0; }
         player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         player.vy = -6;
         player.onGround = false;

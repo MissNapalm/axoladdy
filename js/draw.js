@@ -1124,6 +1124,12 @@ function drawPlayer() {
       ctx.rotate(CFG.spriteRot * Math.PI / 180);
     }
     if (player.spinning) ctx.rotate((player.spinAngle * Math.PI) / 180);
+    if (player.stompFlipTimer > 0) {
+      const centerY = -(player.h + footOffset) / 2;
+      ctx.translate(0, centerY);
+      ctx.rotate((player.stompFlipAngle * Math.PI) / 180);
+      ctx.translate(0, -centerY);
+    }
     // Jump anim state machine — transition on ground change
     if (!prevOnGround && player.onGround && (jumpAnimState === 'air' || jumpAnimState === 'crouch')) {
       jumpAnimState = 'idle'; jumpAnimFrame = 0; jumpAnimTick = 0;

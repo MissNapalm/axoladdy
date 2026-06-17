@@ -696,7 +696,7 @@ const chaser = {
   x: 0, y: 0, vx: 0, vy: 0,
   w: CHASER_R * 2, h: CHASER_R * 2,
   hp: 3, maxHp: 3, hitFlash: 0, wobble: 0,
-  targetOffX: 75, targetOffY: -120,
+  targetOffX: 75, targetOffY: -160,
   // attack state machine
   state: 'hover',   // hover | aiming | telegraph | cooldown
   stateTimer: 0,
@@ -732,7 +732,7 @@ function loadLevel(n, keepProgress) {
   goombas = lv.goombas.flatMap((g, i) => {
     const isShooter = !!g.shooter;
     const type = isShooter ? 'shooter' : 'normal';
-    const h = 1;
+    const h = 2;
     const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
     const midTile = Math.round((g.pl + g.pr) / 2);
     const zoneHasGap = (tl, tr) => { for (let t = tl; t < tr; t++) if (groundInGap(t)) return true; return false; };
