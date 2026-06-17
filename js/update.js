@@ -576,6 +576,7 @@ function update(dt) {
         if (g.y >= floor) { g.y = floor; g.vy = 0; if (g.knockbackTimer > 7) g.knockbackTimer = 7; }
       }
       g.x += g.vx;
+      if (g.knockbackTimer === 0) g.vx = g.spawnVx * (g.lastDir || 1);
     } else {
       // Normal patrol — reverse at bounds or pit edges
       if (!g.flying) {
