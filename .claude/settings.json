@@ -3,7 +3,23 @@
     "allow": [
       "Bash(git commit -m ' *)",
       "Bash(node -e ' *)",
-      "Bash(node -e \"const fs=require\\('fs'\\),h=fs.readFileSync\\('/Users/missnapalm/Desktop/axolotl/index.html','utf8'\\),s=h.match\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/g\\).map\\(s=>s.replace\\(/<\\\\/?script>/g,''\\)\\).join\\('\\\\n'\\);try{new Function\\(s\\);console.log\\('OK'\\)}catch\\(e\\){console.error\\(e.message.slice\\(0,300\\)\\)}\")"
+      "Bash(node -e \"const fs=require\\('fs'\\),h=fs.readFileSync\\('/Users/missnapalm/Desktop/axolotl/index.html','utf8'\\),s=h.match\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/g\\).map\\(s=>s.replace\\(/<\\\\/?script>/g,''\\)\\).join\\('\\\\n'\\);try{new Function\\(s\\);console.log\\('OK'\\)}catch\\(e\\){console.error\\(e.message.slice\\(0,300\\)\\)}\")",
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('js/config.js','utf8'\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);try{new Function\\(fs.readFileSync\\('js/update.js','utf8'\\)\\);console.log\\('OK'\\);}catch\\(e\\){console.error\\(e.message\\);}\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);['js/config.js','js/update.js'].forEach\\(f=>{try{new Function\\(fs.readFileSync\\(f,'utf8'\\)\\);console.log\\('OK:',f\\);}catch\\(e\\){console.error\\('ERR:',f,e.message\\);}}\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);try{new Function\\(fs.readFileSync\\('js/enemies.js','utf8'\\)\\);console.log\\('OK'\\);}catch\\(e\\){console.error\\(e.message\\);}\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);['js/update.js','js/enemies.js'].forEach\\(f=>{try{new Function\\(fs.readFileSync\\(f,'utf8'\\)\\);console.log\\(f+': OK'\\);}catch\\(e\\){console.error\\(f+': '+e.message\\);}}\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);['js/config.js','js/update.js'].forEach\\(f=>{try{new Function\\(fs.readFileSync\\('/Users/missnapalm/Desktop/axolotl/'+f,'utf8'\\)\\);console.log\\(f+': OK'\\);}catch\\(e\\){console.error\\(f+': '+e.message\\);}}\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);try{new Function\\(fs.readFileSync\\('/Users/missnapalm/Desktop/axolotl/js/enemies.js','utf8'\\)\\);console.log\\('OK'\\);}catch\\(e\\){console.error\\(e.message\\);}\")",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);['js/config.js','js/update.js','js/main.js'].forEach\\(f=>{try{new Function\\(fs.readFileSync\\('/Users/missnapalm/Desktop/axolotl/'+f,'utf8'\\)\\);console.log\\(f+': OK'\\);}catch\\(e\\){console.error\\(f+': '+e.message\\);}}\\)\")",
+      "Bash(ffmpeg -y -i /Users/missnapalm/Desktop/axolotl/assets/video/axo.mov -i /Users/missnapalm/Desktop/axolotl/assets/audio/intro.mp3 -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest /Users/missnapalm/Desktop/axolotl/assets/video/axo_music.mov)",
+      "Bash(ffmpeg -y -i /Users/missnapalm/Desktop/axolotl/assets/video/axo2.mov -i /Users/missnapalm/Desktop/axolotl/assets/audio/intro.mp3 -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest /Users/missnapalm/Desktop/axolotl/assets/video/axo2_music.mov)",
+      "Bash(ffmpeg -i /Users/missnapalm/Desktop/axolotl/assets/video/intro.mov)",
+      "Bash(ffmpeg -i /Users/missnapalm/Desktop/axolotl/assets/video/axo_music.mov)",
+      "Bash(ffmpeg -y -i /Users/missnapalm/Desktop/axolotl/assets/video/intro.mov -i /Users/missnapalm/Desktop/axolotl/assets/video/axo_music.mov -i /Users/missnapalm/Desktop/axolotl/assets/audio/intro.mp3 -filter_complex ' *)",
+      "Bash(ffmpeg -i /Users/missnapalm/Desktop/axolotl/assets/video/withintro_final.mov)",
+      "Bash(ffmpeg -i /Users/missnapalm/Desktop/axolotl/three.mov)"
     ]
   }
 }

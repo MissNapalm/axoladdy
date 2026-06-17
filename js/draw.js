@@ -884,7 +884,8 @@ function drawEnemy(g) {
     const dx = cx - dw / 2, dy = g.y + g.h - dh + CFG.spriteOffset;
     const shooterTint = g.type === 'shooter' ? '#6688cc' : null;
     ctx.save();
-    if (g.vx < 0) {
+    const facingLeft = (g.lastDir ?? -1) < 0;
+    if (facingLeft) {
       ctx.translate(dx + dw, 0);
       ctx.scale(-1, 1);
       drawBaddieSprite(ctx, baddieFrame, dw, dh, 0, dy, shooterTint);
@@ -940,9 +941,10 @@ function drawFlagPole() {
 }
 
 function drawPlayer() {
-  // Flicker every 4 frames while invincible
-  if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
+  // Flicker every 4 frames while invincible from damage (not from homing hit)
+  if (player.invincible > 0 && !player.invincibleNoFlash && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
+
   ctx.save();
   const footOffset = CFG.spriteOffset;
 

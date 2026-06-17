@@ -45,6 +45,7 @@ function updateChaser() {
         chaser.deathPhaseTimer = 0;
         chaser.deathFlashR = 0;
         screenShake = 60;
+        playSound('explode', 1.0);
       }
 
     } else if (chaser.deathPhase === 'flash') {
@@ -146,6 +147,7 @@ function updateChaser() {
       chaser.state = 'aiming';
       chaser.stateTimer = 120; // 2s of laser tracking
       chaser.laserAngle = Math.atan2(py - cy, px - cx);
+      playSound('charging', 0.6);
     }
 
   } else if (chaser.state === 'aiming') {
@@ -177,6 +179,7 @@ function updateChaser() {
       chaser.hitFlash = 0;
       chaser.state = 'cooldown';
       chaser.stateTimer = 60; // 1s before resuming hover
+      playSound('laser', 0.8);
     }
 
   } else if (chaser.state === 'cooldown') {
@@ -527,6 +530,7 @@ function updateBoss() {
         const spd = 3.5 + boss.phase;
         projectiles.push({ x: bx, y: by, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 110, flying: true });
       }
+      playSound('laser', 0.5);
     }
 
   } else if (boss.state === 'summon') {
@@ -547,6 +551,7 @@ function updateBoss() {
         const spd = 2.8 + boss.phase * 0.6;
         projectiles.push({ x: bx, y: by, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 140, flying: true });
       }
+      playSound('laser', 0.4);
     }
     if (boss.stateTimer <= 0) {
       boss.state = 'idle';
@@ -569,6 +574,7 @@ function updateBoss() {
       if (Math.random() < 0.3) {
         const spd = 3 + boss.phase;
         projectiles.push({ x: bx, y: by + 10, vx: (Math.random() - 0.5) * 4, vy: spd, life: 100, flying: true });
+        playSound('laser', 0.3);
       }
     }
     if (boss.stateTimer <= 0) {
@@ -595,6 +601,7 @@ function updateBoss() {
           const ang = (a / 12) * Math.PI * 2;
           projectiles.push({ x: bx, y: by, vx: Math.cos(ang) * 5, vy: Math.sin(ang) * 5, life: 120, flying: true });
         }
+        playSound('laser', 0.5);
       }
     }
     boss.y += boss.vy;
@@ -1289,6 +1296,7 @@ function updateWraith() {
         const spd = 2.5 + wraith.phase * 0.5;
         projectiles.push({ x: wx, y: wy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 150, flying: true });
       }
+      playSound('laser', 0.5);
     }
     if (wraith.stateTimer <= 0) { wraith.state = 'idle'; wraith.stateTimer = 80 + Math.floor(Math.random() * 50); }
 
@@ -2040,6 +2048,7 @@ function updateShooterBats() {
       const dx = px - bx, dy = py - by;
       const dist = Math.hypot(dx, dy) || 1;
       projectiles.push({ x: bx, y: by, vx: (dx / dist) * 5, vy: (dy / dist) * 5, life: 180, shooterBatId: b.id });
+      playSound('laser', 0.4);
     }
 
     // Dash contact damage (like stomping a goomba)

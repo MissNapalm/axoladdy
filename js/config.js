@@ -37,7 +37,26 @@ const BADDIE_FW     = 122;
 const BADDIE_FH     = 160;
 
 // ── Audio ────────────────────────────────────────────────────────────────────
-function playSound() {}
+const SOUNDS = {
+  dash:     new Audio('dash.mp3'),
+  gem:      new Audio('gem.mp3'),
+  laser:    new Audio('laser.mp3'),
+  explode:  new Audio('explode.mp3'),
+  crate:    new Audio('crate.mp3'),
+  stomp:    new Audio('stomp.mp3'),
+  dies:     new Audio('dies.mp3'),
+  charging: new Audio('charging.mp3'),
+  dial:     new Audio('dial.wav'),
+  hit:      new Audio('hit.wav'),
+  jump:     new Audio('jump.wav'),
+};
+function playSound(name, vol = 1) {
+  const snd = SOUNDS[name];
+  if (!snd) return;
+  const clone = snd.cloneNode();
+  clone.volume = Math.min(1, Math.max(0, vol));
+  clone.play().catch(() => {});
+}
 const WALK_FRAMES   = 27;
 const WALK_FW       = 354;
 const WALK_FH       = 256;
@@ -115,7 +134,7 @@ const DEFAULTS = {
   homingChain: 0,
   dashCount: 1,
   dashChain: 1,
-  stompKill: 0,
+  stompKill: 1,
   slamUnlocked: 0,
   godMode: 0,
 };
@@ -271,23 +290,22 @@ const LEVELS = [
       {x:555,w:5},
     ],
     platforms: [
-      {x:5,y:9,w:6,t:'brick'},{x:14,y:9,w:4,t:'qblock'},
-      {x:22,y:9,w:5,t:'brick'},{x:30,y:9,w:4,t:'qblock'},
-      {x:38,y:9,w:6,t:'brick'},{x:47,y:9,w:4,t:'qblock'},
-      {x:52,y:9,w:5,t:'brick'},{x:57,y:9,w:4,t:'qblock'},
-      {x:62,y:9,w:4,t:'qblock'},{x:88,y:9,w:5,t:'brick'},
-      {x:130,y:9,w:5,t:'brick'},{x:142,y:9,w:10,t:'qblock'},{x:160,y:9,w:5,t:'qblock'},
-      {x:205,y:9,w:6,t:'brick'},{x:230,y:9,w:5,t:'qblock'},
-      {x:258,y:9,w:5,t:'brick'},{x:285,y:9,w:5,t:'qblock'},
-      {x:310,y:9,w:12,t:'qblock'},{x:330,y:9,w:4,t:'brick'},
-      {x:360,y:9,w:5,t:'brick'},{x:378,y:9,w:5,t:'qblock'},
-      {x:395,y:9,w:4,t:'brick'},
-      {x:412,y:9,w:6,t:'brick'},{x:422,y:9,w:10,t:'qblock'},
-      {x:452,y:9,w:5,t:'brick'},{x:468,y:9,w:5,t:'qblock'},
-      {x:500,y:9,w:5,t:'brick'},
-      {x:510,y:9,w:8,t:'qblock'},{x:525,y:9,w:4,t:'brick'},
-      {x:566,y:9,w:6,t:'qblock'},{x:575,y:9,w:5,t:'brick'},
-      {x:60,y:9,w:1,t:'hblock'},{x:285,y:9,w:1,t:'hblock'},{x:468,y:9,w:1,t:'hblock'},
+      // One platform per triangle group, centered above the bat midpoint, clear of gnome zones
+      {x:15,y:8,w:3,t:'qblock'},   // group 1 mid ~16 (pl:5 pr:28)
+      {x:40,y:8,w:3,t:'qblock'},   // group 2 mid ~41 (pl:28 pr:55)
+      {x:67,y:8,w:3,t:'qblock'},   // group 3 mid ~68 (pl:55 pr:82)
+      {x:96,y:8,w:3,t:'qblock'},   // group 4 mid ~97 (pl:82 pr:112)
+      {x:134,y:8,w:3,t:'qblock'},  // group 5 mid ~135 (pl:122 pr:148)
+      {x:213,y:8,w:3,t:'qblock'},  // group 6 mid ~214 (pl:200 pr:228)
+      {x:235,y:8,w:3,t:'qblock'},  // group 7 mid ~236 (pl:222 pr:250)
+      {x:264,y:8,w:3,t:'qblock'},  // group 8 mid ~265 (pl:252 pr:278)
+      {x:289,y:8,w:3,t:'qblock'},  // group 9 mid ~290 (pl:278 pr:302)
+      {x:343,y:8,w:3,t:'brick'},   // group 10 shooter mid ~344 (pl:330 pr:358)
+      {x:364,y:8,w:3,t:'brick'},   // group 11 shooter mid ~365 (pl:352 pr:378)
+      {x:396,y:8,w:3,t:'brick'},   // group 12 shooter mid ~396 (pl:385 pr:408)
+      {x:416,y:8,w:3,t:'brick'},   // group 13 shooter mid ~416 (pl:405 pr:428)
+      {x:457,y:8,w:3,t:'brick'},   // group 14 shooter mid ~457 (pl:445 pr:470)
+      {x:60,y:8,w:1,t:'hblock'},{x:285,y:8,w:1,t:'hblock'},{x:468,y:8,w:1,t:'hblock'},
     ],
     pipes: [{x:20,h:2},{x:40,h:3},{x:72,h:2},{x:106,h:4},{x:245,h:3},{x:265,h:2},{x:370,h:3},{x:385,h:4}],
     groundEnd: 475,
@@ -549,7 +567,7 @@ const LVC_TOTAL     = LVC_FADE_IN + LVC_ZOOM + LVC_TEXT + LVC_HOLD + LVC_RUN;
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
 let comboCount = 0, comboTimer = 0;
-let maxCombo = 0, killCount = 0;
+let maxCombo = 0, killCount = 0, deathCount = 0;
 let wonScreenTimer = 0; // frames since won, used to animate score card in
 let chaserCleared = false; // survives death, reset on manual level reload
 
@@ -709,40 +727,50 @@ function loadLevel(n, keepProgress) {
   coins = lv.coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
   // Every 3rd enemy in level 2+ is a 'shocker'
   const lvl = n; // 0-indexed
+  // Triangle formation per goomba def: left gnome, right gnome, small bat above middle
+  const groundFloorY2 = groundY * TILE - TILE;
   goombas = lv.goombas.flatMap((g, i) => {
     const isShooter = !!g.shooter;
     const type = isShooter ? 'shooter' : 'normal';
-    const h = isShooter ? 2 : 1;
+    const h = 1;
     const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
-    const e1 = { ...base, id: i * 2,     x: g.x * TILE,       y: groundY * TILE - TILE, vx: -0.7, pl: g.pl * TILE,       pr: g.pr * TILE };
-    const e2 = { ...base, id: i * 2 + 1, x: (g.x + 7) * TILE, y: groundY * TILE - TILE, vx: -0.7, pl: (g.pl + 7) * TILE, pr: (g.pr + 7) * TILE };
-    e1.spawnX = e1.x; e1.spawnY = e1.y; e1.spawnVx = e1.vx; e1.spawnPl = e1.pl; e1.spawnPr = e1.pr; e1.spawnHp = h;
-    e2.spawnX = e2.x; e2.spawnY = e2.y; e2.spawnVx = e2.vx; e2.spawnPl = e2.pl; e2.spawnPr = e2.pr; e2.spawnHp = h;
-    return [e1, e2];
-  });
-  const halfwayX = 140 * TILE; // black bats before tile 140, red from tile 140
-  flyers = lv.flyers.filter(f => f.x * TILE >= halfwayX).map((f, i) => {
-    const type = 'normal';
-    const h = 3;
-    const sz = Math.round(TILE * 1.35);
-    // Minimum y = 5*TILE so bats stay in mid-height range
-    let safeY = Math.max(f.fy, 5 * TILE);
-    // Push down if spawning inside any platform
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const p of lv.platforms) {
-        const px = p.x * TILE, py = p.y * TILE, pw = p.w * TILE, ph = TILE;
-        const bx = f.x * TILE;
-        if (bx + TILE > px && bx < px + pw && safeY + TILE > py && safeY < py + ph) {
-          safeY = py + ph + 2;
-          changed = true;
-        }
-      }
+    const midTile = Math.round((g.pl + g.pr) / 2);
+    const zoneHasGap = (tl, tr) => { for (let t = tl; t < tr; t++) if (groundInGap(t)) return true; return false; };
+    const result = [];
+    if (!zoneHasGap(g.pl, midTile)) {
+      const e1 = { ...base, id: i * 2,     x: (g.pl + 2) * TILE, y: groundFloorY2, vx: -0.7, pl: g.pl * TILE, pr: midTile * TILE };
+      e1.spawnX = e1.x; e1.spawnY = e1.y; e1.spawnVx = e1.vx; e1.spawnPl = e1.pl; e1.spawnPr = e1.pr; e1.spawnHp = h;
+      result.push(e1);
     }
-    const fly = { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: sz, h: sz, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: true };
-    fly.spawnX = fly.x; fly.spawnY = safeY; fly.spawnVx = 1.2; fly.spawnPl = fly.pl; fly.spawnPr = fly.pr; fly.spawnHp = h;
+    if (!zoneHasGap(midTile, g.pr)) {
+      const e2 = { ...base, id: i * 2 + 1, x: (midTile + 2) * TILE, y: groundFloorY2, vx:  0.7, pl: midTile * TILE, pr: g.pr * TILE };
+      e2.spawnX = e2.x; e2.spawnY = e2.y; e2.spawnVx = e2.vx; e2.spawnPl = e2.pl; e2.spawnPr = e2.pr; e2.spawnHp = h;
+      result.push(e2);
+    }
+    return result;
+  });
+
+  // Small bat above each gnome triangle, plus large red bats from lv.flyers
+  const makeFlyerObj = (f, id, isSmall) => {
+    const sz = isSmall ? Math.round(TILE * 0.85) : Math.round(TILE * 1.35);
+    const h  = isSmall ? 2 : 3;
+    const safeY = isSmall ? (groundY - 5) * TILE : Math.max(f.fy, 5 * TILE);
+    const fly = { id, x: f.x * TILE, baseY: safeY, y: safeY, vx: isSmall ? 0.9 : 1.2,
+      w: sz, h: sz, dead: false, deadTimer: 0,
+      pl: f.x * TILE, pr: (f.x + f.pw) * TILE,
+      frame: 0, flying: true, wobble: Math.random() * Math.PI * 2,
+      hp: h, maxHp: h, hitFlash: 0, type: 'normal', shockStun: 0,
+      red: !isSmall, shootCooldown: 0, lockFlash: 0 };
+    fly.spawnX = fly.x; fly.spawnY = safeY; fly.spawnVx = fly.vx;
+    fly.spawnPl = fly.pl; fly.spawnPr = fly.pr; fly.spawnHp = h;
     return fly;
+  };
+  let flyId = 1000;
+  flyers = lv.flyers.map(f => makeFlyerObj(f, flyId++, false));
+  lv.goombas.forEach((g) => {
+    const midTile = Math.round((g.pl + g.pr) / 2);
+    const pw = g.pr - g.pl;
+    flyers.push(makeFlyerObj({ x: midTile - Math.floor(pw / 2), fy: 0, pw }, flyId++, true));
   });
   heartPickups = [];
   medPackDrops = [];
@@ -832,6 +860,7 @@ function loadLevel(n, keepProgress) {
   camera = (lv.isBossLevel || lv.chaserTriggerX != null) ? Math.max(0, spawnX - W / 3) : 0; cameraY = 0;
   comboCount = 0; comboTimer = 0;
   maxCombo = 0; killCount = 0; wonScreenTimer = 0;
+  if (!keepProgress) deathCount = 0;
   won = false; dead = false;
   player.onLoop = false; player.loopAngle = Math.PI / 2; player.loopSpeed = 0;
   score = 0; coinCount = 0;
@@ -947,6 +976,7 @@ function spawnShockerBurst(g) {
     const ang = (a / count) * Math.PI * 2;
     projectiles.push({ x: cx, y: cy, vx: Math.cos(ang) * 3.2, vy: Math.sin(ang) * 3.2, life: 80, flying: g.flying });
   }
+  playSound('laser', 0.35);
   g.shockStun = 40; // freeze for ~2/3 sec
 }
 
@@ -958,7 +988,7 @@ function damageEnemy(g, dmg) {
     killCount++;
     score += g.flying ? 200 : 100; updateHUD();
     spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
-    playSound('hit', 0.6);
+    playSound('dies', 0.7);
     if (medPacks < MAX_MED_PACKS && Math.random() < 1/30) {
       medPackDrops.push({ x: g.x + g.w / 2 - 10, y: g.y, vy: -5, collected: false });
     }
@@ -974,8 +1004,17 @@ function damageEnemy(g, dmg) {
   }
   // Shocker: emit a ring burst every time it's hit
   if (g.type === 'shocker') spawnShockerBurst(g);
-  g.hitFlash = 18; // stagger flash
-  playSound('hit', 0.35);
+  g.hitFlash = 18;
+  playSound('hit', 0.6);
+  // Knockback away from player, face toward player
+  if (!g.flying) {
+    const toPlayer = (player.x + player.w / 2) - (g.x + g.w / 2);
+    const dir = toPlayer < 0 ? -1 : 1; // dir away from player
+    g.lastDir = dir; // face the direction of knockback while airborne
+    g.vx = dir * 5;
+    g.vy = -4;
+    g.knockbackTimer = 20;
+  }
   // Tutorial: enemy survived a hit → step 5 complete
   if (LEVELS[currentLevel]?.isTutorial && tut.step === 5 && !tut.hasHitTough) {
     tut.hasHitTough = true; tutAdvance();
