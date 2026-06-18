@@ -203,6 +203,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
+          player.homingCount = CFG.homingChain;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -215,6 +216,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
+          player.homingCount = CFG.homingChain;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -228,6 +230,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
+          player.homingCount = CFG.homingChain;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -245,6 +248,7 @@ function update(dt) {
           if (killed) { comboCount++; comboTimer = 120; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
+          if (tg.flying) player.homingCount = CFG.homingChain;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -290,7 +294,7 @@ function update(dt) {
   // Stomp kill flip — one clockwise 360 over 20 frames
   if (player.stompFlipTimer > 0) {
     player.stompFlipTimer--;
-    player.stompFlipAngle += 360 / 20;
+    player.stompFlipAngle += 360 / 14;
   } else {
     player.stompFlipAngle = 0;
   }
@@ -644,7 +648,7 @@ function update(dt) {
         }
       } else if (!g.hitFlash && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
         const stompKilled = damageEnemy(g, 1);
-        if (stompKilled) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; player.stompFlipTimer = 20; player.stompFlipAngle = 0; }
+        if (stompKilled) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; player.stompFlipTimer = 14; player.stompFlipAngle = 0; }
         player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         player.vy = -6;
         player.onGround = false;
