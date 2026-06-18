@@ -132,8 +132,7 @@ const DEFAULTS = {
   jumpScale: 1.910,
   ballSize: 48,
   homingChain: 0,
-  dashCount: 1,
-  dashChain: 1,
+
   stompKill: 1,
   slamUnlocked: 0,
   godMode: 0,
@@ -277,6 +276,7 @@ const LEVELS = [
       {x:38,fy:6*TILE,pw:5},{x:42,fy:7*TILE,pw:5},{x:46,fy:6*TILE,pw:5},
       {x:53,fy:6*TILE,pw:4},{x:57,fy:7*TILE,pw:4},{x:61,fy:6*TILE,pw:4},
     ],
+    dashBoxes: [{x:25,y:5}],
   },
   // Level 1 — ~3× Mario 1-1 length
   {
@@ -328,6 +328,7 @@ const LEVELS = [
       {x:348,fy:6*TILE,pw:7},{x:360,fy:7*TILE,pw:7},{x:372,fy:6*TILE,pw:7},
       {x:400,fy:6*TILE,pw:7},{x:412,fy:7*TILE,pw:7},{x:424,fy:6*TILE,pw:7},
     ],
+    dashBoxes: [{x:134,y:7}],
   },
   // Level 2 — wide gaps, tall platforms
   {
@@ -592,8 +593,8 @@ const player = {
   slamFreezeTimer: 0,
   slamUsed: false,
   knockbackTimer: 0,
-  dashUsedUp: 0,
-  dashUsedH: 0,
+  dashAvail: 1,
+  maxDashes: 1,
   dashFrames: 0,    // frames remaining in active dash
   invincible: 0,
   dir: 1,
@@ -737,7 +738,11 @@ function loadLevel(n, keepProgress) {
   heartPickups = [];
   medPackDrops = [];
   projectiles  = [];
-  powerBoxes   = [];
+  powerBoxes   = (lv.dashBoxes || []).map(b => ({
+    x: b.x * TILE, y: b.y * TILE,
+    w: TILE, h: TILE,
+    collected: false, bobTimer: Math.random() * Math.PI * 2,
+  }));
   levelAmulets = (lv.amulets || []).map(a => ({ ...a, collected: false, bobTimer: 0 }));
   coinPopups = [];
 
@@ -815,7 +820,7 @@ function loadLevel(n, keepProgress) {
     onGround: false, jumping: false,
     homing: false, homingTarget: null, homingAvail: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
-    dashFrames: 0, dashUsedH: 0, dashUsedV: 0,
+    dashFrames: 0, dashAvail: player.maxDashes,
     invincible: 0, dead: false, wonSlide: false,
     dir: 1,
   });
@@ -960,13 +965,8 @@ function damageEnemy(g, dmg) {
     if (medPacks < MAX_MED_PACKS && Math.random() < 1/30) {
       medPackDrops.push({ x: g.x + g.w / 2 - 10, y: g.y, vy: -5, collected: false });
     }
-    // Kill while airborne: re-enable dash if under chain limit
     if (!player.onGround) {
-      player.dashKills = (player.dashKills || 0) + 1;
-      if (player.dashKills < CFG.dashChain) {
-        player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-        player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
-      }
+      player.dashAvail = Math.min(player.maxDashes, player.dashAvail + 1);
     }
     return true; // killed
   }

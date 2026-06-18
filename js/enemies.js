@@ -2193,8 +2193,7 @@ function damageSniperById(id, dmg) {
     score += 1500; updateHUD();
     comboCount += 3; comboTimer = 160;
     if (!player.onGround) {
-      player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-      player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
+      player.dashAvail = Math.min(player.maxDashes, player.dashAvail + 1);
     }
     return true;
   }

@@ -85,54 +85,47 @@ function update(dt) {
     }
   }
 
-  // F — directional dash, tracked per direction
-  if (eJustPressed && !player.homing) {
+  // F — directional dash
+  if (eJustPressed && !player.homing && player.dashAvail > 0) {
     const goingUp = keys[KEYS.up] || false;
     const horizDir = goLeft ? -1 : goRight ? 1 : player.dir;
     const wantDown = downKey && !player.onGround;
-    const wantH = !wantDown && (goLeft || goRight || (!goingUp));
     const wantUp = !wantDown && goingUp;
-    const dashesUsed = Math.max(player.dashUsedUp, player.dashUsedH);
-    const canDash = dashesUsed < CFG.dashCount;
+    const prevFrames = player.dashFrames;
 
-    if (wantDown && canDash && !CFG.slamUnlocked) {
+    if (wantDown && !CFG.slamUnlocked) {
       player.vx = 0;
       player.vy = CFG.dashV * 0.5;
       player.dashAngle = Math.PI / 2;
-      player.dashUsedUp = dashesUsed + 1;
-      player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
       player.spinning = false;
       playSound('dash', 0.45);
-    } else if (wantUp && wantH && canDash) {
+    } else if (wantUp && (goLeft || goRight)) {
       const diagH = CFG.dashH * 0.707 * 0.5;
       const diagV = CFG.dashV * 0.707 * 0.5;
       player.vx = horizDir * diagH;
       player.vy = -diagV;
       player.dashAngle = Math.atan2(-diagV, horizDir * diagH);
-      player.dashUsedUp = dashesUsed + 1;
-      player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
       player.spinning = false;
-    } else if (wantUp && canDash) {
+    } else if (wantUp) {
       player.vx = 0;
       player.vy = -(CFG.dashV * 0.5);
       player.dashAngle = -Math.PI / 2;
-      player.dashUsedUp = dashesUsed + 1;
-      player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
       player.dashingUp = true;
       player.spinning = false;
-    } else if (!wantUp && !wantDown && canDash) {
+    } else if (!wantDown) {
       player.vx = horizDir * CFG.dashH * 0.5;
       player.vy = 0;
       player.dashAngle = horizDir > 0 ? 0 : Math.PI;
-      player.dashUsedUp = dashesUsed + 1;
-      player.dashUsedH  = dashesUsed + 1;
       player.dashFrames = CFG.dashLen;
       player.spinning = false;
     }
-    if (player.dashFrames > 0) playSound('dash', 0.45);
+    if (player.dashFrames > prevFrames) {
+      player.dashAvail--;
+      playSound('dash', 0.45);
+    }
   }
 
   // X+F — slam dash downward (independent of dash count, 1 use per airtime)
@@ -196,8 +189,6 @@ function update(dt) {
           player.spinning = false;
           player.onGround = false;
           player.invincible = 30; player.invincibleNoFlash = true;
-          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (snipers.includes(tg)) {
           damageSniperById(tg.id, 1);
           comboCount++; comboTimer = 120;
@@ -209,8 +200,6 @@ function update(dt) {
           player.spinning = false;
           player.onGround = false;
           player.invincible = 30; player.invincibleNoFlash = true;
-          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (shooterBats.includes(tg)) {
           tg.hp--; tg.hitFlash = 14;
           if (tg.hp <= 0) { tg.dead = true; tg.deadTimer = 30; spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, false); playSound('dies', 0.7); }
@@ -223,8 +212,6 @@ function update(dt) {
           player.spinning = false;
           player.onGround = false;
           player.invincible = 30; player.invincibleNoFlash = true;
-          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         } else if (chests.includes(tg)) {
           player.homing = false; player.homingTarget = null;
           player.vy = -8;
@@ -241,8 +228,6 @@ function update(dt) {
           player.spinning = false;
           player.onGround = false;
           player.invincible = 30; player.invincibleNoFlash = true;
-          player.dashUsedUp = Math.max(0, player.dashUsedUp - 1);
-          player.dashUsedH  = Math.max(0, player.dashUsedH  - 1);
         }
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
@@ -267,7 +252,7 @@ function update(dt) {
     player.vy = -CFG.jump1;
     player.onGround = false;
     player.homingAvail = CFG.homingChain;
-    player.dashKills = 0;
+    player.dashAvail = player.maxDashes;
     jumpAnimState = 'air'; jumpAnimFrame = 0; jumpAnimTick = 0;
     playSound('jump', 0.5);
   }
@@ -326,6 +311,7 @@ function update(dt) {
         player.y = lcy + lR - player.h; // snap to bottom of loop
         player.onGround = true;
         player.homingAvail = CFG.homingChain;
+        player.dashAvail = player.maxDashes;
         player.dir = 1;
       }
       return; // skip all normal physics while on loop
@@ -443,7 +429,7 @@ function update(dt) {
         player.slamFreezeTimer = 0;
         player.onGround = true;
         player.homingAvail = CFG.homingChain;
-        player.dashUsedUp = 0; player.dashUsedH = 0; player.dashKills = 0;
+        player.dashAvail = player.maxDashes;
         player.slamUsed = false;
       } else if (player.vy < 0) {
         player.y = s.y + s.h;
@@ -519,6 +505,21 @@ function update(dt) {
     }
   }
 
+
+  // Dash upgrade boxes
+  for (const pb of powerBoxes) {
+    if (pb.collected) continue;
+    pb.bobTimer += 0.05;
+    if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      if (player.maxDashes < 3) {
+        pb.collected = true;
+        player.maxDashes++;
+        player.dashAvail = player.maxDashes;
+        playSound('gem', 0.6);
+        spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
+      }
+    }
+  }
 
   // Med pack drops — fall to ground, walk into to pick up
   const groundFloorMed = (groundY - 1) * TILE;

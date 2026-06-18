@@ -421,8 +421,6 @@ const sliders = [
   { id: 's-gnomeScale',  vid: 'v-gnomeScale',  key: 'gnomeScale',   fmt: v => v.toFixed(1) + '×' },
   { id: 's-dashFrenzyMult', vid: 'v-dashFrenzyMult', key: 'dashFrenzyMult', fmt: v => (v * 100).toFixed(0) + '%' },
   { id: 's-homingChain',   vid: 'v-homingChain',   key: 'homingChain',   fmt: v => Math.round(v) },
-  { id: 's-dashCount',     vid: 'v-dashCount',     key: 'dashCount',     fmt: v => Math.round(v) },
-  { id: 's-dashChain',     vid: 'v-dashChain',     key: 'dashChain',     fmt: v => Math.round(v) },
   { id: 's-stompKill',    vid: 'v-stompKill',    key: 'stompKill',    fmt: v => v > 0 ? 'on' : 'off' },
   { id: 's-godMode',      vid: 'v-godMode',      key: 'godMode',      fmt: v => v > 0 ? 'on' : 'off' },
   { id: 's-batScale',    vid: 'v-batScale',    key: 'batScale',     fmt: v => v.toFixed(1) + '×' },
@@ -553,14 +551,6 @@ function resetAbilities() {
 const ABILITY_COST = 1; // 1 token per skill
 const ABILITY_DEFS = [
   {
-    group: 'DASH',
-    items: [
-      { id: 'dash1', label: '1 Dash',   desc: 'Dash once in mid-air  —  unlock this first',  cfgKey: 'dashCount', cfgVal: 1 },
-      { id: 'dash2', label: '2 Dashes', desc: 'Dash twice in mid-air',                        cfgKey: 'dashCount', cfgVal: 2 },
-      { id: 'dash3', label: '3 Dashes', desc: 'Dash three times in mid-air',                  cfgKey: 'dashCount', cfgVal: 3 },
-    ],
-  },
-  {
     group: 'HOMING',
     items: [
       { id: 'home1', label: '1-Kill Chain', desc: '1 homing kill per jump  —  unlock Dash first', cfgKey: 'homingChain', cfgVal: 1 },
@@ -593,7 +583,6 @@ const abilityMenu = {
 function applyPurchased() {
   // Reset all ability-controlled keys to locked defaults first
   // so stale localStorage values don't grant abilities
-  CFG.dashCount     = 0;
   CFG.homingChain   = 0;
   CFG.slamUnlocked  = 0;
   CFG.vortexRange   = 0;
