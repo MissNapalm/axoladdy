@@ -276,7 +276,6 @@ const LEVELS = [
       {x:38,fy:6*TILE,pw:5},{x:42,fy:7*TILE,pw:5},{x:46,fy:6*TILE,pw:5},
       {x:53,fy:6*TILE,pw:4},{x:57,fy:7*TILE,pw:4},{x:61,fy:6*TILE,pw:4},
     ],
-    dashBoxes: [{x:25,y:5}],
   },
   // Level 1 — ~3× Mario 1-1 length
   {
@@ -328,7 +327,6 @@ const LEVELS = [
       {x:348,fy:6*TILE,pw:7},{x:360,fy:7*TILE,pw:7},{x:372,fy:6*TILE,pw:7},
       {x:400,fy:6*TILE,pw:7},{x:412,fy:7*TILE,pw:7},{x:424,fy:6*TILE,pw:7},
     ],
-    dashBoxes: [{x:134,y:7}],
   },
   // Level 2 — wide gaps, tall platforms
   {
@@ -619,6 +617,7 @@ let levelAmulets = [];
 let powerBoxes   = [];   // frenzy power-up crates
 let projectiles  = [];   // { x, y, vx, vy, life, flying }
 let blockHit = {};
+let blocksBroken = 0;
 
 // ── Solids ────────────────────────────────────────────────────────────────────
 function buildSolids() {
@@ -686,6 +685,7 @@ function loadLevel(n, keepProgress) {
 
   solids = buildSolids();
   blockHit = {};
+  blocksBroken = 0;
 
 
   coins = lv.coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
@@ -738,11 +738,7 @@ function loadLevel(n, keepProgress) {
   heartPickups = [];
   medPackDrops = [];
   projectiles  = [];
-  powerBoxes   = (lv.dashBoxes || []).map(b => ({
-    x: b.x * TILE, y: b.y * TILE,
-    w: TILE, h: TILE,
-    collected: false, bobTimer: Math.random() * Math.PI * 2,
-  }));
+  powerBoxes   = [];
   levelAmulets = (lv.amulets || []).map(a => ({ ...a, collected: false, bobTimer: 0 }));
   coinPopups = [];
 

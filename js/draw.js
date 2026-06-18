@@ -788,13 +788,13 @@ function drawPowerBoxes() {
     ctx.moveTo(sx + 4, sy + pb.h / 2);
     ctx.lineTo(sx + pb.w - 4, sy + pb.h / 2);
     ctx.stroke();
-    // "+" label
+    // label
     ctx.shadowBlur = 0;
     ctx.fillStyle = `rgba(80,220,255,${0.8 + glow * 0.2})`;
-    ctx.font = 'bold 16px monospace';
+    ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('+', sx + pb.w / 2, sy + pb.h / 2 + 1);
+    ctx.fillText(pb.isHomingDrop ? 'H' : '+', sx + pb.w / 2, sy + pb.h / 2);
     ctx.restore();
   }
 }

@@ -551,6 +551,14 @@ function resetAbilities() {
 const ABILITY_COST = 1; // 1 token per skill
 const ABILITY_DEFS = [
   {
+    group: 'DASH',
+    items: [
+      { id: 'dash1', label: '1 Dash',   desc: 'Dash once in mid-air',        cfgKey: 'dashMax', cfgVal: 1 },
+      { id: 'dash2', label: '2 Dashes', desc: 'Dash twice in mid-air',       cfgKey: 'dashMax', cfgVal: 2 },
+      { id: 'dash3', label: '3 Dashes', desc: 'Dash three times in mid-air', cfgKey: 'dashMax', cfgVal: 3 },
+    ],
+  },
+  {
     group: 'HOMING',
     items: [
       { id: 'home1', label: '1-Kill Chain', desc: '1 homing kill per jump', cfgKey: 'homingChain', cfgVal: 1 },
@@ -583,6 +591,7 @@ const abilityMenu = {
 function applyPurchased() {
   // Reset all ability-controlled keys to locked defaults first
   // so stale localStorage values don't grant abilities
+  CFG.dashMax       = 0;
   CFG.homingChain   = 0;
   CFG.slamUnlocked  = 0;
   CFG.vortexRange   = 0;
@@ -591,6 +600,8 @@ function applyPurchased() {
     for (const item of grp.items) { if (abilityMenu.purchased.has(item.id)) best = item; }
     if (best) CFG[best.cfgKey] = best.cfgVal;
   }
+  player.maxDashes = Math.max(1, CFG.dashMax);
+  player.dashAvail = Math.min(player.dashAvail, player.maxDashes);
 }
 applyPurchased();
 

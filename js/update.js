@@ -506,18 +506,17 @@ function update(dt) {
   }
 
 
-  // Dash upgrade boxes
+
+  // Homing upgrade drops
   for (const pb of powerBoxes) {
     if (pb.collected) continue;
     pb.bobTimer += 0.05;
     if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
-      if (player.maxDashes < 3) {
-        pb.collected = true;
-        player.maxDashes++;
-        player.dashAvail = player.maxDashes;
-        playSound('gem', 0.6);
-        spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
-      }
+      pb.collected = true;
+      CFG.homingChain = Math.min(3, CFG.homingChain + 1);
+      player.homingAvail = Math.min(CFG.homingChain, player.homingAvail + 1);
+      playSound('gem', 0.6);
+      spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
     }
   }
 
@@ -773,6 +772,18 @@ function hitBlock(s, hitDir = 0) {
   // Remove block entirely from solids array
   const idx = solids.indexOf(s);
   if (idx !== -1) solids.splice(idx, 1);
+
+  // Every 10th block on level 2 drops a homing upgrade
+  if (currentLevel === 2 && CFG.homingChain > 0) {
+    blocksBroken++;
+    if (blocksBroken % 10 === 0 && CFG.homingChain < 3) {
+      powerBoxes.push({
+        x: s.x, y: s.y - TILE,
+        w: TILE, h: TILE,
+        collected: false, bobTimer: 0, isHomingDrop: true,
+      });
+    }
+  }
 }
 
 function hurtPlayer(dmg = 1) {
