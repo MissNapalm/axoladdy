@@ -553,7 +553,7 @@ const ABILITY_DEFS = [
   {
     group: 'HOMING',
     items: [
-      { id: 'home1', label: '1-Kill Chain', desc: '1 homing kill per jump  —  unlock Dash first', cfgKey: 'homingChain', cfgVal: 1 },
+      { id: 'home1', label: '1-Kill Chain', desc: '1 homing kill per jump', cfgKey: 'homingChain', cfgVal: 1 },
       { id: 'home2', label: '2-Kill Chain', desc: 'Chain 2 kills before landing',                  cfgKey: 'homingChain', cfgVal: 2 },
       { id: 'home3', label: '3-Kill Chain', desc: 'Chain 3 kills before landing',                  cfgKey: 'homingChain', cfgVal: 3 },
     ],
@@ -599,8 +599,6 @@ function canBuyAbility(grp, item) {
   if (totalTokens < ABILITY_COST) return false;
   const idx = grp.items.indexOf(item);
   if (idx > 0 && !abilityMenu.purchased.has(grp.items[idx - 1].id)) return false;
-  // Homing requires dash to be purchased first
-  if (item.id === 'home1' && !abilityMenu.purchased.has('dash1')) return false;
   return true;
 }
 
