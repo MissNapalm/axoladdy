@@ -115,73 +115,6 @@ function loop(ts) {
     ctx.restore();
   }
 
-  // Tutorial overlay
-  if (LEVELS[currentLevel]?.isTutorial && !tut.done) {
-    const step = TUT_STEPS[tut.step];
-    if (step && tut.frozen) {
-      // Dark translucent backdrop
-      ctx.save();
-      const panelW = Math.min(W - 60, 520);
-      const panelH = 130;
-      const px = (W - panelW) / 2;
-      const py = H / 2 - panelH / 2;
-      ctx.fillStyle = 'rgba(0,0,20,0.82)';
-      // Rounded rect
-      const r = 14;
-      ctx.beginPath();
-      ctx.moveTo(px + r, py);
-      ctx.lineTo(px + panelW - r, py);
-      ctx.quadraticCurveTo(px + panelW, py, px + panelW, py + r);
-      ctx.lineTo(px + panelW, py + panelH - r);
-      ctx.quadraticCurveTo(px + panelW, py + panelH, px + panelW - r, py + panelH);
-      ctx.lineTo(px + r, py + panelH);
-      ctx.quadraticCurveTo(px, py + panelH, px, py + panelH - r);
-      ctx.lineTo(px, py + r);
-      ctx.quadraticCurveTo(px, py, px + r, py);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(100,200,255,0.5)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Step counter
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(100,200,255,0.7)';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(`STEP ${tut.step + 1} / ${TUT_STEPS.length}`, W / 2, py + 22);
-
-      // Main message (support newline)
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px monospace';
-      const lines = step.msg.split('\n');
-      const lineH = 24;
-      const startY = py + 50 - ((lines.length - 1) * lineH) / 2;
-      for (let li = 0; li < lines.length; li++) {
-        ctx.fillText(lines[li], W / 2, startY + li * lineH);
-      }
-
-      // "Press any key" prompt (blinking)
-      if (tut.anyKeyTimer <= 0) {
-        const blink = Math.sin(Date.now() / 200) > 0;
-        if (blink) {
-          ctx.fillStyle = 'rgba(200,220,255,0.7)';
-          ctx.font = '12px monospace';
-          ctx.fillText('— PRESS ANY KEY TO CONTINUE —', W / 2, py + panelH - 16);
-        }
-      }
-      ctx.restore();
-    } else if (tut.step === TUT_STEPS.length - 1 && tut.done === false) {
-      // Last step "tutorial complete" — show for a moment then auto-continue
-      ctx.save();
-      const t2 = (Date.now() % 1200) / 1200;
-      ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t2 * Math.PI * 2);
-      ctx.fillStyle = '#aaffcc';
-      ctx.font = 'bold 22px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(TUT_STEPS[TUT_STEPS.length - 1].msg, W / 2, H / 2);
-      ctx.restore();
-    }
-  }
 
   // Level complete cinematic overlay
   if (lvlComplete.active) {
@@ -381,7 +314,6 @@ function loop(ts) {
   ctx.restore(); // end overlay DPR scale
 
   if (abilityMenu.open) drawAbilityMenu();
-  if (dashTutorial && !abilityMenu.open) drawDashTutorialPrompt();
   drawTokenBanner();
 
   updateHUD();
@@ -616,7 +548,6 @@ function resetAbilities() {
   applyPurchased();
   saveAbilities();
   document.getElementById('coins').textContent = '00';
-  dashTutorial = true;
 }
 
 const ABILITY_COST = 1; // 1 token per skill
@@ -916,32 +847,11 @@ function drawAbilityMenu() {
   ctx.restore();
 }
 
-function drawDashTutorialPrompt() {
-  ctx.save();
-  ctx.scale(DPR, DPR);
-  const bw = 360, bh = 68, bx2 = (W - bw) / 2, by2 = H / 2 - 110;
-  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 175);
-  ctx.fillStyle = 'rgba(10,6,20,0.88)';
-  ctx.beginPath(); ctx.roundRect(bx2, by2, bw, bh, 8); ctx.fill();
-  ctx.strokeStyle = `rgba(180,100,255,${0.4 + pulse * 0.4})`; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.roundRect(bx2, by2, bw, bh, 8); ctx.stroke();
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 15px "Courier New", monospace';
-  ctx.fillStyle = '#cc88ff';
-  ctx.shadowColor = '#9900ff'; ctx.shadowBlur = 12;
-  ctx.fillText('FREE SKILL TOKEN AVAILABLE!', W / 2, by2 + 26);
-  ctx.shadowBlur = 0;
-  ctx.font = '12px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(220,200,255,0.8)';
-  ctx.fillText('Press TAB to open skills and buy DASH.', W / 2, by2 + 50);
-  ctx.restore();
-}
 
 document.addEventListener('keydown', e => {
   if (e.code === 'Tab') {
     e.preventDefault();
-    if (dashTutorial) abilityMenu.open = true; // can open but not close during tutorial
-    else abilityMenu.open = !abilityMenu.open;
+    abilityMenu.open = !abilityMenu.open;
     if (abilityMenu.open) playSound('dial', 0.7);
     return;
   }

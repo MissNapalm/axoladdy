@@ -2,11 +2,6 @@
 function update(dt) {
   if (won && !player.wonSlide) return;
   if (dead) return;
-  if (LEVELS[currentLevel].isTutorial && tut.frozen) {
-    // Run only essential ticks while frozen (particles, timers) but skip gameplay
-    if (tut.anyKeyTimer > 0) tut.anyKeyTimer--;
-    return;
-  }
 
   player.w = CFG.axoSize;
   player.h = CFG.axoSize;
@@ -15,14 +10,7 @@ function update(dt) {
 
   const now = performance.now();
 
-  // Dash tutorial — freeze player until dash1 is purchased, but show game normally
-  if (dashTutorial) {
-    if (abilityMenu.purchased.size > 0) {
-      dashTutorial = false;
-      abilityMenu.open = false;
-    } else {
-      return; // frozen — game draws normally but no input processed
-    }
+  {
   }
 
   const goLeft  = keys[KEYS.left]  || false;
@@ -87,13 +75,12 @@ function update(dt) {
   }
 
   // Space/jump while airborne — homing attack if enemy nearby
-  const homingAllowed = CFG.homingChain > 0 && player.homingCount < CFG.homingChain;
-  if (jumpJustPressed && !player.onGround && !player.homing && homingAllowed) {
+  if (jumpJustPressed && !player.onGround && !player.homing && CFG.homingChain > 0 && player.homingAvail > 0) {
     const target = nearestLiveGoomba(HOMING_RANGE);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
-      player.homingCount++;
+      player.homingAvail = 0;
       target.lockFlash = 10;
     }
   }
@@ -203,7 +190,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingCount = CFG.homingChain;
+          player.homingAvail = CFG.homingChain - 1;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -216,7 +203,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingCount = CFG.homingChain;
+          player.homingAvail = CFG.homingChain - 1;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -230,7 +217,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingCount = CFG.homingChain;
+          player.homingAvail = CFG.homingChain - 1;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -248,7 +235,7 @@ function update(dt) {
           if (killed) { comboCount++; comboTimer = 120; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          if (tg.flying) player.homingCount = CFG.homingChain;
+          player.homingAvail = CFG.homingChain - 1;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -279,7 +266,7 @@ function update(dt) {
   if (jumpJustPressed && player.onGround) {
     player.vy = -CFG.jump1;
     player.onGround = false;
-    player.homingCount = 0;
+    player.homingAvail = CFG.homingChain;
     player.dashKills = 0;
     jumpAnimState = 'air'; jumpAnimFrame = 0; jumpAnimTick = 0;
     playSound('jump', 0.5);
@@ -338,6 +325,7 @@ function update(dt) {
         player.vy = 0;
         player.y = lcy + lR - player.h; // snap to bottom of loop
         player.onGround = true;
+        player.homingAvail = CFG.homingChain;
         player.dir = 1;
       }
       return; // skip all normal physics while on loop
@@ -454,6 +442,7 @@ function update(dt) {
         player.dashingDown = false;
         player.slamFreezeTimer = 0;
         player.onGround = true;
+        player.homingAvail = CFG.homingChain;
         player.dashUsedUp = 0; player.dashUsedH = 0; player.dashKills = 0;
         player.slamUsed = false;
       } else if (player.vy < 0) {
@@ -559,7 +548,7 @@ function update(dt) {
           g.dead = false; g.deadTimer = 0; g.hitFlash = 0; g.lockFlash = 0;
           g.x = g.spawnX; g.y = g.spawnY; g.vx = g.spawnVx; g.vy = 0;
           g.pl = g.spawnPl; g.pr = g.spawnPr;
-          g.hp = g.spawnHp; g.maxHp = g.spawnHp;
+          g.hp = enemyMaxHp(g);
           g.shockStun = 0; g.frame = 0;
           if (g.flying) g.wobble = Math.random() * Math.PI * 2;
         }
@@ -578,7 +567,10 @@ function update(dt) {
         if (g.y >= floor) { g.y = floor; g.vy = 0; if (g.knockbackTimer > 7) g.knockbackTimer = 7; }
       }
       g.x += g.vx;
-      if (g.knockbackTimer === 0) g.vx = g.spawnVx * (g.lastDir || 1);
+      if (g.knockbackTimer === 0) {
+        g.x = Math.max(g.pl, Math.min(g.x, g.pr - g.w));
+        g.vx = g.spawnVx * (g.lastDir || 1);
+      }
     } else {
       // Normal patrol — reverse at bounds or pit edges
       if (!g.flying) {
@@ -648,7 +640,7 @@ function update(dt) {
         }
       } else if (!g.hitFlash && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
         const stompKilled = damageEnemy(g, 1);
-        if (stompKilled) { comboCount++; comboTimer = 120; checkComboAchievements(); if (player.homingCount > 0) player.homingCount--; player.stompFlipTimer = 14; player.stompFlipAngle = 0; }
+        if (stompKilled) { comboCount++; comboTimer = 120; checkComboAchievements(); player.stompFlipTimer = 14; player.stompFlipAngle = 0; }
         player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         player.vy = -6;
         player.onGround = false;
@@ -685,9 +677,6 @@ function update(dt) {
   updateShooterBats();
   updateChests();
 
-  // Tutorial step detection
-  tutCheck();
-
   // Boss update
   updateBoss();
   updateWraith();
@@ -697,7 +686,7 @@ function update(dt) {
   updateChaser();
 
   // Flag — level complete on non-boss, non-tutorial levels
-  if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial) {
+  if (!LEVELS[currentLevel].isBossLevel) {
     if (player.x + player.w > FLAG_X * TILE && !won) {
       {
         lvlComplete.active = true;

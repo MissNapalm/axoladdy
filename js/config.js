@@ -257,7 +257,6 @@ function makeCoinDefs(fn) {
 const LEVELS = [
   // Level 0 — TUTORIAL
   {
-    isTutorial: true,
     gaps: [{x:28,w:3}],
     platforms: [
       {x:5,y:8,w:8,t:'brick'},
@@ -523,32 +522,6 @@ function groundInGap(tx) {
 
 const FLAG_X = 320; // end of level 1
 
-// ── Tutorial state ───────────────────────────────────────────────────────────
-const TUT_STEPS = [
-  { msg: 'Use LEFT / RIGHT keys to move!',               key: 'ARROW KEYS' },
-  { msg: 'Press JUMP (L) to jump!',                      key: 'L' },
-  { msg: 'While airborne, press DASH (F) to dash!',      key: 'F in air' },
-  { msg: 'Hold UP (E) + DASH to dash upward!',           key: 'E + F' },
-  { msg: 'Near an enemy in the air, press JUMP to home-attack!', key: 'JUMP near enemy' },
-  { msg: 'Some enemies take 2+ hits — hit again!',       key: 'HIT TWICE' },
-  { msg: 'Kill enemies to fill the TURBO bar!\nPress R when it\'s full to activate TURBO!', key: 'R' },
-  { msg: 'In TURBO, dash or home into blocks to DESTROY them!', key: 'DASH / HOME + BLOCK' },
-  { msg: 'Tutorial complete! Good luck — here comes Level 1!', key: null },
-];
-const tut = {
-  step: 0,          // current step index
-  frozen: true,     // gameplay frozen (showing step card)
-  done: false,      // tutorial finished
-  hasMoved: false,
-  hasJumped: false,
-  hasDashed: false,
-  hasUpDashed: false,
-  hasHomed: false,
-  hasHitTough: false,  // hit an enemy that survived
-  hasActivatedTurbo: false,
-  hasBrokenBlock: false,
-  anyKeyTimer: 0,
-};
 
 // ── Level complete cinematic ─────────────────────────────────────────────────
 const lvlComplete = {
@@ -611,7 +584,7 @@ const player = {
   spinning: false,
   homing: false,
   homingTarget: null,
-  homingCount: 0,
+  homingAvail: 0,
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -635,7 +608,6 @@ let camera  = 0;
 let cameraY = 0;
 let screenShake = 0; // frames remaining
 let chaserWallBubble = false;
-let dashTutorial = true; // force player to buy dash before moving
 
 let coins      = [];
 let coinPopups = []; // { x, y, timer, text }
@@ -714,15 +686,6 @@ function loadLevel(n, keepProgress) {
   solids = buildSolids();
   blockHit = {};
 
-  // Reset tutorial state when entering tutorial level
-  if (lv.isTutorial) {
-    Object.assign(tut, { step:0, frozen:true, done:false, hasMoved:false, hasJumped:false,
-      hasDashed:false, hasUpDashed:false, hasHomed:false, hasHitTough:false,
-      hasActivatedTurbo:false, hasBrokenBlock:false, anyKeyTimer:30 });
-    tutSetupAnyKey();
-  } else {
-    if (typeof dashTutorial !== 'undefined') dashTutorial = false;
-  }
 
   coins = lv.coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
   // Every 3rd enemy in level 2+ is a 'shocker'
@@ -732,19 +695,18 @@ function loadLevel(n, keepProgress) {
   goombas = lv.goombas.flatMap((g, i) => {
     const isShooter = !!g.shooter;
     const type = isShooter ? 'shooter' : 'normal';
-    const h = 2;
-    const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
+    const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: 1, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
     const midTile = Math.round((g.pl + g.pr) / 2);
     const zoneHasGap = (tl, tr) => { for (let t = tl; t < tr; t++) if (groundInGap(t)) return true; return false; };
     const result = [];
     if (!zoneHasGap(g.pl, midTile)) {
       const e1 = { ...base, id: i * 2,     x: (g.pl + 2) * TILE, y: groundFloorY2, vx: -0.7, pl: g.pl * TILE, pr: midTile * TILE };
-      e1.spawnX = e1.x; e1.spawnY = e1.y; e1.spawnVx = e1.vx; e1.spawnPl = e1.pl; e1.spawnPr = e1.pr; e1.spawnHp = h;
+      e1.spawnX = e1.x; e1.spawnY = e1.y; e1.spawnVx = e1.vx; e1.spawnPl = e1.pl; e1.spawnPr = e1.pr;
       result.push(e1);
     }
     if (!zoneHasGap(midTile, g.pr)) {
       const e2 = { ...base, id: i * 2 + 1, x: (midTile + 2) * TILE, y: groundFloorY2, vx:  0.7, pl: midTile * TILE, pr: g.pr * TILE };
-      e2.spawnX = e2.x; e2.spawnY = e2.y; e2.spawnVx = e2.vx; e2.spawnPl = e2.pl; e2.spawnPr = e2.pr; e2.spawnHp = h;
+      e2.spawnX = e2.x; e2.spawnY = e2.y; e2.spawnVx = e2.vx; e2.spawnPl = e2.pl; e2.spawnPr = e2.pr;
       result.push(e2);
     }
     return result;
@@ -753,16 +715,16 @@ function loadLevel(n, keepProgress) {
   // Small bat above each gnome triangle, plus large red bats from lv.flyers
   const makeFlyerObj = (f, id, isSmall) => {
     const sz = isSmall ? Math.round(TILE * 0.85) : Math.round(TILE * 1.35);
-    const h  = isSmall ? 2 : 3;
     const safeY = isSmall ? (groundY - 5) * TILE : Math.max(f.fy, 5 * TILE);
     const fly = { id, x: f.x * TILE, baseY: safeY, y: safeY, vx: isSmall ? 0.9 : 1.2,
       w: sz, h: sz, dead: false, deadTimer: 0,
       pl: f.x * TILE, pr: (f.x + f.pw) * TILE,
       frame: 0, flying: true, wobble: Math.random() * Math.PI * 2,
-      hp: h, maxHp: h, hitFlash: 0, type: 'normal', shockStun: 0,
+      hitFlash: 0, type: 'normal', shockStun: 0,
       red: !isSmall, shootCooldown: 0, lockFlash: 0 };
+    fly.hp = enemyMaxHp(fly);
     fly.spawnX = fly.x; fly.spawnY = safeY; fly.spawnVx = fly.vx;
-    fly.spawnPl = fly.pl; fly.spawnPr = fly.pr; fly.spawnHp = h;
+    fly.spawnPl = fly.pl; fly.spawnPr = fly.pr;
     return fly;
   };
   let flyId = 1000;
@@ -851,7 +813,7 @@ function loadLevel(n, keepProgress) {
     x: spawnX, y: (groundY - 1) * TILE - player.h,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingCount: 0,
+    homing: false, homingTarget: null, homingAvail: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: 0, dashUsedV: 0,
     invincible: 0, dead: false, wonSlide: false,
@@ -980,6 +942,12 @@ function spawnShockerBurst(g) {
   g.shockStun = 40; // freeze for ~2/3 sec
 }
 
+function enemyMaxHp(g) {
+  if (!g.flying) return 1;       // gnomes
+  if (!g.red)   return 1;        // small bats
+  return 3;                      // large red bats
+}
+
 function damageEnemy(g, dmg) {
   if (g.dead) return false;
   g.hp -= dmg;
@@ -1014,10 +982,6 @@ function damageEnemy(g, dmg) {
     g.vx = dir * 5;
     g.vy = -4;
     g.knockbackTimer = 20;
-  }
-  // Tutorial: enemy survived a hit → step 5 complete
-  if (LEVELS[currentLevel]?.isTutorial && tut.step === 5 && !tut.hasHitTough) {
-    tut.hasHitTough = true; tutAdvance();
   }
   return false; // hurt but alive
 }
