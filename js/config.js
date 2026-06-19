@@ -1046,7 +1046,7 @@ function updateHomingBar() {
   const bonus = (player && player.homingBonus) || 0;
   const timer = (player && player.homingRechargeTimer) || 0;
   wrap.style.display = 'flex';
-  const pct = bonus < 4 ? (bonus / 4 * 100 + timer / 60 * 25) : 100;
+  const pct = bonus < 4 ? (bonus / 4 * 100 + timer / 120 * 25) : 100;
   fill.style.width = pct + '%';
   if (count) count.textContent = bonus + '/4';
 }
