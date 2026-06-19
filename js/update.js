@@ -35,17 +35,17 @@ function update(dt) {
   prevRKey    = rKey;
 
   if (rJustPressed) {
-    player.homingBonus = 3;
+    player.homingBonus = 4;
     player.homingRechargeTimer = 0;
     playSound('gem', 0.6);
     spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
   }
 
-  // Homing recharge: full refill every 5 seconds (300 frames)
-  if (player.homingBonus < 3) {
+  // Homing recharge: +1 every 5 seconds (300 frames), max 4
+  if (player.homingBonus < 4) {
     player.homingRechargeTimer++;
     if (player.homingRechargeTimer >= 300) {
-      player.homingBonus = 3;
+      player.homingBonus++;
       player.homingRechargeTimer = 0;
     }
   } else {

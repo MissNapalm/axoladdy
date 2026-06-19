@@ -584,7 +584,7 @@ const player = {
   homing: false,
   homingTarget: null,
   homingAvail: 0,
-  homingBonus: 0,
+  homingBonus: 4,
   homingRechargeTimer: 0,
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
@@ -816,7 +816,7 @@ function loadLevel(n, keepProgress) {
     x: spawnX, y: (groundY - 1) * TILE - player.h,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingAvail: 0, homingBonus: 0, homingRechargeTimer: 0,
+    homing: false, homingTarget: null, homingAvail: 0, homingBonus: 4, homingRechargeTimer: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashAvail: player.maxDashes,
     invincible: 0, dead: false, wonSlide: false,
@@ -1046,9 +1046,9 @@ function updateHomingBar() {
   const bonus = (player && player.homingBonus) || 0;
   const timer = (player && player.homingRechargeTimer) || 0;
   wrap.style.display = 'flex';
-  const pct = bonus < 3 ? (timer / 300 * 100) : 100;
+  const pct = bonus < 4 ? (bonus / 4 * 100 + timer / 300 * 25) : 100;
   fill.style.width = pct + '%';
-  if (count) count.textContent = bonus + '/3';
+  if (count) count.textContent = bonus + '/4';
 }
 
 function spawnSpindash(x, y, dir) {
