@@ -740,7 +740,7 @@ function loadLevel(n, keepProgress) {
   medPackDrops = [];
   projectiles  = [];
   powerBoxes   = [];
-  for (let tx = 100; tx < LEVEL_W_TILES; tx += 100) {
+  for (const tx of [50, 200, 250]) {
     powerBoxes.push({
       x: tx * TILE, y: (groundY - 2) * TILE,
       w: TILE, h: TILE,
@@ -880,6 +880,7 @@ function updateHUD() {
   scoreEl.textContent = String(score).padStart(6, '0');
   coinsEl.textContent = String(coinCount).padStart(2, '0');
   jumpEl.textContent  = jumpLabel();
+  updateHomingBar();
 }
 
 // ── Particles ────────────────────────────────────────────────────────────────
@@ -1041,6 +1042,15 @@ function updateMedPackHUD() {
   const el = document.getElementById('medpack-hud');
   if (!el) return;
   el.textContent = medPacks > 0 ? `[Y] ×${medPacks}` : '';
+}
+
+function updateHomingBar() {
+  const wrap = document.getElementById('homing-bar-wrap');
+  const fill = document.getElementById('homing-bar-fill');
+  if (!wrap || !fill) return;
+  const bonus = player.homingBonus || 0;
+  wrap.style.display = bonus > 0 ? 'flex' : 'none';
+  fill.style.width = (bonus / 3 * 100) + '%';
 }
 
 function spawnSpindash(x, y, dir) {
