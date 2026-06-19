@@ -36,8 +36,20 @@ function update(dt) {
 
   if (rJustPressed) {
     player.homingBonus = 3;
+    player.homingRechargeTimer = 0;
     playSound('gem', 0.6);
     spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
+  }
+
+  // Homing recharge: +1 every 5 seconds (300 frames), max 3
+  if (player.homingBonus < 3) {
+    player.homingRechargeTimer++;
+    if (player.homingRechargeTimer >= 300) {
+      player.homingBonus++;
+      player.homingRechargeTimer = 0;
+    }
+  } else {
+    player.homingRechargeTimer = 0;
   }
 
   if (yJustPressed && medPacks > 0 && hp < MAX_HP) {
@@ -521,17 +533,6 @@ function update(dt) {
 
 
 
-  // Homing upgrade drops
-  for (const pb of powerBoxes) {
-    if (pb.collected) continue;
-    pb.bobTimer += 0.05;
-    if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
-      pb.collected = true;
-      player.homingBonus = pb.addOne ? player.homingBonus + 1 : 3;
-      playSound('gem', 0.6);
-      spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
-    }
-  }
 
   // Med pack drops — fall to ground, walk into to pick up
   const groundFloorMed = (groundY - 1) * TILE;

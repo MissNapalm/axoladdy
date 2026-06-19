@@ -585,6 +585,7 @@ const player = {
   homingTarget: null,
   homingAvail: 0,
   homingBonus: 0,
+  homingRechargeTimer: 0,
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -740,13 +741,6 @@ function loadLevel(n, keepProgress) {
   medPackDrops = [];
   projectiles  = [];
   powerBoxes   = [];
-  for (let tx = 75; tx < LEVEL_W_TILES; tx += 75) {
-    powerBoxes.push({
-      x: tx * TILE, y: (groundY - 2) * TILE,
-      w: TILE, h: TILE,
-      collected: false, bobTimer: Math.random() * Math.PI * 2, isHomingDrop: true,
-    });
-  }
   levelAmulets = (lv.amulets || []).map(a => ({ ...a, collected: false, bobTimer: 0 }));
   coinPopups = [];
 
@@ -822,7 +816,7 @@ function loadLevel(n, keepProgress) {
     x: spawnX, y: (groundY - 1) * TILE - player.h,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingAvail: 0, homingBonus: 0,
+    homing: false, homingTarget: null, homingAvail: 0, homingBonus: 0, homingRechargeTimer: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashAvail: player.maxDashes,
     invincible: 0, dead: false, wonSlide: false,
@@ -970,13 +964,6 @@ function damageEnemy(g, dmg) {
     if (medPacks < MAX_MED_PACKS && Math.random() < 1/30) {
       medPackDrops.push({ x: g.x + g.w / 2 - 10, y: g.y, vy: -5, collected: false });
     }
-    if (Math.random() < 0.25) {
-      powerBoxes.push({
-        x: g.x, y: g.y - TILE,
-        w: TILE, h: TILE,
-        collected: false, bobTimer: Math.random() * Math.PI * 2, isHomingDrop: true, addOne: true,
-      });
-    }
     if (!player.onGround) {
       player.dashAvail = Math.min(player.maxDashes, player.dashAvail + 1);
     }
@@ -1056,8 +1043,12 @@ function updateHomingBar() {
   const fill = document.getElementById('homing-bar-fill');
   if (!wrap || !fill) return;
   const bonus = (player && player.homingBonus) || 0;
-  wrap.style.display = bonus > 0 ? 'flex' : 'none';
-  fill.style.width = (bonus / 3 * 100) + '%';
+  const timer = (player && player.homingRechargeTimer) || 0;
+  // Show always — fills up even from 0
+  wrap.style.display = 'flex';
+  // Each charge is 1/3 of bar; partial fill shows recharge progress toward next
+  const partial = bonus < 3 ? timer / 300 : 0;
+  fill.style.width = ((bonus + partial) / 3 * 100) + '%';
 }
 
 function spawnSpindash(x, y, dir) {
