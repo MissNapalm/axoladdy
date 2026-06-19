@@ -599,8 +599,9 @@ function drawCoinPopups() {
     p.timer--;
     if (p.timer <= 0) { coinPopups.splice(i, 1); continue; }
     const sx = p.x - camera;
-    const progress = 1 - p.timer / 50;
-    const sy = p.y - progress * 28; // float upward
+    const maxTimer = p.maxTimer || 50;
+    const progress = 1 - p.timer / maxTimer;
+    const sy = p.y - progress * (p.big ? 50 : 28);
     const alpha = p.timer < 15 ? p.timer / 15 : 1;
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -611,10 +612,11 @@ function drawCoinPopups() {
     ctx.translate(sx, sy);
     ctx.scale(scale, scale);
     // glow
-    ctx.shadowColor = '#ffd84a';
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = '#ffe566';
-    ctx.fillText('✦ +1', 0, 0);
+    ctx.shadowColor = p.color || '#ffd84a';
+    ctx.shadowBlur = p.big ? 18 : 8;
+    ctx.fillStyle = p.color || '#ffe566';
+    ctx.font = p.big ? `bold 20px "Courier New", monospace` : `bold 13px "Courier New", monospace`;
+    ctx.fillText(p.text || '✦ +1', 0, 0);
     ctx.restore();
   }
 }

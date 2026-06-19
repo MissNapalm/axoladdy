@@ -83,6 +83,14 @@ function updateChaser() {
           chaser.deathFlashR = 0;
           screenShake = 35;
           chaserCleared = true;
+          if (currentLevel === 2) {
+            setTimeout(() => {
+              lvlComplete.active = true;
+              lvlComplete.timer = 0;
+              lvlComplete.zoomStart = zoom;
+              score += 1000; updateHUD();
+            }, 2000);
+          }
         }
       }
     } else {

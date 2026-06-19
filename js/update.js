@@ -495,8 +495,11 @@ function update(dt) {
     if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       pb.collected = true;
       player.homingAvail = 5;
-      playSound('gem', 0.6);
-      spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
+      playSound('gem', 0.9);
+      const cx = pb.x + pb.w / 2, cy = pb.y + pb.h / 2;
+      for (let i = 0; i < 5; i++) spawnExplosion(cx + (Math.random()-0.5)*40, cy + (Math.random()-0.5)*40, true);
+      screenShake = 18;
+      coinPopups.push({ x: cx, y: cy - 10, timer: 90, maxTimer: 90, text: '★ +5 ATTACKS!', color: '#50dcff', big: true });
     }
   }
 
@@ -686,8 +689,8 @@ function update(dt) {
   updateSnipers();
   updateChaser();
 
-  // Flag — level complete on non-boss, non-tutorial levels
-  if (!LEVELS[currentLevel].isBossLevel) {
+  // Flag — level complete on non-boss, non-tutorial levels (not level 2 which ends via chaser)
+  if (!LEVELS[currentLevel].isBossLevel && currentLevel !== 2) {
     if (player.x + player.w > FLAG_X * TILE && !won) {
       {
         lvlComplete.active = true;
