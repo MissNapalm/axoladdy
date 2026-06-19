@@ -19,10 +19,6 @@
   #hp-wrap { display: flex; align-items: center; gap: 3px; }
   .hrt { font-size: 18px; line-height: 1; transition: filter 0.1s; }
   .hrt.empty { filter: grayscale(1) brightness(0.35); }
-  #homing-bar-wrap { display: none; align-items: center; gap: 5px; }
-  #homing-bar-wrap label { color: #50dcff; font-size: 11px; letter-spacing: 1px; }
-  #homing-bar-bg { width: 80px; height: 8px; background: #0a2a40; border: 1px solid #50dcff44; border-radius: 4px; overflow: hidden; }
-  #homing-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #50dcff, #a0f0ff); border-radius: 4px; transition: width 0.1s; }
 
   /* Settings panel */
   #settings-btn { position: fixed; top: 8px; right: 8px; background: #333; color: #fff; border: 1px solid #666; font-family: monospace; font-size: 13px; padding: 4px 10px; cursor: pointer; z-index: 100; }
@@ -80,11 +76,6 @@
 <div id="hud">
   <span>AXO <span id="score">000000</span></span>
   <div id="hp-wrap"></div>
-  <div id="homing-bar-wrap">
-    <label>HOME</label>
-    <div id="homing-bar-bg"><div id="homing-bar-fill"></div></div>
-    <span id="homing-bar-count" style="color:#50dcff;font-size:11px;min-width:14px;text-align:right;"></span>
-  </div>
   <span id="medpack-hud" style="color:#00ffaa;font-size:12px;"></span>
   <span id="jumpstate">—</span>
   <span>GEMS <span id="coins">00</span></span>
@@ -255,11 +246,11 @@
   </label>
 </div>
 
-<script src="js/config.js?v=1781638880"></script>
-<script src="js/enemies.js?v=1781638880"></script>
-<script src="js/tutorial.js?v=1781638880"></script>
-<script src="js/update.js?v=1781638880"></script>
-<script src="js/draw.js?v=1781638880"></script>
-<script src="js/main.js?v=1781638880"></script>
+<script src="js/config.js?v=1781638881"></script>
+<script src="js/enemies.js?v=1781638881"></script>
+<script src="js/tutorial.js?v=1781638881"></script>
+<script src="js/update.js?v=1781638881"></script>
+<script src="js/draw.js?v=1781638881"></script>
+<script src="js/main.js?v=1781638881"></script>
 </body>
 </html>

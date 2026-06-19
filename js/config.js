@@ -584,8 +584,6 @@ const player = {
   homing: false,
   homingTarget: null,
   homingAvail: 0,
-  homingBonus: 4,
-  homingRechargeTimer: 0,
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -816,7 +814,7 @@ function loadLevel(n, keepProgress) {
     x: spawnX, y: (groundY - 1) * TILE - player.h,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingAvail: 0, homingBonus: 4, homingRechargeTimer: 0,
+    homing: false, homingTarget: null, homingAvail: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashAvail: player.maxDashes,
     invincible: 0, dead: false, wonSlide: false,
@@ -874,7 +872,6 @@ function updateHUD() {
   scoreEl.textContent = String(score).padStart(6, '0');
   coinsEl.textContent = String(coinCount).padStart(2, '0');
   jumpEl.textContent  = jumpLabel();
-  updateHomingBar();
 }
 
 // ── Particles ────────────────────────────────────────────────────────────────
@@ -1038,20 +1035,6 @@ function updateMedPackHUD() {
   el.textContent = medPacks > 0 ? `[Y] ×${medPacks}` : '';
 }
 
-function updateHomingBar() {
-  const wrap = document.getElementById('homing-bar-wrap');
-  const fill = document.getElementById('homing-bar-fill');
-  const count = document.getElementById('homing-bar-count');
-  if (!wrap || !fill) return;
-  const bonus = (player && player.homingBonus) || 0;
-  const timer = (player && player.homingRechargeTimer) || 0;
-  const onCooldown = bonus === 0 && timer > 0;
-  wrap.style.display = 'flex';
-  const pct = onCooldown ? ((300 - timer) / 300 * 100) : (bonus / 4 * 100);
-  fill.style.width = pct + '%';
-  fill.style.background = onCooldown ? 'linear-gradient(90deg,#446,#88a)' : 'linear-gradient(90deg,#50dcff,#a0f0ff)';
-  if (count) count.textContent = onCooldown ? '—' : bonus + '/4';
-}
 
 function spawnSpindash(x, y, dir) {
   for (let i = 0; i < 3; i++) {
@@ -1076,5 +1059,4 @@ let prevUpKey   = false;
 let prevEKey = false;
 let prevDownKey = false;
 let prevYKey = false;
-let prevRKey = false;
 

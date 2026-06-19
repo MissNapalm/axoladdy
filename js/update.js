@@ -24,31 +24,13 @@ function update(dt) {
   const eKey    = keys[KEYS.dash] || false;
   const downKey = keys[KEYS.down] || false;
   const yKey    = keys['KeyY'] || false;
-  const rKey    = keys['KeyR'] || false;
   const eJustPressed    = eKey    && !prevEKey;
   const downJustPressed = downKey && !prevDownKey;
   const yJustPressed    = yKey    && !prevYKey;
-  const rJustPressed    = rKey    && !prevRKey;
   prevEKey    = eKey;
   prevDownKey = downKey;
   prevYKey    = yKey;
-  prevRKey    = rKey;
 
-  if (rJustPressed) {
-    player.homingBonus = 4;
-    player.homingRechargeTimer = 0;
-    playSound('gem', 0.6);
-    spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
-  }
-
-  // Homing cooldown: once fully depleted, timer runs 5 seconds (300 frames) then refills to 4
-  if (player.homingBonus === 0 && player.homingRechargeTimer > 0) {
-    player.homingRechargeTimer--;
-    if (player.homingRechargeTimer <= 0) {
-      player.homingBonus = 4;
-      player.homingRechargeTimer = 0;
-    }
-  }
 
   if (yJustPressed && medPacks > 0 && hp < MAX_HP) {
     medPacks--;
@@ -93,20 +75,13 @@ function update(dt) {
     return;
   }
 
-  // Space/jump while airborne — homing attack if enemy nearby
-  const homingOnCooldown = player.homingBonus === 0 && player.homingRechargeTimer > 0;
-  const canHoming = !homingOnCooldown && (player.homingBonus > 0 || (CFG.homingChain > 0 && player.homingAvail > 0));
-  if (jumpJustPressed && !player.onGround && !player.homing && canHoming) {
+  // Space/jump while airborne — homing attack if enemy nearby (1 per jump)
+  if (jumpJustPressed && !player.onGround && !player.homing && player.homingAvail > 0) {
     const target = nearestLiveGoomba(HOMING_RANGE);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
-      if (player.homingBonus > 0) {
-        player.homingBonus--;
-        if (player.homingBonus === 0) player.homingRechargeTimer = 300;
-      } else {
-        player.homingAvail = 0;
-      }
+      player.homingAvail = 0;
       target.lockFlash = 10;
     }
   }
@@ -209,7 +184,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
+          player.homingAvail = 0;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -220,7 +195,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
+          player.homingAvail = 0;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -232,7 +207,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
+          player.homingAvail = 0;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -248,7 +223,7 @@ function update(dt) {
           if (killed) { comboCount++; comboTimer = 120; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
+          player.homingAvail = 0;
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
