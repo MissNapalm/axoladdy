@@ -740,6 +740,13 @@ function loadLevel(n, keepProgress) {
   medPackDrops = [];
   projectiles  = [];
   powerBoxes   = [];
+  for (let tx = 100; tx < LEVEL_W_TILES; tx += 100) {
+    powerBoxes.push({
+      x: tx * TILE, y: (groundY - 2) * TILE,
+      w: TILE, h: TILE,
+      collected: false, bobTimer: Math.random() * Math.PI * 2, isHomingDrop: true,
+    });
+  }
   levelAmulets = (lv.amulets || []).map(a => ({ ...a, collected: false, bobTimer: 0 }));
   coinPopups = [];
 
