@@ -808,8 +808,9 @@ function doRestart() {
 }
 
 document.getElementById('go-restart').addEventListener('click', doRestart);
+document.getElementById('gameover').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doRestart(); } });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && dead) doRestart();
+  if ((e.key === 'Enter' || e.code === 'Space') && dead) { e.preventDefault(); doRestart(); }
   if (e.key === 'Enter' && won && wonScreenTimer > 120) {
     loadLevel(currentLevel, false);
     hp = MAX_HP;
