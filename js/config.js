@@ -584,6 +584,7 @@ const player = {
   homing: false,
   homingTarget: null,
   homingAvail: 0,
+  homingBonus: 0,
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -696,7 +697,7 @@ function loadLevel(n, keepProgress) {
   goombas = lv.goombas.flatMap((g, i) => {
     const isShooter = !!g.shooter;
     const type = isShooter ? 'shooter' : 'normal';
-    const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: 1, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
+    const base = { dead: false, deadTimer: 0, w: TILE, h: TILE, frame: 0, flying: false, hp: 2, hitFlash: 0, type, shockStun: 0, red: isShooter, shootCooldown: 0 };
     const midTile = Math.round((g.pl + g.pr) / 2);
     const zoneHasGap = (tl, tr) => { for (let t = tl; t < tr; t++) if (groundInGap(t)) return true; return false; };
     const result = [];
@@ -814,7 +815,7 @@ function loadLevel(n, keepProgress) {
     x: spawnX, y: (groundY - 1) * TILE - player.h,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingAvail: 0,
+    homing: false, homingTarget: null, homingAvail: 0, homingBonus: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashAvail: player.maxDashes,
     invincible: 0, dead: false, wonSlide: false,
@@ -944,8 +945,8 @@ function spawnShockerBurst(g) {
 }
 
 function enemyMaxHp(g) {
-  if (!g.flying) return 1;       // gnomes
-  if (!g.red)   return 1;        // small bats
+  if (!g.flying) return 2;       // gnomes
+  if (!g.red)   return 2;        // small bats
   return 3;                      // large red bats
 }
 
@@ -1058,4 +1059,5 @@ let prevUpKey   = false;
 let prevEKey = false;
 let prevDownKey = false;
 let prevYKey = false;
+let prevRKey = false;
 

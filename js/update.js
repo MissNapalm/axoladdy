@@ -24,12 +24,21 @@ function update(dt) {
   const eKey    = keys[KEYS.dash] || false;
   const downKey = keys[KEYS.down] || false;
   const yKey    = keys['KeyY'] || false;
+  const rKey    = keys['KeyR'] || false;
   const eJustPressed    = eKey    && !prevEKey;
   const downJustPressed = downKey && !prevDownKey;
   const yJustPressed    = yKey    && !prevYKey;
+  const rJustPressed    = rKey    && !prevRKey;
   prevEKey    = eKey;
   prevDownKey = downKey;
   prevYKey    = yKey;
+  prevRKey    = rKey;
+
+  if (rJustPressed) {
+    player.homingBonus = 3;
+    playSound('gem', 0.6);
+    spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
+  }
 
   if (yJustPressed && medPacks > 0 && hp < MAX_HP) {
     medPacks--;
@@ -75,12 +84,17 @@ function update(dt) {
   }
 
   // Space/jump while airborne — homing attack if enemy nearby
-  if (jumpJustPressed && !player.onGround && !player.homing && CFG.homingChain > 0 && player.homingAvail > 0) {
+  const canHoming = player.homingBonus > 0 || (CFG.homingChain > 0 && player.homingAvail > 0);
+  if (jumpJustPressed && !player.onGround && !player.homing && canHoming) {
     const target = nearestLiveGoomba(HOMING_RANGE);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
-      player.homingAvail = 0;
+      if (player.homingBonus > 0) {
+        player.homingBonus--;
+      } else {
+        player.homingAvail = 0;
+      }
       target.lockFlash = 10;
     }
   }
@@ -183,7 +197,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = CFG.homingChain - 1;
+          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -194,7 +208,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = CFG.homingChain - 1;
+          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -206,7 +220,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = CFG.homingChain - 1;
+          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -222,7 +236,7 @@ function update(dt) {
           if (killed) { comboCount++; comboTimer = 120; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = CFG.homingChain - 1;
+          if (player.homingBonus <= 0) { player.homingAvail = CFG.homingChain > 1 ? CFG.homingChain - 1 : 0; }
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -513,8 +527,7 @@ function update(dt) {
     pb.bobTimer += 0.05;
     if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       pb.collected = true;
-      CFG.homingChain = Math.min(3, CFG.homingChain + 1);
-      player.homingAvail = Math.min(CFG.homingChain, player.homingAvail + 1);
+      player.homingBonus = 3;
       playSound('gem', 0.6);
       spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
     }
@@ -639,7 +652,7 @@ function update(dt) {
           player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         }
       } else if (!g.hitFlash && (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10))) {
-        const stompKilled = damageEnemy(g, 1);
+        const stompKilled = damageEnemy(g, g.hp);
         if (stompKilled) { comboCount++; comboTimer = 120; checkComboAchievements(); player.stompFlipTimer = 14; player.stompFlipAngle = 0; }
         player.invincible = Math.max(player.invincible, 12); player.invincibleNoFlash = true;
         player.vy = -6;
