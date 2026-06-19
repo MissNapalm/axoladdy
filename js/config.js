@@ -970,6 +970,13 @@ function damageEnemy(g, dmg) {
     if (medPacks < MAX_MED_PACKS && Math.random() < 1/30) {
       medPackDrops.push({ x: g.x + g.w / 2 - 10, y: g.y, vy: -5, collected: false });
     }
+    if (Math.random() < 0.25) {
+      powerBoxes.push({
+        x: g.x, y: g.y - TILE,
+        w: TILE, h: TILE,
+        collected: false, bobTimer: Math.random() * Math.PI * 2, isHomingDrop: true, addOne: true,
+      });
+    }
     if (!player.onGround) {
       player.dashAvail = Math.min(player.maxDashes, player.dashAvail + 1);
     }

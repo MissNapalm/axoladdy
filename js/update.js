@@ -527,7 +527,7 @@ function update(dt) {
     pb.bobTimer += 0.05;
     if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       pb.collected = true;
-      player.homingBonus = 3;
+      player.homingBonus = pb.addOne ? player.homingBonus + 1 : 3;
       playSound('gem', 0.6);
       spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
     }
