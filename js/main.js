@@ -56,6 +56,7 @@ function loop(ts) {
   drawSnipers();
   drawShooterBats();
   drawChests();
+  drawPowerBoxes();
   drawChaser();
   drawParticlesAll();
   if (!dead) drawPlayer();

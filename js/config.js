@@ -1048,7 +1048,7 @@ function updateHomingBar() {
   const wrap = document.getElementById('homing-bar-wrap');
   const fill = document.getElementById('homing-bar-fill');
   if (!wrap || !fill) return;
-  const bonus = player.homingBonus || 0;
+  const bonus = (player && player.homingBonus) || 0;
   wrap.style.display = bonus > 0 ? 'flex' : 'none';
   fill.style.width = (bonus / 3 * 100) + '%';
 }
