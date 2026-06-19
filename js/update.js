@@ -184,7 +184,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = 0;
+          // homingAvail already decremented on fire; don't zero it here
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -195,7 +195,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = 0;
+          // homingAvail already decremented on fire; don't zero it here
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -207,7 +207,7 @@ function update(dt) {
           comboCount++; comboTimer = 120;
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = 0;
+          // homingAvail already decremented on fire; don't zero it here
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;
@@ -223,7 +223,7 @@ function update(dt) {
           if (killed) { comboCount++; comboTimer = 120; }
           checkComboAchievements();
           player.homing = false; player.homingTarget = null;
-          player.homingAvail = 0;
+          // homingAvail already decremented on fire; don't zero it here
           player.vy = -6;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.spinning = false;

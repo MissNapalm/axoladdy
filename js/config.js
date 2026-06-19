@@ -240,7 +240,7 @@ const THEMES = {
 const COLORS = { orb:'#ffcc44', orbDim:'#aa8822', pole:'#4488cc', crystalGlow:'#6699ff' };
 
 // ── Sonic-style level (1200 tiles wide) ──────────────────────────────────────
-const LEVEL_W_TILES = 1200;
+let LEVEL_W_TILES = 1200;
 const groundY = 12;
 
 // ── Level generator helpers ───────────────────────────────────────────────────
@@ -328,14 +328,35 @@ const LEVELS = [
       {x:400,fy:6*TILE,pw:7},{x:412,fy:7*TILE,pw:7},{x:424,fy:6*TILE,pw:7},
     ],
   },
-  // Level 2 — wide gaps, tall platforms
+  // Level 2 — wide gaps, tall platforms, 2x length with eye boss at end
   {
-    gaps: [{x:60,w:7},{x:150,w:9},{x:260,w:6},{x:350,w:11},{x:450,w:7},{x:560,w:8},{x:660,w:6},{x:760,w:10},{x:860,w:7},{x:960,w:9},{x:1060,w:8},{x:1150,w:7}],
-    platforms: [{x:10,y:8,w:5,t:'brick'},{x:30,y:5,w:4,t:'qblock'},{x:70,y:3,w:8,t:'brick'},{x:100,y:7,w:5,t:'qblock'},{x:130,y:4,w:6,t:'brick'},{x:165,y:2,w:8,t:'qblock'},{x:200,y:6,w:5,t:'brick'},{x:230,y:3,w:7,t:'qblock'},{x:270,y:5,w:6,t:'brick'},{x:300,y:2,w:9,t:'qblock'},{x:360,y:4,w:7,t:'brick'},{x:400,y:7,w:5,t:'qblock'},{x:430,y:3,w:8,t:'brick'},{x:460,y:6,w:6,t:'qblock'},{x:500,y:2,w:7,t:'brick'},{x:530,y:5,w:5,t:'qblock'},{x:570,y:3,w:8,t:'brick'},{x:610,y:7,w:5,t:'qblock'},{x:640,y:4,w:6,t:'brick'},{x:670,y:2,w:8,t:'qblock'},{x:710,y:6,w:5,t:'brick'},{x:740,y:3,w:7,t:'qblock'},{x:780,y:5,w:6,t:'brick'},{x:820,y:2,w:8,t:'qblock'},{x:870,y:4,w:7,t:'brick'},{x:910,y:7,w:5,t:'qblock'},{x:940,y:3,w:6,t:'brick'},{x:970,y:6,w:7,t:'qblock'},{x:1010,y:2,w:8,t:'brick'},{x:1050,y:5,w:5,t:'qblock'},{x:1080,y:3,w:7,t:'brick'},{x:1120,y:7,w:5,t:'qblock'},{x:1160,y:4,w:8,t:'brick'},{x:45,y:6,w:1,t:'hblock'},{x:195,y:5,w:1,t:'hblock'},{x:395,y:6,w:1,t:'hblock'},{x:595,y:6,w:1,t:'hblock'},{x:795,y:5,w:1,t:'hblock'},{x:995,y:6,w:1,t:'hblock'}],
-    pipes: [{x:15,h:3},{x:55,h:2},{x:108,h:4},{x:180,h:3},{x:240,h:2},{x:320,h:4},{x:410,h:3},{x:480,h:2},{x:545,h:4},{x:625,h:3},{x:690,h:2},{x:755,h:4},{x:830,h:3},{x:900,h:2},{x:975,h:4},{x:1035,h:3},{x:1100,h:2},{x:1165,h:3}],
-    coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,55,8);ca(75,6,6,8);cl(110,145,4);ca(170,5,5,7);cl(205,255,6);ca(280,4,6,8);cl(310,345,5);ca(375,3,5,7);cl(410,445,6);ca(470,5,6,8);cl(510,555,4);ca(580,6,5,7);cl(615,655,5);ca(680,4,6,8);cl(715,755,6);ca(775,5,5,7);cl(810,855,4);ca(875,3,6,8);cl(912,955,5);ca(980,6,5,7);cl(1015,1055,4);ca(1075,5,6,8);cl(1115,1145,6);cl(1160,1188,5); }),
-    goombas: [{x:12,pl:5,pr:25},{x:35,pl:25,pr:55},{x:75,pl:65,pr:100},{x:108,pl:100,pr:128},{x:138,pl:128,pr:150},{x:210,pl:200,pr:230},{x:240,pl:230,pr:265},{x:280,pl:270,pr:305},{x:315,pl:305,pr:345},{x:365,pl:355,pr:400},{x:412,pl:400,pr:445},{x:462,pl:450,pr:495},{x:512,pl:500,pr:545},{x:562,pl:550,pr:605},{x:618,pl:605,pr:655},{x:665,pl:655,pr:705},{x:715,pl:705,pr:755},{x:768,pl:755,pr:808},{x:822,pl:808,pr:858},{x:868,pl:858,pr:908},{x:915,pl:905,pr:955},{x:968,pl:955,pr:1005},{x:1015,pl:1005,pr:1048},{x:1058,pl:1048,pr:1095},{x:1108,pl:1095,pr:1148},{x:1158,pl:1148,pr:1190}],
-    flyers: [{x:25,fy:4*TILE,pw:7},{x:80,fy:3*TILE,pw:8},{x:215,fy:4*TILE,pw:6},{x:275,fy:3*TILE,pw:8},{x:360,fy:5*TILE,pw:7},{x:420,fy:4*TILE,pw:6},{x:490,fy:3*TILE,pw:8},{x:560,fy:5*TILE,pw:7},{x:630,fy:4*TILE,pw:6},{x:700,fy:3*TILE,pw:8},{x:775,fy:5*TILE,pw:7},{x:840,fy:4*TILE,pw:6},{x:915,fy:3*TILE,pw:8},{x:975,fy:5*TILE,pw:7},{x:1045,fy:4*TILE,pw:6},{x:1115,fy:3*TILE,pw:8},{x:1165,fy:5*TILE,pw:7}],
+    width: 2400,
+    gaps: [
+      {x:60,w:7},{x:150,w:9},{x:260,w:6},{x:350,w:11},{x:450,w:7},{x:560,w:8},{x:660,w:6},{x:760,w:10},{x:860,w:7},{x:960,w:9},{x:1060,w:8},{x:1150,w:7},
+      {x:1260,w:7},{x:1350,w:9},{x:1460,w:6},{x:1550,w:11},{x:1650,w:7},{x:1760,w:8},{x:1860,w:6},{x:1960,w:10},{x:2060,w:7},{x:2160,w:9},{x:2260,w:6},{x:2350,w:7},
+    ],
+    platforms: [
+      {x:10,y:8,w:5,t:'brick'},{x:30,y:5,w:4,t:'qblock'},{x:70,y:3,w:8,t:'brick'},{x:100,y:7,w:5,t:'qblock'},{x:130,y:4,w:6,t:'brick'},{x:165,y:2,w:8,t:'qblock'},{x:200,y:6,w:5,t:'brick'},{x:230,y:3,w:7,t:'qblock'},{x:270,y:5,w:6,t:'brick'},{x:300,y:2,w:9,t:'qblock'},{x:360,y:4,w:7,t:'brick'},{x:400,y:7,w:5,t:'qblock'},{x:430,y:3,w:8,t:'brick'},{x:460,y:6,w:6,t:'qblock'},{x:500,y:2,w:7,t:'brick'},{x:530,y:5,w:5,t:'qblock'},{x:570,y:3,w:8,t:'brick'},{x:610,y:7,w:5,t:'qblock'},{x:640,y:4,w:6,t:'brick'},{x:670,y:2,w:8,t:'qblock'},{x:710,y:6,w:5,t:'brick'},{x:740,y:3,w:7,t:'qblock'},{x:780,y:5,w:6,t:'brick'},{x:820,y:2,w:8,t:'qblock'},{x:870,y:4,w:7,t:'brick'},{x:910,y:7,w:5,t:'qblock'},{x:940,y:3,w:6,t:'brick'},{x:970,y:6,w:7,t:'qblock'},{x:1010,y:2,w:8,t:'brick'},{x:1050,y:5,w:5,t:'qblock'},{x:1080,y:3,w:7,t:'brick'},{x:1120,y:7,w:5,t:'qblock'},{x:1160,y:4,w:8,t:'brick'},
+      {x:1210,y:8,w:5,t:'brick'},{x:1230,y:5,w:4,t:'qblock'},{x:1270,y:3,w:8,t:'brick'},{x:1300,y:7,w:5,t:'qblock'},{x:1330,y:4,w:6,t:'brick'},{x:1365,y:2,w:8,t:'qblock'},{x:1400,y:6,w:5,t:'brick'},{x:1430,y:3,w:7,t:'qblock'},{x:1470,y:5,w:6,t:'brick'},{x:1500,y:2,w:9,t:'qblock'},{x:1560,y:4,w:7,t:'brick'},{x:1600,y:7,w:5,t:'qblock'},{x:1630,y:3,w:8,t:'brick'},{x:1660,y:6,w:6,t:'qblock'},{x:1700,y:2,w:7,t:'brick'},{x:1730,y:5,w:5,t:'qblock'},{x:1770,y:3,w:8,t:'brick'},{x:1810,y:7,w:5,t:'qblock'},{x:1840,y:4,w:6,t:'brick'},{x:1870,y:2,w:8,t:'qblock'},{x:1910,y:6,w:5,t:'brick'},{x:1940,y:3,w:7,t:'qblock'},{x:1980,y:5,w:6,t:'brick'},{x:2020,y:2,w:8,t:'qblock'},{x:2070,y:4,w:7,t:'brick'},{x:2110,y:7,w:5,t:'qblock'},{x:2140,y:3,w:6,t:'brick'},{x:2170,y:6,w:7,t:'qblock'},{x:2210,y:2,w:8,t:'brick'},{x:2250,y:5,w:5,t:'qblock'},{x:2280,y:3,w:7,t:'brick'},{x:2320,y:7,w:5,t:'qblock'},{x:2360,y:4,w:8,t:'brick'},
+      {x:45,y:6,w:1,t:'hblock'},{x:195,y:5,w:1,t:'hblock'},{x:395,y:6,w:1,t:'hblock'},{x:595,y:6,w:1,t:'hblock'},{x:795,y:5,w:1,t:'hblock'},{x:995,y:6,w:1,t:'hblock'},
+      {x:1245,y:6,w:1,t:'hblock'},{x:1395,y:5,w:1,t:'hblock'},{x:1595,y:6,w:1,t:'hblock'},{x:1795,y:6,w:1,t:'hblock'},{x:1995,y:5,w:1,t:'hblock'},{x:2195,y:6,w:1,t:'hblock'},
+    ],
+    pipes: [
+      {x:15,h:3},{x:55,h:2},{x:108,h:4},{x:180,h:3},{x:240,h:2},{x:320,h:4},{x:410,h:3},{x:480,h:2},{x:545,h:4},{x:625,h:3},{x:690,h:2},{x:755,h:4},{x:830,h:3},{x:900,h:2},{x:975,h:4},{x:1035,h:3},{x:1100,h:2},{x:1165,h:3},
+      {x:1215,h:3},{x:1255,h:2},{x:1308,h:4},{x:1380,h:3},{x:1440,h:2},{x:1520,h:4},{x:1610,h:3},{x:1680,h:2},{x:1745,h:4},{x:1825,h:3},{x:1890,h:2},{x:1955,h:4},{x:2030,h:3},{x:2100,h:2},{x:2175,h:4},{x:2235,h:3},{x:2300,h:2},{x:2365,h:3},
+    ],
+    coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,55,8);ca(75,6,6,8);cl(110,145,4);ca(170,5,5,7);cl(205,255,6);ca(280,4,6,8);cl(310,345,5);ca(375,3,5,7);cl(410,445,6);ca(470,5,6,8);cl(510,555,4);ca(580,6,5,7);cl(615,655,5);ca(680,4,6,8);cl(715,755,6);ca(775,5,5,7);cl(810,855,4);ca(875,3,6,8);cl(912,955,5);ca(980,6,5,7);cl(1015,1055,4);ca(1075,5,6,8);cl(1115,1145,6);cl(1160,1188,5);cl(1202,1255,8);ca(1275,6,6,8);cl(1310,1345,4);ca(1370,5,5,7);cl(1405,1455,6);ca(1480,4,6,8);cl(1510,1555,4);ca(1580,6,5,7);cl(1615,1655,5);ca(1680,4,6,8);cl(1715,1755,6);ca(1775,5,5,7);cl(1810,1855,4);ca(1875,3,6,8);cl(1912,1955,5);ca(1980,6,5,7);cl(2015,2055,4);ca(2075,5,6,8);cl(2115,2145,6);cl(2160,2188,5); }),
+    hasChaserEncounter: true,
+    chaserTriggerX: 2200 * TILE,
+    chaserExitX: 2250 * TILE,
+    goombas: [
+      {x:12,pl:5,pr:25},{x:35,pl:25,pr:55},{x:75,pl:65,pr:100},{x:108,pl:100,pr:128},{x:138,pl:128,pr:150},{x:210,pl:200,pr:230},{x:240,pl:230,pr:265},{x:280,pl:270,pr:305},{x:315,pl:305,pr:345},{x:365,pl:355,pr:400},{x:412,pl:400,pr:445},{x:462,pl:450,pr:495},{x:512,pl:500,pr:545},{x:562,pl:550,pr:605},{x:618,pl:605,pr:655},{x:665,pl:655,pr:705},{x:715,pl:705,pr:755},{x:768,pl:755,pr:808},{x:822,pl:808,pr:858},{x:868,pl:858,pr:908},{x:915,pl:905,pr:955},{x:968,pl:955,pr:1005},{x:1015,pl:1005,pr:1048},{x:1058,pl:1048,pr:1095},{x:1108,pl:1095,pr:1148},{x:1158,pl:1148,pr:1190},
+      {x:1212,pl:1205,pr:1225},{x:1235,pl:1225,pr:1255},{x:1275,pl:1265,pr:1300},{x:1308,pl:1300,pr:1328},{x:1338,pl:1328,pr:1350},{x:1410,pl:1400,pr:1430},{x:1440,pl:1430,pr:1465},{x:1480,pl:1470,pr:1505},{x:1515,pl:1505,pr:1545},{x:1565,pl:1555,pr:1600},{x:1612,pl:1600,pr:1645},{x:1662,pl:1650,pr:1695},{x:1712,pl:1700,pr:1745},{x:1762,pl:1750,pr:1805},{x:1818,pl:1805,pr:1855},{x:1865,pl:1855,pr:1905},{x:1915,pl:1905,pr:1955},{x:1968,pl:1955,pr:2005},{x:2015,pl:2005,pr:2048},{x:2058,pl:2048,pr:2095},{x:2108,pl:2095,pr:2148},{x:2158,pl:2148,pr:2190},
+    ],
+    flyers: [
+      {x:25,fy:4*TILE,pw:7},{x:80,fy:3*TILE,pw:8},{x:215,fy:4*TILE,pw:6},{x:275,fy:3*TILE,pw:8},{x:360,fy:5*TILE,pw:7},{x:420,fy:4*TILE,pw:6},{x:490,fy:3*TILE,pw:8},{x:560,fy:5*TILE,pw:7},{x:630,fy:4*TILE,pw:6},{x:700,fy:3*TILE,pw:8},{x:775,fy:5*TILE,pw:7},{x:840,fy:4*TILE,pw:6},{x:915,fy:3*TILE,pw:8},{x:975,fy:5*TILE,pw:7},{x:1045,fy:4*TILE,pw:6},{x:1115,fy:3*TILE,pw:8},{x:1165,fy:5*TILE,pw:7},
+      {x:1225,fy:4*TILE,pw:7},{x:1280,fy:3*TILE,pw:8},{x:1415,fy:4*TILE,pw:6},{x:1475,fy:3*TILE,pw:8},{x:1560,fy:5*TILE,pw:7},{x:1620,fy:4*TILE,pw:6},{x:1690,fy:3*TILE,pw:8},{x:1760,fy:5*TILE,pw:7},{x:1830,fy:4*TILE,pw:6},{x:1900,fy:3*TILE,pw:8},{x:1975,fy:5*TILE,pw:7},{x:2040,fy:4*TILE,pw:6},{x:2115,fy:3*TILE,pw:8},{x:2175,fy:5*TILE,pw:7},{x:2245,fy:4*TILE,pw:6},{x:2315,fy:3*TILE,pw:8},{x:2365,fy:5*TILE,pw:7},
+    ],
   },
   // Level 3 — staircase theme
   {
@@ -681,6 +702,7 @@ function loadLevel(n, keepProgress) {
   currentLevel = ((n % LEVELS.length) + LEVELS.length) % LEVELS.length;
   localStorage.setItem('axo_level', currentLevel);
   const lv = LEVELS[currentLevel];
+  LEVEL_W_TILES = lv.width || 1200;
   if (typeof playTrack === 'function') playTrack(levelMusic?.[currentLevel] ?? null);
 
   solids = buildSolids();
@@ -746,9 +768,9 @@ function loadLevel(n, keepProgress) {
   initSnipers(lv.snipers || []);
   // Shooter bats — disabled
   initShooterBats([]);
-  // Place fixed chests — one just after the eye boss in level 1
+  // Place fixed chests — one just after the eye boss in levels 1 and 2
   chests = [];
-  if (currentLevel === 1) {
+  if (currentLevel === 1 || currentLevel === 2) {
     chests.push({ x: (lv.chaserExitX / TILE + 4) * TILE, y: groundY * TILE - TILE, w: TILE, h: TILE, collected: false, bobTimer: 0, dead: false, deadTimer: 0 });
   }
 
@@ -872,6 +894,12 @@ function updateHUD() {
   scoreEl.textContent = String(score).padStart(6, '0');
   coinsEl.textContent = String(coinCount).padStart(2, '0');
   jumpEl.textContent  = jumpLabel();
+  const dashEl = document.getElementById('dash-hud');
+  if (dashEl && player) {
+    const avail = player.dashAvail || 0;
+    const max   = player.maxDashes || 1;
+    dashEl.textContent = avail > 0 ? 'DASH ' + '▮'.repeat(avail) + '▯'.repeat(max - avail) : '';
+  }
 }
 
 // ── Particles ────────────────────────────────────────────────────────────────
@@ -960,6 +988,9 @@ function damageEnemy(g, dmg) {
     playSound('dies', 0.7);
     if (medPacks < MAX_MED_PACKS && Math.random() < 1/30) {
       medPackDrops.push({ x: g.x + g.w / 2 - 10, y: g.y, vy: -5, collected: false });
+    }
+    if (Math.random() < 0.2) {
+      powerBoxes.push({ x: g.x, y: g.y - TILE, w: TILE, h: TILE, collected: false, bobTimer: 0, isHomingDrop: true });
     }
     if (!player.onGround) {
       player.dashAvail = Math.min(player.maxDashes, player.dashAvail + 1);
