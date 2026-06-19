@@ -1045,10 +1045,12 @@ function updateHomingBar() {
   if (!wrap || !fill) return;
   const bonus = (player && player.homingBonus) || 0;
   const timer = (player && player.homingRechargeTimer) || 0;
+  const onCooldown = bonus < 4 && timer > 0;
   wrap.style.display = 'flex';
-  const pct = bonus < 4 ? (bonus / 4 * 100 + timer / 120 * 25) : 100;
+  const pct = onCooldown ? ((300 - timer) / 300 * 100) : 100;
   fill.style.width = pct + '%';
-  if (count) count.textContent = bonus + '/4';
+  fill.style.background = onCooldown ? 'linear-gradient(90deg,#446,#88a)' : 'linear-gradient(90deg,#50dcff,#a0f0ff)';
+  if (count) count.textContent = onCooldown ? '—' : bonus + '/4';
 }
 
 function spawnSpindash(x, y, dir) {
