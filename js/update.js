@@ -81,7 +81,7 @@ function update(dt) {
     if (target) {
       player.homing = true;
       player.homingTarget = target;
-      player.homingAvail = 0;
+      player.homingAvail--;
       target.lockFlash = 10;
     }
   }
@@ -488,6 +488,18 @@ function update(dt) {
     }
   }
 
+  // Homing pickups — walk into to gain 5 midair attacks
+  for (const pb of powerBoxes) {
+    if (pb.collected) continue;
+    pb.bobTimer += 0.05;
+    if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      pb.collected = true;
+      player.homingAvail = 5;
+      playSound('gem', 0.6);
+      spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
+    }
+  }
+
   // Heart pickups
   const groundFloor = (groundY - 1) * TILE;
   for (let i = heartPickups.length - 1; i >= 0; i--) {
@@ -762,16 +774,13 @@ function hitBlock(s, hitDir = 0) {
   const idx = solids.indexOf(s);
   if (idx !== -1) solids.splice(idx, 1);
 
-  // Every 10th block on level 2 drops a homing upgrade
-  if (currentLevel === 2 && CFG.homingChain > 0) {
-    blocksBroken++;
-    if (blocksBroken % 10 === 0 && CFG.homingChain < 3) {
-      powerBoxes.push({
-        x: s.x, y: s.y - TILE,
-        w: TILE, h: TILE,
-        collected: false, bobTimer: 0, isHomingDrop: true,
-      });
-    }
+  // 1 in 3 chance any block drops a homing pickup (grants 5 midair attacks)
+  if (Math.random() < 1/3) {
+    powerBoxes.push({
+      x: s.x, y: s.y - TILE,
+      w: TILE, h: TILE,
+      collected: false, bobTimer: 0, isHomingDrop: true,
+    });
   }
 }
 
