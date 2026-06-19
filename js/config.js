@@ -994,7 +994,7 @@ function damageEnemy(g, dmg) {
     if (medPacks < MAX_MED_PACKS && Math.random() < 1/30) {
       medPackDrops.push({ x: g.x + g.w / 2 - 10, y: g.y, vy: -5, collected: false });
     }
-    if (player.homingAvail <= 1 && Math.random() < 0.1) {
+    if (player.homingAvail <= 1 && Math.random() < 0.15) {
       powerBoxes.push({ x: g.x, y: g.y - TILE, w: TILE, h: TILE, collected: false, bobTimer: 0, isHomingDrop: true });
     }
     if (!player.onGround) {
