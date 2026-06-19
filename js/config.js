@@ -740,7 +740,7 @@ function loadLevel(n, keepProgress) {
   medPackDrops = [];
   projectiles  = [];
   powerBoxes   = [];
-  for (const tx of [50, 200, 250]) {
+  for (let tx = 75; tx < LEVEL_W_TILES; tx += 75) {
     powerBoxes.push({
       x: tx * TILE, y: (groundY - 2) * TILE,
       w: TILE, h: TILE,
