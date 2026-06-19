@@ -774,8 +774,8 @@ function hitBlock(s, hitDir = 0) {
   const idx = solids.indexOf(s);
   if (idx !== -1) solids.splice(idx, 1);
 
-  // 1 in 3 chance any block drops a homing pickup (grants 5 midair attacks)
-  if (Math.random() < 1/3) {
+  // 1 in 3 chance any block drops a homing pickup (grants 5 midair attacks), only when low
+  if (player.homingAvail <= 1 && Math.random() < 1/3) {
     powerBoxes.push({
       x: s.x, y: s.y - TILE,
       w: TILE, h: TILE,
