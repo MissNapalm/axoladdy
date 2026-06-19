@@ -1045,9 +1045,9 @@ function updateHomingBar() {
   if (!wrap || !fill) return;
   const bonus = (player && player.homingBonus) || 0;
   const timer = (player && player.homingRechargeTimer) || 0;
-  const onCooldown = bonus < 4 && timer > 0;
+  const onCooldown = bonus === 0 && timer > 0;
   wrap.style.display = 'flex';
-  const pct = onCooldown ? ((300 - timer) / 300 * 100) : 100;
+  const pct = onCooldown ? ((300 - timer) / 300 * 100) : (bonus / 4 * 100);
   fill.style.width = pct + '%';
   fill.style.background = onCooldown ? 'linear-gradient(90deg,#446,#88a)' : 'linear-gradient(90deg,#50dcff,#a0f0ff)';
   if (count) count.textContent = onCooldown ? '—' : bonus + '/4';
