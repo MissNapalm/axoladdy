@@ -252,7 +252,7 @@ function update(dt) {
   if (jumpJustPressed && player.onGround) {
     player.vy = -CFG.jump1;
     player.onGround = false;
-    player.homingAvail = CFG.homingChain;
+    player.homingAvail = Math.max(player.homingAvail, CFG.homingChain);
     player.dashAvail = player.maxDashes;
     jumpAnimState = 'air'; jumpAnimFrame = 0; jumpAnimTick = 0;
     playSound('jump', 0.5);
@@ -311,7 +311,7 @@ function update(dt) {
         player.vy = 0;
         player.y = lcy + lR - player.h; // snap to bottom of loop
         player.onGround = true;
-        player.homingAvail = CFG.homingChain;
+        player.homingAvail = Math.max(player.homingAvail, CFG.homingChain);
         player.dashAvail = player.maxDashes;
         player.dir = 1;
       }
@@ -429,7 +429,7 @@ function update(dt) {
         player.dashingDown = false;
         player.slamFreezeTimer = 0;
         player.onGround = true;
-        player.homingAvail = CFG.homingChain;
+        player.homingAvail = Math.max(player.homingAvail, CFG.homingChain);
         player.dashAvail = player.maxDashes;
         player.slamUsed = false;
       } else if (player.vy < 0) {
