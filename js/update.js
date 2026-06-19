@@ -41,11 +41,11 @@ function update(dt) {
     spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
   }
 
-  // Homing recharge: +1 every 5 seconds (300 frames), max 3
+  // Homing recharge: full refill every 5 seconds (300 frames)
   if (player.homingBonus < 3) {
     player.homingRechargeTimer++;
     if (player.homingRechargeTimer >= 300) {
-      player.homingBonus++;
+      player.homingBonus = 3;
       player.homingRechargeTimer = 0;
     }
   } else {

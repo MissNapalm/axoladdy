@@ -1041,14 +1041,14 @@ function updateMedPackHUD() {
 function updateHomingBar() {
   const wrap = document.getElementById('homing-bar-wrap');
   const fill = document.getElementById('homing-bar-fill');
+  const count = document.getElementById('homing-bar-count');
   if (!wrap || !fill) return;
   const bonus = (player && player.homingBonus) || 0;
   const timer = (player && player.homingRechargeTimer) || 0;
-  // Show always — fills up even from 0
   wrap.style.display = 'flex';
-  // Each charge is 1/3 of bar; partial fill shows recharge progress toward next
-  const partial = bonus < 3 ? timer / 300 : 0;
-  fill.style.width = ((bonus + partial) / 3 * 100) + '%';
+  const pct = bonus < 3 ? (timer / 300 * 100) : 100;
+  fill.style.width = pct + '%';
+  if (count) count.textContent = bonus + '/3';
 }
 
 function spawnSpindash(x, y, dir) {
