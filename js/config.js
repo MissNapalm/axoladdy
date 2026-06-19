@@ -900,6 +900,11 @@ function updateHUD() {
     const max   = player.maxDashes || 1;
     dashEl.textContent = avail > 0 ? 'DASH ' + '▮'.repeat(avail) + '▯'.repeat(max - avail) : '';
   }
+  const homingEl = document.getElementById('homing-hud');
+  if (homingEl && player) {
+    const h = player.homingAvail || 0;
+    homingEl.textContent = h > 1 ? 'HOME ×' + h : '';
+  }
 }
 
 // ── Particles ────────────────────────────────────────────────────────────────
